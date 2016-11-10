@@ -4,7 +4,7 @@
   "description": "Real-time Music collaborator",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -21,5 +21,9 @@
   "bugs": {
     "url": "https://github.com/alifhughes/RTMC/issues"
   },
-  "homepage": "https://github.com/alifhughes/RTMC#readme"
+  "homepage": "https://github.com/alifhughes/RTMC#readme",
+  "dependencies": {
+    "express": "^4.14.0",
+    "express-handlebars": "^3.0.0"
+  }
 }

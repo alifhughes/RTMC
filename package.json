@@ -1,0 +1,25 @@
+{
+  "name": "rtmc",
+  "version": "1.0.0",
+  "description": "Real-time Music collaborator",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alifhughes/RTMC.git"
+  },
+  "keywords": [
+    "Real-time",
+    "music",
+    "collaborator"
+  ],
+  "author": "Alistair F. Hughes",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/alifhughes/RTMC/issues"
+  },
+  "homepage": "https://github.com/alifhughes/RTMC#readme"
+}

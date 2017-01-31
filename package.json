@@ -15,6 +15,7 @@
     "serve-favicon": "~2.3.0"
   },
   "devDependencies": {
+    "flightplan": "^0.6.15",
     "fly": "^1.4.1"
   }
 }

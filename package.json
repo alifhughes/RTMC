@@ -2,6 +2,18 @@
   "name": "rtmc",
   "version": "0.0.1",
   "private": true,
+  "author": "Alistair Hughes <ali.fhughes@gmail.com>",
+  "description": "My Final year university project. A real-time music collaborator platform",
+  "contributors": [
+    {
+      "name": "Alistair Hughes",
+      "email": "ali.fhughes@gmail.com"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/alifhughes/RTMC"
+  },
   "scripts": {
     "start": "node ./bin/www"
   },
@@ -16,6 +28,8 @@
   },
   "devDependencies": {
     "flightplan": "^0.6.15",
-    "fly": "^1.4.1"
+    "fly": "^1.4.1",
+    "gulp": "^3.9.1",
+    "gulp-mocha": "^3.0.1"
   }
 }

@@ -1,6 +1,6 @@
 {
   "name": "rtmc",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "private": true,
   "author": "Alistair Hughes <ali.fhughes@gmail.com>",
   "description": "My Final year university project. A real-time music collaborator platform",

@@ -20,8 +20,8 @@ plan.target('production', [
 // run commands on localhost
 plan.local(function(local) {
   // Run Gulp build
-  local.log('Run build');
-  local.exec('gulp build');
+  //local.log('Run build');
+  //local.exec('gulp build');
 
   // Copy local files
   local.log('Copy files to remote hosts');

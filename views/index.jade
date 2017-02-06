@@ -1,5 +1,11 @@
 extends layout
 
 block content
-  div.base-background-colour.no-margin.full-height.padding-100
+  div.base-background-colour.no-margin.height-20.padding-100
     h1.centre-text.dark-grey-colour.no-margin= title
+
+  div.light-grey-background-colour.no-margin.height-20
+    div.container
+      div.no-margin.padding-40.row
+        button.btn.btn-default.btn-lg.col-lg-2.col-lg-offset-3= buttonText1
+        button.btn.btn-default.btn-lg.col-lg-2.col-lg-offset-2= buttonText2

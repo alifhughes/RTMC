@@ -1,2 +1,5 @@
 # Dependency directories
 node_modules/*
+
+# Local debug reports
+npm-debug.log

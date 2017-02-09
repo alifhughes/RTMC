@@ -260,3 +260,26 @@ h6 {
     font-size: 30px;
     text-align: center;
 }
+
+.sample-container {
+    height: 40px;
+    margin-right: 5px;
+}
+
+.step-sequencer-container {
+    height: 40px;
+}
+
+.control-bar {
+    height: 40px;
+    margin-bottom: 20px;
+}
+
+.instrument-container {
+    margin-top: 10px;
+}
+
+.no-padding {
+   padding: 0 !important;
+   margin: 0 !important;
+}

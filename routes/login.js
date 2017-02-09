@@ -13,7 +13,7 @@ router.get('/', login.render);
 router.post('/', function (req, res, next) {
     console.log(req.body.username);
     console.log(req.body.password);
-    res.send('Post page');
+    res.redirect('workstation');
 });
 
 module.exports = router;

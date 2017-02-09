@@ -1,8 +1,13 @@
 var express = require('express');
 var router = express.Router();
 var login = require('../routes/login');
+var workstation = require('../routes/workstation/workstation');
 
-/* GET home page. */
+// Routes
+router.use('/login', login);
+router.use('/workstation', workstation);
+
+// Homepage route
 router.get('/', function(req, res, next) {
   res.render(
     'index',
@@ -13,7 +18,5 @@ router.get('/', function(req, res, next) {
     }
   );
 });
-
-router.use('/login', login);
 
 module.exports = router;

@@ -1,8 +1,8 @@
 exports.render = function(req, res) {
     res.render(
-        'login',
+        'workstation/workstation',
         {
-            title: 'Login'
+            title: 'Workstation'
         }
     )
 };

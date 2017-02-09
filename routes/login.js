@@ -3,9 +3,9 @@ var router = express.Router();
 var login = require('../controllers/login');
 
 /**
- * GET page variables from controller
+ * GET request, render page
  */
-router.get('/', login.pageVariables);
+router.get('/', login.render);
 
 /**
  * Get post variables from login page

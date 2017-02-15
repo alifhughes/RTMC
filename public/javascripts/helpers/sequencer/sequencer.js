@@ -50,4 +50,13 @@ sequencer.stop = function () {
     Tone.Transport.stop();
 };
 
+/**
+ * Setter for bpm - ADD VALIDATION
+ *
+ * @param{int} bpm  The bpm for the loop
+ */
+sequencer.setBpm = function(bpm) {
+   Tone.Transport.bpm.value = bpm;
+};
+
 module.exports = sequencer;

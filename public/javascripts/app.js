@@ -1,27 +1,31 @@
-var Tone = require('tone');
 var sequencer = require('./helpers/sequencer/sequencer');
 var $ = require('jquery');
 
-// Bool flag to see if playing
-var playing = false;
+// Get the intial value of the bpm slider
+var bpm = $('#bpm').attr("value");
 
-$('#play').on('click', function() {
+/**
+ * Add event listener for the bpm slider
+ */
+$('#bpm').on('input', function(event) {
 
-    // Check if it is playing
-    if (true === playing) {
+    // Get the bpm value
+    bpm = parseInt(event.target.value);
 
-        // Stop the sequencer
-        sequencer.stop();
+    // Set the bpm value
+    sequencer.setBpm(bpm);
+});
 
-        // Set playing to false
-        playing = false;
-    } else {
+$('#start').on('click', function() {
 
         // Start the sequencer
         sequencer.start();
 
-        // Set playing to true
-        playing = true;
-    }
+});
+
+$('#stop').on('click', function() {
+
+        // Stop the sequencer
+        sequencer.stop();
 
 });

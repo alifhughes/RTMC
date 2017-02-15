@@ -2,6 +2,10 @@ extends layout
 
 block content
   div.width-100.control-bar.dark-grey-background-colour
+    button#start Start
+    button#stop Stop
+    p.white-colour(style='display:inline;') BPM:
+    input#bpm(type='range' value='120' min='60' max='200' style='display:inline; width:200px;')
   div.container-fluid
     div.row.instrument-container
       div.col-md-2.light-grey-background-colour.sample-container
@@ -18,4 +22,3 @@ block content
     div.row.instrument-container
       div.col-md-2.light-grey-background-colour.sample-container
       div.col-md-9.light-grey-background-colour.step-sequencer-container
-  button#play play note

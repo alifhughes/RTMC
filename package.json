@@ -14,7 +14,9 @@
     "node": "0.10.x"
   },
   "scripts": {
-     "start": "node ./bin/www"
+    "start": "node ./bin/www",
+    "build": "browserify ./public/javascripts/app/app.js -o ./public/bundle.js",
+    "watch": "watchify ./public/javascripts/app/app.js -o ./public/bundle.js"
   },
   "repository": {
     "type": "git",
@@ -26,13 +28,16 @@
     "debug": "~2.2.0",
     "express": "~4.14.0",
     "jade": "~1.11.0",
+    "jquery": "^3.1.1",
     "morgan": "~1.7.0",
     "serve-favicon": "~2.3.0"
   },
   "devDependencies": {
+    "browserify": "^14.1.0",
     "flightplan": "^0.6.15",
     "fly": "^1.4.1",
     "gulp": "^3.9.1",
-    "gulp-mocha": "^3.0.1"
+    "gulp-mocha": "^3.0.1",
+    "watchify": "^3.9.0"
   }
 }

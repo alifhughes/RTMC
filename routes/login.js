@@ -1,6 +1,7 @@
 var express = require('express');
 var router = express.Router();
 var login = require('../controllers/login');
+var passport = require('passport');
 
 /**
  * GET request, render page
@@ -10,11 +11,12 @@ router.get('/', login.render);
 /**
  * Get post variables from login page
  */
-router.post('/', function (req, res, next) {
-    console.log(req.body.username);
-    console.log(req.body.password);
-    res.redirect('workstation');
-});
+router.post('/', passport.authenticate('login', {
+        successRedirect: '/home',
+        failureRedirect: '/',
+        failureFlash : true
+    })
+);
 
 /**
  * Get post variables from login page

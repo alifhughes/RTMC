@@ -1,6 +1,5 @@
 var express = require('express');
 var router = express.Router();
-var passport = require('passport');
 var login = require('../routes/login');
 var signup = require('../routes/signup');
 var workstation = require('../routes/workstation/workstation');

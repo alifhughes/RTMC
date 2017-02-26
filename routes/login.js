@@ -7,13 +7,10 @@ var login = require('../controllers/login');
  */
 router.get('/', login.render);
 
+
 /**
  * Get post variables from login page
  */
-router.post('/', function (req, res, next) {
-    console.log(req.body.username);
-    console.log(req.body.password);
-    res.redirect('workstation');
-});
+//router.post('/', login.authenticate(passport));
 
 module.exports = router;

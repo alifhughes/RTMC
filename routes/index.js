@@ -1,5 +1,6 @@
 var express = require('express');
 var router = express.Router();
+var passport = require('passport');
 var login = require('../routes/login');
 var workstation = require('../routes/workstation/workstation');
 
@@ -18,5 +19,6 @@ router.get('/', function(req, res, next) {
     }
   );
 });
+
 
 module.exports = router;

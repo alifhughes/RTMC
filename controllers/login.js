@@ -5,21 +5,6 @@ exports.render = function(req, res) {
         'login',
         {
             title: 'Login'
-        },
-        {
-            message: req.flash('message')
         }
     );
-};
-
-// Authenticate login strategy
-exports.authenticate = function (passport) {
-     // Passport authenticate login
-     passport.authenticate(
-        'login', {
-            successRedirect: '/workstation',
-            failureRedirect: '/',
-            failureFlash: true
-        }
-     );
 };

@@ -32468,31 +32468,129 @@ $('#stop').on('click', function() {
 
 });
 
-},{"./helpers/sequencer/sequencer":4,"jquery":1}],4:[function(require,module,exports){
+},{"./helpers/sequencer/sequencer":5,"jquery":1}],4:[function(require,module,exports){
+var $ = require('jquery');
+
+/**
+ * Variable to hold the element that is loaded.
+ */
+var element = false;
+
+/**
+ * Constructor
+ *
+ * @returns {nxloader} instance of itself
+ */
+var nxloader = function () {
+    return this;
+};
+
+// Promise so that matrix is assigned when ready
+function matrixLoader() {
+
+    return new Promise(function (resolve, reject) {
+
+            // Load the matrix
+            nx.onload = function () {
+                // Colours
+                nx.colorize("accent", "#ffbb4c");
+                nx.colorize("fill", "#1D2632");
+
+                // Specified size
+                matrix1.col = 16;
+                matrix1.row = 1;
+                matrix1.init();
+                matrix1.resize($(".step-sequencer-container").width(), $(".step-sequencer-container").height());
+
+                // Set the element
+                matrix1;
+
+                // Send matrix back
+                resolve(matrix1);
+
+            };
+        }
+    );
+};
+
+
+/**
+ * Loads the element passed in
+ *
+ * @param {string} element  The element type to load
+ */
+nxloader.load = function (element) {
+
+    // Switch on the element passed in on which to create
+    switch (element) {
+        case 'matrix':
+
+            // Return the promise of the matrix
+            return matrixLoader();
+
+        default:
+
+            // Throw error
+            return new Error('No element passed into loader');
+            break;
+
+    };
+
+    // Implement fluent interface
+    return this;
+
+};
+
+nxloader.getElement = function () {
+    return element;
+}
+
+function setElement (elementToSet) {
+    element = elementToSet;
+};
+
+module.exports = nxloader;
+
+},{"jquery":1}],5:[function(require,module,exports){
 var Tone = require('tone');
 var trigger = require('../../helpers/trigger');
+var nxloader = require('../../helpers/nxloader');
+// Initialise empty matrix
+var steps;
+
+nxloader.load('matrix').then(function(matrix) {
+    steps = matrix;
+});
 
 //create a synth and connect it to the master output (your speakers)
-var synth = new Tone.MetalSynth().toMaster();
+var synth = new Tone.AMSynth().toMaster();
 
 // 16n note
-var note = '16n';
+var duration = '16n';
 
 // Continue loop
 Tone.Transport.loop = true
 
 // Set loop duration
-Tone.Transport.loopEnd = '1m'
+Tone.Transport.loopEnd = '4m'
 
-// Set the bpm
+// Set the bpm default bpm
 Tone.Transport.bpm.value = 120;
 
-// Schedule a note to be played every 2 beats
-Tone.Transport.schedule(function(time) {
+// Sequence notes
+var seq = new Tone.Sequence(function(time, col) {
 
-    // Trigger synth to play note at the time passed in to the callback
-    trigger(synth, note, time);
-}, '2n');
+    // Get the array of columns from the matrix
+    var column = steps.matrix[col];
+
+    if (1 === column[0]) {
+        // Trigger synth to play note at the time passed in to the callback
+        trigger(synth, "C4", '32n');
+    }
+
+}, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], duration);
+
+Tone.Transport.start();
 
 /**
  * Constructor
@@ -32508,8 +32606,9 @@ var sequencer = function () {
  */
 sequencer.start = function () {
     console.log('started');
+
     // Start the Transport timer
-    Tone.Transport.start();
+    seq.start();
 };
 
 /**
@@ -32518,11 +32617,12 @@ sequencer.start = function () {
 sequencer.stop = function () {
     console.log('stopped');
     // Stop the transport timer
-    Tone.Transport.stop();
+    //Tone.Transport.stop();
+    seq.stop();
 };
 
 /**
- * Setter for bpm - ADD VALIDATION
+ * Setter for bpm
  *
  * @param{int} bpm  The bpm for the loop
  */
@@ -32532,7 +32632,7 @@ sequencer.setBpm = function(bpm) {
 
 module.exports = sequencer;
 
-},{"../../helpers/trigger":5,"tone":2}],5:[function(require,module,exports){
+},{"../../helpers/nxloader":4,"../../helpers/trigger":6,"tone":2}],6:[function(require,module,exports){
 // Require tone
 var Tone = require('tone');
 

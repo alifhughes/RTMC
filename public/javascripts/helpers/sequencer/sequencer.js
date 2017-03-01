@@ -1,11 +1,20 @@
 var Tone = require('tone');
 var trigger = require('../../helpers/trigger');
 var nxloader = require('../../helpers/nxloader');
+
 // Initialise empty matrix
 var steps;
 
-nxloader.load('matrix').then(function(matrix) {
-    steps = matrix;
+// Load the matrix which returns a promise
+nxloader.load('sequencer').then(function(elements) {
+
+    // Assign the elements of the sequencer
+    steps = elements.matrix;
+    volume = elements.volume;
+
+    // Initialise the volume of the track
+    setVolume(volume);
+
 });
 
 //create a synth and connect it to the master output (your speakers)
@@ -13,12 +22,6 @@ var synth = new Tone.AMSynth().toMaster();
 
 // 16n note
 var duration = '16n';
-
-// Continue loop
-Tone.Transport.loop = true
-
-// Set loop duration
-Tone.Transport.loopEnd = '4m'
 
 // Set the bpm default bpm
 Tone.Transport.bpm.value = 120;
@@ -51,8 +54,6 @@ var sequencer = function () {
  * Start the loop sequence
  */
 sequencer.start = function () {
-    console.log('started');
-
     // Start the Transport timer
     seq.start();
 };
@@ -61,9 +62,7 @@ sequencer.start = function () {
  * Stop the loop sequence
  */
 sequencer.stop = function () {
-    console.log('stopped');
     // Stop the transport timer
-    //Tone.Transport.stop();
     seq.stop();
 };
 
@@ -74,6 +73,24 @@ sequencer.stop = function () {
  */
 sequencer.setBpm = function(bpm) {
    Tone.Transport.bpm.value = bpm;
+};
+
+/**
+ * Set the volume of the track
+ *
+ * @param {JQuery object} volume  The volume slider jquery object
+ */
+function setVolume(volume) {
+
+    volume.on('input', function(event) {
+
+        // Get the volume value in decibles
+        var db = parseInt(event.target.value);
+
+        // Set the volume
+        synth.volume.value = db;
+
+    });
 };
 
 module.exports = sequencer;

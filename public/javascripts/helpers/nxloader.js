@@ -1,11 +1,6 @@
 var $ = require('jquery');
 
 /**
- * Variable to hold the element that is loaded.
- */
-var element = false;
-
-/**
  * Constructor
  *
  * @returns {nxloader} instance of itself
@@ -14,13 +9,17 @@ var nxloader = function () {
     return this;
 };
 
-// Promise so that matrix is assigned when ready
-function matrixLoader() {
+// Promise so that elements are assigned when ready
+function sequencerLoader() {
 
     return new Promise(function (resolve, reject) {
 
             // Load the matrix
             nx.onload = function () {
+
+                // Init empty object to contain the elements
+                var elements = {};
+
                 // Colours
                 nx.colorize("accent", "#ffbb4c");
                 nx.colorize("fill", "#1D2632");
@@ -31,36 +30,45 @@ function matrixLoader() {
                 matrix1.init();
                 matrix1.resize($(".step-sequencer-container").width(), $(".step-sequencer-container").height());
 
-                // Set the element
-                matrix1;
+                // Create volume range for sequencer
+                var volume = document.createElement("input");
+                volume.setAttribute('type', 'range');
+                volume.setAttribute('value', 0);
+                volume.setAttribute('name', 'volume');
+                volume.setAttribute('min', -12);
+                volume.setAttribute('max', 12);
+                document.getElementsByClassName('sample-container')[0].appendChild(volume);
 
-                // Send matrix back
-                resolve(matrix1);
+                // Set the element
+                elements.matrix = matrix1;
+                elements.volume = $(volume);
+
+                // Send the elements back
+                resolve(elements);
 
             };
         }
     );
 };
 
-
 /**
- * Loads the element passed in
+ * Loads the instrument passed in
  *
- * @param {string} element  The element type to load
+ * @param {string} instrument The instrument type to load
  */
-nxloader.load = function (element) {
+nxloader.load = function (instrument) {
 
     // Switch on the element passed in on which to create
-    switch (element) {
-        case 'matrix':
+    switch (instrument) {
+        case 'sequencer':
 
             // Return the promise of the matrix
-            return matrixLoader();
+            return sequencerLoader();
 
         default:
 
             // Throw error
-            return new Error('No element passed into loader');
+            return new Error('No instrument passed into loader');
             break;
 
     };
@@ -68,14 +76,6 @@ nxloader.load = function (element) {
     // Implement fluent interface
     return this;
 
-};
-
-nxloader.getElement = function () {
-    return element;
-}
-
-function setElement (elementToSet) {
-    element = elementToSet;
 };
 
 module.exports = nxloader;

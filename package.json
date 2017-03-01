@@ -16,7 +16,7 @@
   "scripts": {
     "start": "node ./bin/www",
     "build": "browserify ./public/javascripts/app.js -o ./public/bundle.js",
-    "watch": "watchify ./public/javascripts/app.js -o ./public/bundle.js"
+    "watch": "watchify ./public/javascripts/app.js -o ./public/bundle.js -v"
   },
   "repository": {
     "type": "git",

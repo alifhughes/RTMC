@@ -1,8 +1,9 @@
 var Tone = require('tone');
-var trigger = require('../../helpers/trigger');
-var nxloader = require('../../helpers/nxloader');
+var trigger = require('../../../helpers/trigger');
+var nxloader = require('../../../helpers/nxloader');
 
 // Initialise empty matrix
+var matrix;
 var steps;
 
 // Load the matrix which returns a promise
@@ -74,6 +75,34 @@ sequencer.stop = function () {
 sequencer.setBpm = function(bpm) {
    Tone.Transport.bpm.value = bpm;
 };
+
+/**
+ * Set the matrix for the steps sequencer
+ *
+ * @param {DOM} matrix  The matrix DOM that is the steps of the sequencer
+ */
+sequencer.setMatrix = function (matrix) {
+    this.matrix = matrix;
+};
+
+/**
+ * Set the volume of the track
+ *
+ * @param {JQuery object} volume  The volume slider jquery object
+ */
+sequencer.setVolume = function (volume) {
+
+    volume.on('input', function(event) {
+
+        // Get the volume value in decibles
+        var db = parseInt(event.target.value);
+
+        // Set the volume
+        synth.volume.value = db;
+
+    });
+};
+
 
 /**
  * Set the volume of the track

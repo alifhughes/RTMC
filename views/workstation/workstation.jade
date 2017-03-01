@@ -6,8 +6,14 @@ block content
     button#stop Stop
     p.white-colour(style='display:inline;') BPM:
     input#bpm(type='range' value='120' min='60' max='200' style='display:inline; width:200px;')
-  div.container-fluid
+  div#instrumentTracks.container-fluid
     div.row.instrument-container
       div.col-md-2.light-grey-background-colour.sample-container
       div.col-md-9.step-sequencer-container
         canvas(nx="matrix")
+    div.row
+      div.col-md-6
+        button#addInstrument Add Instrument
+      div.col-md-6
+        select#instruments
+          option(value="step-sequencer") Step Sequencer

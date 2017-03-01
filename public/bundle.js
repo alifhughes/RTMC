@@ -32436,7 +32436,8 @@ return jQuery;
 	return Tone;
 }));
 },{}],3:[function(require,module,exports){
-var sequencer = require('./helpers/sequencer/sequencer');
+var sequencer = require('./helpers/instruments/sequencer/sequencer');
+var instrumentFactory = require('./helpers/instruments/instrumentfactory');
 var $ = require('jquery');
 
 // Get the intial value of the bpm slider
@@ -32454,21 +32455,302 @@ $('#bpm').on('input', function(event) {
     sequencer.setBpm(bpm);
 });
 
+/**
+ * Event listener for starting the playback
+ */
 $('#start').on('click', function() {
 
-        // Start the sequencer
-        sequencer.start();
+    // Start the sequencer
+    sequencer.start();
 
 });
 
+/**
+ * Event listener for stopping the playback
+ */
 $('#stop').on('click', function() {
 
-        // Stop the sequencer
-        sequencer.stop();
+    // Stop the sequencer
+    sequencer.stop();
 
 });
 
-},{"./helpers/sequencer/sequencer":5,"jquery":1}],4:[function(require,module,exports){
+/**
+ * Event listener for adding an instrument
+ */
+$('#addInstrument').on('click', function () {
+
+    // Get the selected instrument from the drop down
+    var instrument = $('#instruments').val();
+
+    // Create the instrument selected
+    instrumentFactory.createInstrument(instrument).then(function(track) {
+
+        // Append the newly created instrument track to the tracks
+        $('#instrumentTracks').appendChild(track);
+
+    });
+});
+
+},{"./helpers/instruments/instrumentfactory":4,"./helpers/instruments/sequencer/sequencer":6,"jquery":1}],4:[function(require,module,exports){
+var generateSequencerElement = require('./sequencer/GenerateSequencerElement');
+var sequencer = require('./sequencer/sequencer');
+
+/**
+ * Constructor
+ *
+ * returns {instrumentFactory}   Instance of itself
+ */
+var instrumentFactory = function () {
+    return this;
+};
+
+/**
+ * Factory for creating instrument's HTML and initialise the instrument object
+ *
+ * @param {string} instrument  The name of the instrument to be created
+ * @returns {HTML}  instrumentTrack  The html of the instrument
+ */
+instrumentFactory.createInstrument = function (instrument) {
+console.log('asd');
+    // Switch on the instrument passed in
+    switch (instrument) {
+
+        // Create step sequencer
+        case 'step-sequencer':
+            // Create the html
+            return new Promise(function(resolve, reject) {
+                generateSequencerElement.generate().then(function (elements) {
+
+                    // Get the elements
+                    var matrix = elements.matrix;
+                    var volume = elements.volume;
+                    var sequencerElement = elements.sequencer;
+
+                    // Set the sequencer objects
+                    sequencer.setMatrix(matrix);
+                    sequencer.setVolume(volume);
+                    resolve(sequenverElement);
+                    console.log('sequenverElement', sequenverElement);
+                });
+
+            });
+
+            break;
+
+        default:
+
+            // Throw error
+            return new Error('No instrument passed into factory');
+            break;
+
+    };
+};
+
+module.exports = instrumentFactory;
+
+},{"./sequencer/GenerateSequencerElement":5,"./sequencer/sequencer":6}],5:[function(require,module,exports){
+var $ = require('jquery');
+
+/**
+ * Constructor
+ *
+ * @returns {generateSequencerElement} instance of itself
+ */
+var generateSequencerElement = function () {
+    return this;
+};
+
+generateSequencerElement.generate = function () {
+    // Return a promise with the resolve containing the loaded elements
+    return new Promise(function (resolve, reject) {
+
+            // Load the matrix
+            nx.onload = function () {
+
+                // Init empty object to contain the elements
+                var elements = {};
+
+                // Colours
+                nx.colorize("accent", "#ffbb4c");
+                nx.colorize("fill", "#1D2632");
+
+                // Create the instrument container row div
+                var instrumentContainer = document.createElement("div");
+                instrumentContainer.className = 'row instrument-container';
+
+                // Create the sample container column div
+                var sampleContainer = document.createElement("div");
+                sampleContainer.className = 'col-md-2 light-grey-background-colour sample-container';
+
+                // Create the steps container column div
+                var stepsContainer = document.createElement("div");
+                stepsContainer.className = 'col-md-9 step-sequencer-container';
+
+                // Specified size
+                matrix1.col = 16;
+                matrix1.row = 1;
+                matrix1.init();
+                matrix1.resize($(stepsContainer).width(), $(stepsContainer).height());
+                console.log('matrix1', matrix1);
+
+                // Create volume range for sequencer
+                var volume = document.createElement("input");
+                volume.setAttribute('type', 'range');
+                volume.setAttribute('value', 0);
+                volume.setAttribute('name', 'volume');
+                volume.setAttribute('min', -12);
+                volume.setAttribute('max', 12);
+
+                // Create the whole DOM object
+                sampleContainer.appendChild(volume);
+                stepsContainer.appendChild(matrix1);
+                instrumentContainer.appendChild(sampleContainer);
+                instrumentContainer.appendChild(stepsContainer);
+
+                // Set the element
+                elements.matrix = matrix1;
+                elements.volume = $(volume);
+                elements.sequencer = instrumentContainer;
+
+                // Send the elements back
+                resolve(elements);
+
+            };
+        }
+    );
+};
+
+module.exports = generateSequencerElement;
+
+},{"jquery":1}],6:[function(require,module,exports){
+var Tone = require('tone');
+var trigger = require('../../../helpers/trigger');
+var nxloader = require('../../../helpers/nxloader');
+
+// Initialise empty matrix
+var matrix;
+var steps;
+
+// Load the matrix which returns a promise
+nxloader.load('sequencer').then(function(elements) {
+
+    // Assign the elements of the sequencer
+    steps = elements.matrix;
+    volume = elements.volume;
+
+    // Initialise the volume of the track
+    setVolume(volume);
+
+});
+
+//create a synth and connect it to the master output (your speakers)
+var synth = new Tone.AMSynth().toMaster();
+
+// 16n note
+var duration = '16n';
+
+// Set the bpm default bpm
+Tone.Transport.bpm.value = 120;
+
+// Sequence notes
+var seq = new Tone.Sequence(function(time, col) {
+
+    // Get the array of columns from the matrix
+    var column = steps.matrix[col];
+
+    if (1 === column[0]) {
+        // Trigger synth to play note at the time passed in to the callback
+        trigger(synth, "C4", '32n');
+    }
+
+}, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], duration);
+
+Tone.Transport.start();
+
+/**
+ * Constructor
+ *
+ * @returns{sequencer} instance of itself
+ */
+var sequencer = function () {
+    return this;
+};
+
+/**
+ * Start the loop sequence
+ */
+sequencer.start = function () {
+    // Start the Transport timer
+    seq.start();
+};
+
+/**
+ * Stop the loop sequence
+ */
+sequencer.stop = function () {
+    // Stop the transport timer
+    seq.stop();
+};
+
+/**
+ * Setter for bpm
+ *
+ * @param{int} bpm  The bpm for the loop
+ */
+sequencer.setBpm = function(bpm) {
+   Tone.Transport.bpm.value = bpm;
+};
+
+/**
+ * Set the matrix for the steps sequencer
+ *
+ * @param {DOM} matrix  The matrix DOM that is the steps of the sequencer
+ */
+sequencer.setMatrix = function (matrix) {
+    this.matrix = matrix;
+};
+
+/**
+ * Set the volume of the track
+ *
+ * @param {JQuery object} volume  The volume slider jquery object
+ */
+sequencer.setVolume = function (volume) {
+
+    volume.on('input', function(event) {
+
+        // Get the volume value in decibles
+        var db = parseInt(event.target.value);
+
+        // Set the volume
+        synth.volume.value = db;
+
+    });
+};
+
+
+/**
+ * Set the volume of the track
+ *
+ * @param {JQuery object} volume  The volume slider jquery object
+ */
+function setVolume(volume) {
+
+    volume.on('input', function(event) {
+
+        // Get the volume value in decibles
+        var db = parseInt(event.target.value);
+
+        // Set the volume
+        synth.volume.value = db;
+
+    });
+};
+
+module.exports = sequencer;
+
+},{"../../../helpers/nxloader":7,"../../../helpers/trigger":8,"tone":2}],7:[function(require,module,exports){
 var $ = require('jquery');
 
 /**
@@ -32551,105 +32833,7 @@ nxloader.load = function (instrument) {
 
 module.exports = nxloader;
 
-},{"jquery":1}],5:[function(require,module,exports){
-var Tone = require('tone');
-var trigger = require('../../helpers/trigger');
-var nxloader = require('../../helpers/nxloader');
-
-// Initialise empty matrix
-var steps;
-
-// Load the matrix which returns a promise
-nxloader.load('sequencer').then(function(elements) {
-
-    // Assign the elements of the sequencer
-    steps = elements.matrix;
-    volume = elements.volume;
-
-    // Initialise the volume of the track
-    setVolume(volume);
-
-});
-
-//create a synth and connect it to the master output (your speakers)
-var synth = new Tone.AMSynth().toMaster();
-
-// 16n note
-var duration = '16n';
-
-// Set the bpm default bpm
-Tone.Transport.bpm.value = 120;
-
-// Sequence notes
-var seq = new Tone.Sequence(function(time, col) {
-
-    // Get the array of columns from the matrix
-    var column = steps.matrix[col];
-
-    if (1 === column[0]) {
-        // Trigger synth to play note at the time passed in to the callback
-        trigger(synth, "C4", '32n');
-    }
-
-}, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], duration);
-
-Tone.Transport.start();
-
-/**
- * Constructor
- *
- * @returns{sequencer} instance of itself
- */
-var sequencer = function () {
-    return this;
-};
-
-/**
- * Start the loop sequence
- */
-sequencer.start = function () {
-    // Start the Transport timer
-    seq.start();
-};
-
-/**
- * Stop the loop sequence
- */
-sequencer.stop = function () {
-    // Stop the transport timer
-    seq.stop();
-};
-
-/**
- * Setter for bpm
- *
- * @param{int} bpm  The bpm for the loop
- */
-sequencer.setBpm = function(bpm) {
-   Tone.Transport.bpm.value = bpm;
-};
-
-/**
- * Set the volume of the track
- *
- * @param {JQuery object} volume  The volume slider jquery object
- */
-function setVolume(volume) {
-
-    volume.on('input', function(event) {
-
-        // Get the volume value in decibles
-        var db = parseInt(event.target.value);
-
-        // Set the volume
-        synth.volume.value = db;
-
-    });
-};
-
-module.exports = sequencer;
-
-},{"../../helpers/nxloader":4,"../../helpers/trigger":6,"tone":2}],6:[function(require,module,exports){
+},{"jquery":1}],8:[function(require,module,exports){
 // Require tone
 var Tone = require('tone');
 

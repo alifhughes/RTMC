@@ -2,7 +2,6 @@ var Tone = require('tone');
 var trigger = require('../../../helpers/trigger');
 
 // Initialise empty matrix
-var matrix;
 var steps;
 
 //create a synth and connect it to the master output (your speakers)
@@ -69,7 +68,7 @@ sequencer.setBpm = function(bpm) {
  * @param {DOM} matrix  The matrix DOM that is the steps of the sequencer
  */
 sequencer.setMatrix = function (matrix) {
-    this.matrix = matrix;
+    steps = matrix;
 };
 
 /**
@@ -78,26 +77,6 @@ sequencer.setMatrix = function (matrix) {
  * @param {JQuery object} volume  The volume slider jquery object
  */
 sequencer.setVolume = function (volume) {
-    console.log('volume', volume);
-
-    volume.on('input', function(event) {
-
-        // Get the volume value in decibles
-        var db = parseInt(event.target.value);
-
-        // Set the volume
-        synth.volume.value = db;
-
-    });
-};
-
-
-/**
- * Set the volume of the track
- *
- * @param {JQuery object} volume  The volume slider jquery object
- */
-function setVolume(volume) {
 
     volume.on('input', function(event) {
 

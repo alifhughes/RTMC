@@ -32620,35 +32620,9 @@ module.exports.generate = generateStepSequencer;
 },{"jquery":1}],6:[function(require,module,exports){
 var Tone = require('tone');
 var trigger = require('../../../helpers/trigger');
-var nxloader = require('../../../helpers/nxloader');
-//var generateSequencerElement = require('./sequencer/GenerateSequencerElement');
+
 // Initialise empty matrix
-var matrix;
-var steps;
-// Create the html
-/*
-generateSequencerElement.generate.then(function (elements) {
-
-    // Get the elements
-    var matrix = elements.matrix;
-    var volume = elements.volume;
-
-    // Set the sequencer objects
-    sequencer.setMatrix(matrix);
-    sequencer.setVolume(volume);
-
-});
-*/
-// Load the matrix which returns a promise
-nxloader.load('sequencer').then(function(elements) {
-    // Assign the elements of the sequencer
-    steps = elements.matrix;
-    volume = elements.volume;
-
-    // Initialise the volume of the track
-    setVolume(volume);
-
-});
+var steps = 'yo';
 
 //create a synth and connect it to the master output (your speakers)
 var synth = new Tone.AMSynth().toMaster();
@@ -32714,7 +32688,9 @@ sequencer.setBpm = function(bpm) {
  * @param {DOM} matrix  The matrix DOM that is the steps of the sequencer
  */
 sequencer.setMatrix = function (matrix) {
-    this.matrix = matrix;
+    console.log('steps', steps);
+    steps = matrix;
+    console.log('steps', steps);
 };
 
 /**
@@ -32723,7 +32699,6 @@ sequencer.setMatrix = function (matrix) {
  * @param {JQuery object} volume  The volume slider jquery object
  */
 sequencer.setVolume = function (volume) {
-    console.log('volume', volume);
 
     volume.on('input', function(event) {
 
@@ -32736,12 +32711,12 @@ sequencer.setVolume = function (volume) {
     });
 };
 
-
+/*
 /**
  * Set the volume of the track
  *
  * @param {JQuery object} volume  The volume slider jquery object
- */
+ *
 function setVolume(volume) {
 
     volume.on('input', function(event) {
@@ -32754,93 +32729,11 @@ function setVolume(volume) {
 
     });
 };
+*/
 
 module.exports = sequencer;
 
-},{"../../../helpers/nxloader":7,"../../../helpers/trigger":8,"tone":2}],7:[function(require,module,exports){
-var $ = require('jquery');
-
-/**
- * Constructor
- *
- * @returns {nxloader} instance of itself
- */
-var nxloader = function () {
-    return this;
-};
-
-// Promise so that elements are assigned when ready
-function sequencerLoader() {
-
-    return new Promise(function (resolve, reject) {
-
-            // Load the matrix
-            nx.onload = function () {
-
-                // Init empty object to contain the elements
-                var elements = {};
-
-                // Colours
-                nx.colorize("accent", "#ffbb4c");
-                nx.colorize("fill", "#1D2632");
-
-                // Specified size
-                matrix1.col = 16;
-                matrix1.row = 1;
-                matrix1.init();
-                matrix1.resize($(".step-sequencer-container").width(), $(".step-sequencer-container").height());
-
-                // Create volume range for sequencer
-                var volume = document.createElement("input");
-                volume.setAttribute('type', 'range');
-                volume.setAttribute('value', 0);
-                volume.setAttribute('name', 'volume');
-                volume.setAttribute('min', -12);
-                volume.setAttribute('max', 12);
-                document.getElementsByClassName('sample-container')[0].appendChild(volume);
-
-                // Set the element
-                elements.matrix = matrix1;
-                elements.volume = $(volume);
-
-                // Send the elements back
-                resolve(elements);
-
-            };
-        }
-    );
-};
-
-/**
- * Loads the instrument passed in
- *
- * @param {string} instrument The instrument type to load
- */
-nxloader.load = function (instrument) {
-
-    // Switch on the element passed in on which to create
-    switch (instrument) {
-        case 'sequencer':
-
-            // Return the promise of the matrix
-            return sequencerLoader();
-
-        default:
-
-            // Throw error
-            return new Error('No instrument passed into loader');
-            break;
-
-    };
-
-    // Implement fluent interface
-    return this;
-
-};
-
-module.exports = nxloader;
-
-},{"jquery":1}],8:[function(require,module,exports){
+},{"../../../helpers/trigger":7,"tone":2}],7:[function(require,module,exports){
 // Require tone
 var Tone = require('tone');
 

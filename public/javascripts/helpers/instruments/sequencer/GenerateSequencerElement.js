@@ -9,10 +9,7 @@ var generateSequencerElement = function () {
     return this;
 };
 
-/**
- * Create promise that loads and creates the instrument
- */
-var generateStepSequencer =  new Promise(function (resolve, reject) {
+generateSequencerElement.generate = function (callback) {
 
         // Create the instrument container row div
         var instrumentContainer = document.createElement("div");
@@ -34,41 +31,38 @@ var generateStepSequencer =  new Promise(function (resolve, reject) {
         volume.setAttribute('min', -12);
         volume.setAttribute('max', 12);
 
-        // Create matrix canvas for the nx ui element
-        var matrix = document.createElement("canvas");
-        matrix.setAttribute('nx', 'matrix');
-
         // Build the entire rack
         instrumentContainer.appendChild(sampleContainer);
         instrumentContainer.appendChild(stepsContainer);
         sampleContainer.appendChild(volume);
-        stepsContainer.appendChild(matrix);
         $('#instrumentTracks').append(instrumentContainer);
 
-        // Load the matrix
-        nx.onload = function () {
+        // Add the matrix
+        nx.add("matrix", {w: $('.step-sequencer-container').width(),h:  $('.step-sequencer-container').height(), parent: stepsContainer, c: 16, r: 1});
 
-            // Init empty object to contain the elements
-            var elements = {};
+        // Colours
+        nx.colorize("accent", "#ffbb4c");
+        nx.colorize("fill", "#1D2632");
 
-            // Colours
-            nx.colorize("accent", "#ffbb4c");
-            nx.colorize("fill", "#1D2632");
+        // Get the latest element added on
+        // CHANGE THIS FUNCTIONALITY - WILL CAUSE BUGS
+        var matrix = nx.widgets[Object.keys(nx.widgets)[Object.keys(nx.widgets).length - 1]];
 
-            // Specified size
-            matrix1.col = 16;
-            matrix1.row = 1;
-            matrix1.init();
-            matrix1.resize($('.step-sequencer-container').width(), $('.step-sequencer-container').height());
+        // Set the properties of the matrix
+        matrix.col = 16;
+        matrix.row = 1;
+        matrix.init();
 
-            // Set the element
-            elements.matrix = matrix1;
-            elements.volume = $(volume);
+        // Init empty elements object
+        var elements = {};
 
-            // Send the elements back
-            resolve(elements);
+        // Set the element
+        elements.matrix = matrix1;
+        elements.volume = $(volume);
 
-        };
-});
+        // Send the elements back
+        callback(elements);
 
-module.exports.generate = generateStepSequencer;
+};
+
+module.exports = generateSequencerElement;

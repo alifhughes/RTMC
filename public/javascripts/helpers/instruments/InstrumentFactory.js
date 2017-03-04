@@ -25,7 +25,7 @@ instrumentFactory.createInstrument = function (instrument) {
         case 'step-sequencer':
 
             // Create the html
-            generateSequencerElement.generate.then(function (elements) {
+            generateSequencerElement.generate(function (elements) {
 
                 // Get the elements
                 var matrix = elements.matrix;

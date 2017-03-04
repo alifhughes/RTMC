@@ -32516,7 +32516,7 @@ instrumentFactory.createInstrument = function (instrument) {
         case 'step-sequencer':
 
             // Create the html
-            generateSequencerElement.generate.then(function (elements) {
+            generateSequencerElement.generate(function (elements) {
 
                 // Get the elements
                 var matrix = elements.matrix;
@@ -32553,10 +32553,7 @@ var generateSequencerElement = function () {
     return this;
 };
 
-/**
- * Create promise that loads and creates the instrument
- */
-var generateStepSequencer =  new Promise(function (resolve, reject) {
+generateSequencerElement.generate = function (callback) {
 
         // Create the instrument container row div
         var instrumentContainer = document.createElement("div");
@@ -32578,51 +32575,48 @@ var generateStepSequencer =  new Promise(function (resolve, reject) {
         volume.setAttribute('min', -12);
         volume.setAttribute('max', 12);
 
-        // Create matrix canvas for the nx ui element
-        var matrix = document.createElement("canvas");
-        matrix.setAttribute('nx', 'matrix');
-
         // Build the entire rack
         instrumentContainer.appendChild(sampleContainer);
         instrumentContainer.appendChild(stepsContainer);
         sampleContainer.appendChild(volume);
-        stepsContainer.appendChild(matrix);
         $('#instrumentTracks').append(instrumentContainer);
 
-        // Load the matrix
-        nx.onload = function () {
+        // Add the matrix
+        nx.add("matrix", {w: $('.step-sequencer-container').width(),h:  $('.step-sequencer-container').height(), parent: stepsContainer, c: 16, r: 1});
 
-            // Init empty object to contain the elements
-            var elements = {};
+        // Colours
+        nx.colorize("accent", "#ffbb4c");
+        nx.colorize("fill", "#1D2632");
 
-            // Colours
-            nx.colorize("accent", "#ffbb4c");
-            nx.colorize("fill", "#1D2632");
+        // Get the latest element added on
+        // CHANGE THIS FUNCTIONALITY - WILL CAUSE BUGS
+        var matrix = nx.widgets[Object.keys(nx.widgets)[Object.keys(nx.widgets).length - 1]];
 
-            // Specified size
-            matrix1.col = 16;
-            matrix1.row = 1;
-            matrix1.init();
-            matrix1.resize($('.step-sequencer-container').width(), $('.step-sequencer-container').height());
+        // Set the properties of the matrix
+        matrix.col = 16;
+        matrix.row = 1;
+        matrix.init();
 
-            // Set the element
-            elements.matrix = matrix1;
-            elements.volume = $(volume);
+        // Init empty elements object
+        var elements = {};
 
-            // Send the elements back
-            resolve(elements);
+        // Set the element
+        elements.matrix = matrix1;
+        elements.volume = $(volume);
 
-        };
-});
+        // Send the elements back
+        callback(elements);
 
-module.exports.generate = generateStepSequencer;
+};
+
+module.exports = generateSequencerElement;
 
 },{"jquery":1}],6:[function(require,module,exports){
 var Tone = require('tone');
 var trigger = require('../../../helpers/trigger');
 
 // Initialise empty matrix
-var steps = 'yo';
+var steps;
 
 //create a synth and connect it to the master output (your speakers)
 var synth = new Tone.AMSynth().toMaster();
@@ -32688,9 +32682,7 @@ sequencer.setBpm = function(bpm) {
  * @param {DOM} matrix  The matrix DOM that is the steps of the sequencer
  */
 sequencer.setMatrix = function (matrix) {
-    console.log('steps', steps);
     steps = matrix;
-    console.log('steps', steps);
 };
 
 /**
@@ -32710,26 +32702,6 @@ sequencer.setVolume = function (volume) {
 
     });
 };
-
-/*
-/**
- * Set the volume of the track
- *
- * @param {JQuery object} volume  The volume slider jquery object
- *
-function setVolume(volume) {
-
-    volume.on('input', function(event) {
-
-        // Get the volume value in decibles
-        var db = parseInt(event.target.value);
-
-        // Set the volume
-        synth.volume.value = db;
-
-    });
-};
-*/
 
 module.exports = sequencer;
 

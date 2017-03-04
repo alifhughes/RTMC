@@ -23,21 +23,17 @@ instrumentFactory.createInstrument = function (instrument) {
 
         // Create step sequencer
         case 'step-sequencer':
+
             // Create the html
-            return new Promise(function(resolve, reject) {
-                generateSequencerElement.generate().then(function (elements) {
+            generateSequencerElement.generate.then(function (elements) {
 
-                    // Get the elements
-                    var matrix = elements.matrix;
-                    var volume = elements.volume;
-                    var sequencerElement = elements.sequencer;
+                // Get the elements
+                var matrix = elements.matrix;
+                var volume = elements.volume;
 
-                    // Set the sequencer objects
-                    sequencer.setMatrix(matrix);
-                    sequencer.setVolume(volume);
-                    resolve(sequenverElement);
-                    console.log('sequenverElement', sequenverElement);
-                });
+                // Set the sequencer objects
+                sequencer.setMatrix(matrix);
+                sequencer.setVolume(volume);
 
             });
 

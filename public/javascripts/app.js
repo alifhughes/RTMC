@@ -1,5 +1,5 @@
 var sequencer = require('./helpers/instruments/sequencer/sequencer');
-var instrumentFactory = require('./helpers/instruments/instrumentfactory');
+var instrumentFactory = require('./helpers/instruments/InstrumentFactory');
 var $ = require('jquery');
 
 // Get the intial value of the bpm slider
@@ -46,10 +46,6 @@ $('#addInstrument').on('click', function () {
     var instrument = $('#instruments').val();
 
     // Create the instrument selected
-    instrumentFactory.createInstrument(instrument).then(function(track) {
+    instrumentFactory.createInstrument(instrument);
 
-        // Append the newly created instrument track to the tracks
-        $('#instrumentTracks').appendChild(track);
-
-    });
 });

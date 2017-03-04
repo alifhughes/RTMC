@@ -32437,7 +32437,7 @@ return jQuery;
 }));
 },{}],3:[function(require,module,exports){
 var sequencer = require('./helpers/instruments/sequencer/sequencer');
-var instrumentFactory = require('./helpers/instruments/instrumentfactory');
+var instrumentFactory = require('./helpers/instruments/InstrumentFactory');
 var $ = require('jquery');
 
 // Get the intial value of the bpm slider
@@ -32484,15 +32484,11 @@ $('#addInstrument').on('click', function () {
     var instrument = $('#instruments').val();
 
     // Create the instrument selected
-    instrumentFactory.createInstrument(instrument).then(function(track) {
+    instrumentFactory.createInstrument(instrument);
 
-        // Append the newly created instrument track to the tracks
-        $('#instrumentTracks').appendChild(track);
-
-    });
 });
 
-},{"./helpers/instruments/instrumentfactory":4,"./helpers/instruments/sequencer/sequencer":6,"jquery":1}],4:[function(require,module,exports){
+},{"./helpers/instruments/InstrumentFactory":4,"./helpers/instruments/sequencer/sequencer":6,"jquery":1}],4:[function(require,module,exports){
 var generateSequencerElement = require('./sequencer/GenerateSequencerElement');
 var sequencer = require('./sequencer/sequencer');
 
@@ -32512,27 +32508,23 @@ var instrumentFactory = function () {
  * @returns {HTML}  instrumentTrack  The html of the instrument
  */
 instrumentFactory.createInstrument = function (instrument) {
-console.log('asd');
+
     // Switch on the instrument passed in
     switch (instrument) {
 
         // Create step sequencer
         case 'step-sequencer':
+
             // Create the html
-            return new Promise(function(resolve, reject) {
-                generateSequencerElement.generate().then(function (elements) {
+            generateSequencerElement.generate.then(function (elements) {
 
-                    // Get the elements
-                    var matrix = elements.matrix;
-                    var volume = elements.volume;
-                    var sequencerElement = elements.sequencer;
+                // Get the elements
+                var matrix = elements.matrix;
+                var volume = elements.volume;
 
-                    // Set the sequencer objects
-                    sequencer.setMatrix(matrix);
-                    sequencer.setVolume(volume);
-                    resolve(sequenverElement);
-                    console.log('sequenverElement', sequenverElement);
-                });
+                // Set the sequencer objects
+                sequencer.setMatrix(matrix);
+                sequencer.setVolume(volume);
 
             });
 
@@ -32561,80 +32553,94 @@ var generateSequencerElement = function () {
     return this;
 };
 
-generateSequencerElement.generate = function () {
-    // Return a promise with the resolve containing the loaded elements
-    return new Promise(function (resolve, reject) {
+/**
+ * Create promise that loads and creates the instrument
+ */
+var generateStepSequencer =  new Promise(function (resolve, reject) {
 
-            // Load the matrix
-            nx.onload = function () {
+        // Create the instrument container row div
+        var instrumentContainer = document.createElement("div");
+        instrumentContainer.className = 'row instrument-container';
 
-                // Init empty object to contain the elements
-                var elements = {};
+        // Create the sample container column div
+        var sampleContainer = document.createElement("div");
+        sampleContainer.className = 'col-md-2 light-grey-background-colour sample-container';
 
-                // Colours
-                nx.colorize("accent", "#ffbb4c");
-                nx.colorize("fill", "#1D2632");
+        // Create the steps container column div
+        var stepsContainer = document.createElement("div");
+        stepsContainer.className = 'col-md-9 step-sequencer-container light-grey-background-colour';
 
-                // Create the instrument container row div
-                var instrumentContainer = document.createElement("div");
-                instrumentContainer.className = 'row instrument-container';
+        // Create volume range for sequencer
+        var volume = document.createElement("input");
+        volume.setAttribute('type', 'range');
+        volume.setAttribute('value', 0);
+        volume.setAttribute('name', 'volume');
+        volume.setAttribute('min', -12);
+        volume.setAttribute('max', 12);
 
-                // Create the sample container column div
-                var sampleContainer = document.createElement("div");
-                sampleContainer.className = 'col-md-2 light-grey-background-colour sample-container';
+        // Create matrix canvas for the nx ui element
+        var matrix = document.createElement("canvas");
+        matrix.setAttribute('nx', 'matrix');
 
-                // Create the steps container column div
-                var stepsContainer = document.createElement("div");
-                stepsContainer.className = 'col-md-9 step-sequencer-container';
+        // Build the entire rack
+        instrumentContainer.appendChild(sampleContainer);
+        instrumentContainer.appendChild(stepsContainer);
+        sampleContainer.appendChild(volume);
+        stepsContainer.appendChild(matrix);
+        $('#instrumentTracks').append(instrumentContainer);
 
-                // Specified size
-                matrix1.col = 16;
-                matrix1.row = 1;
-                matrix1.init();
-                matrix1.resize($(stepsContainer).width(), $(stepsContainer).height());
-                console.log('matrix1', matrix1);
+        // Load the matrix
+        nx.onload = function () {
 
-                // Create volume range for sequencer
-                var volume = document.createElement("input");
-                volume.setAttribute('type', 'range');
-                volume.setAttribute('value', 0);
-                volume.setAttribute('name', 'volume');
-                volume.setAttribute('min', -12);
-                volume.setAttribute('max', 12);
+            // Init empty object to contain the elements
+            var elements = {};
 
-                // Create the whole DOM object
-                sampleContainer.appendChild(volume);
-                stepsContainer.appendChild(matrix1);
-                instrumentContainer.appendChild(sampleContainer);
-                instrumentContainer.appendChild(stepsContainer);
+            // Colours
+            nx.colorize("accent", "#ffbb4c");
+            nx.colorize("fill", "#1D2632");
 
-                // Set the element
-                elements.matrix = matrix1;
-                elements.volume = $(volume);
-                elements.sequencer = instrumentContainer;
+            // Specified size
+            matrix1.col = 16;
+            matrix1.row = 1;
+            matrix1.init();
+            matrix1.resize($('.step-sequencer-container').width(), $('.step-sequencer-container').height());
 
-                // Send the elements back
-                resolve(elements);
+            // Set the element
+            elements.matrix = matrix1;
+            elements.volume = $(volume);
 
-            };
-        }
-    );
-};
+            // Send the elements back
+            resolve(elements);
 
-module.exports = generateSequencerElement;
+        };
+});
+
+module.exports.generate = generateStepSequencer;
 
 },{"jquery":1}],6:[function(require,module,exports){
 var Tone = require('tone');
 var trigger = require('../../../helpers/trigger');
 var nxloader = require('../../../helpers/nxloader');
-
+//var generateSequencerElement = require('./sequencer/GenerateSequencerElement');
 // Initialise empty matrix
 var matrix;
 var steps;
+// Create the html
+/*
+generateSequencerElement.generate.then(function (elements) {
 
+    // Get the elements
+    var matrix = elements.matrix;
+    var volume = elements.volume;
+
+    // Set the sequencer objects
+    sequencer.setMatrix(matrix);
+    sequencer.setVolume(volume);
+
+});
+*/
 // Load the matrix which returns a promise
 nxloader.load('sequencer').then(function(elements) {
-
     // Assign the elements of the sequencer
     steps = elements.matrix;
     volume = elements.volume;
@@ -32717,6 +32723,7 @@ sequencer.setMatrix = function (matrix) {
  * @param {JQuery object} volume  The volume slider jquery object
  */
 sequencer.setVolume = function (volume) {
+    console.log('volume', volume);
 
     volume.on('input', function(event) {
 

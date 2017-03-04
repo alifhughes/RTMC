@@ -1,22 +1,9 @@
 var Tone = require('tone');
 var trigger = require('../../../helpers/trigger');
-var nxloader = require('../../../helpers/nxloader');
 
 // Initialise empty matrix
 var matrix;
 var steps;
-
-// Load the matrix which returns a promise
-nxloader.load('sequencer').then(function(elements) {
-
-    // Assign the elements of the sequencer
-    steps = elements.matrix;
-    volume = elements.volume;
-
-    // Initialise the volume of the track
-    setVolume(volume);
-
-});
 
 //create a synth and connect it to the master output (your speakers)
 var synth = new Tone.AMSynth().toMaster();
@@ -91,6 +78,7 @@ sequencer.setMatrix = function (matrix) {
  * @param {JQuery object} volume  The volume slider jquery object
  */
 sequencer.setVolume = function (volume) {
+    console.log('volume', volume);
 
     volume.on('input', function(event) {
 

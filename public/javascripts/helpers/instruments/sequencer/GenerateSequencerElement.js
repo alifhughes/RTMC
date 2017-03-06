@@ -38,7 +38,7 @@ generateSequencerElement.generate = function (callback) {
         $('#instrumentTracks').append(instrumentContainer);
 
         // Add the matrix
-        nx.add("matrix", {w: $('.step-sequencer-container').width(),h:  $('.step-sequencer-container').height(), parent: stepsContainer, c: 16, r: 1});
+        nx.add("matrix", {w: $('.step-sequencer-container').width(), h:  $('.step-sequencer-container').height(), parent: stepsContainer});
 
         // Colours
         nx.colorize("accent", "#ffbb4c");
@@ -57,7 +57,7 @@ generateSequencerElement.generate = function (callback) {
         var elements = {};
 
         // Set the element
-        elements.matrix = matrix1;
+        elements.matrix = matrix;
         elements.volume = $(volume);
 
         // Send the elements back

@@ -1,6 +1,8 @@
-var sequencer = require('./helpers/instruments/sequencer/sequencer');
-var instrumentFactory = require('./helpers/instruments/InstrumentFactory');
+var InstrumentFactory = require('./helpers/instruments/InstrumentFactory');
 var $ = require('jquery');
+var Tone = require('tone');
+
+var sequences = [];
 
 // Get the intial value of the bpm slider
 var bpm = $('#bpm').attr("value");
@@ -13,8 +15,8 @@ $('#bpm').on('input', function(event) {
     // Get the bpm value
     bpm = parseInt(event.target.value);
 
-    // Set the bpm value
-    sequencer.setBpm(bpm);
+    // Set the BPM value
+    Tone.Transport.bpm.value = bpm;
 });
 
 /**
@@ -22,9 +24,13 @@ $('#bpm').on('input', function(event) {
  */
 $('#start').on('click', function() {
 
-    // Start the sequencer
-    sequencer.start();
+    // Loop all the sequences
+    sequences.forEach(function(sequence) {
 
+        // Start the sequence
+        sequence.start();
+
+    });
 });
 
 /**
@@ -32,8 +38,13 @@ $('#start').on('click', function() {
  */
 $('#stop').on('click', function() {
 
-    // Stop the sequencer
-    sequencer.stop();
+    // Loop all the sequences
+    sequences.forEach(function(sequence) {
+
+        // Stop the sequence
+        sequence.stop();
+
+    });
 
 });
 
@@ -45,7 +56,15 @@ $('#addInstrument').on('click', function () {
     // Get the selected instrument from the drop down
     var instrument = $('#instruments').val();
 
+    var instrumentFactory = new InstrumentFactory();
+
     // Create the instrument selected
-    instrumentFactory.createInstrument(instrument);
+    instrumentFactory.createInstrument(instrument).then(function(sequence) {
+
+        // Push the sequence on to the sequences
+        sequences.push(sequence);
+        console.log('sequence', sequence);
+
+    });
 
 });

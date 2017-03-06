@@ -32436,9 +32436,11 @@ return jQuery;
 	return Tone;
 }));
 },{}],3:[function(require,module,exports){
-var sequencer = require('./helpers/instruments/sequencer/sequencer');
-var instrumentFactory = require('./helpers/instruments/InstrumentFactory');
+var InstrumentFactory = require('./helpers/instruments/InstrumentFactory');
 var $ = require('jquery');
+var Tone = require('tone');
+
+var sequences = [];
 
 // Get the intial value of the bpm slider
 var bpm = $('#bpm').attr("value");
@@ -32451,8 +32453,8 @@ $('#bpm').on('input', function(event) {
     // Get the bpm value
     bpm = parseInt(event.target.value);
 
-    // Set the bpm value
-    sequencer.setBpm(bpm);
+    // Set the BPM value
+    Tone.Transport.bpm.value = bpm;
 });
 
 /**
@@ -32460,9 +32462,13 @@ $('#bpm').on('input', function(event) {
  */
 $('#start').on('click', function() {
 
-    // Start the sequencer
-    sequencer.start();
+    // Loop all the sequences
+    sequences.forEach(function(sequence) {
 
+        // Start the sequence
+        sequence.start();
+
+    });
 });
 
 /**
@@ -32470,8 +32476,13 @@ $('#start').on('click', function() {
  */
 $('#stop').on('click', function() {
 
-    // Stop the sequencer
-    sequencer.stop();
+    // Loop all the sequences
+    sequences.forEach(function(sequence) {
+
+        // Stop the sequence
+        sequence.stop();
+
+    });
 
 });
 
@@ -32483,14 +32494,22 @@ $('#addInstrument').on('click', function () {
     // Get the selected instrument from the drop down
     var instrument = $('#instruments').val();
 
+    var instrumentFactory = new InstrumentFactory();
+
     // Create the instrument selected
-    instrumentFactory.createInstrument(instrument);
+    instrumentFactory.createInstrument(instrument).then(function(sequence) {
+
+        // Push the sequence on to the sequences
+        sequences.push(sequence);
+        console.log('sequence', sequence);
+
+    });
 
 });
 
-},{"./helpers/instruments/InstrumentFactory":4,"./helpers/instruments/sequencer/sequencer":6,"jquery":1}],4:[function(require,module,exports){
+},{"./helpers/instruments/InstrumentFactory":4,"jquery":1,"tone":2}],4:[function(require,module,exports){
 var generateSequencerElement = require('./sequencer/GenerateSequencerElement');
-var sequencer = require('./sequencer/sequencer');
+var Sequencer = require('./sequencer/sequencer');
 
 /**
  * Constructor
@@ -32507,7 +32526,7 @@ var instrumentFactory = function () {
  * @param {string} instrument  The name of the instrument to be created
  * @returns {HTML}  instrumentTrack  The html of the instrument
  */
-instrumentFactory.createInstrument = function (instrument) {
+instrumentFactory.prototype.createInstrument = function (instrument) {
 
     // Switch on the instrument passed in
     switch (instrument) {
@@ -32516,18 +32535,23 @@ instrumentFactory.createInstrument = function (instrument) {
         case 'step-sequencer':
 
             // Create the html
-            generateSequencerElement.generate(function (elements) {
+            return new Promise(function(resolve, reject) {
+                generateSequencerElement.generate(function (elements) {
 
-                // Get the elements
-                var matrix = elements.matrix;
-                var volume = elements.volume;
+                    // Get the elements
+                    var matrix = elements.matrix;
+                    var volume = elements.volume;
 
-                // Set the sequencer objects
-                sequencer.setMatrix(matrix);
-                sequencer.setVolume(volume);
+                    var seq = new Sequencer();
 
+                    // Set the sequencer objects
+                    seq.setMatrix(matrix);
+                    seq.setVolume(volume);
+
+                    resolve(seq);
+
+                });
             });
-
             break;
 
         default:
@@ -32582,7 +32606,7 @@ generateSequencerElement.generate = function (callback) {
         $('#instrumentTracks').append(instrumentContainer);
 
         // Add the matrix
-        nx.add("matrix", {w: $('.step-sequencer-container').width(),h:  $('.step-sequencer-container').height(), parent: stepsContainer, c: 16, r: 1});
+        nx.add("matrix", {w: $('.step-sequencer-container').width(), h:  $('.step-sequencer-container').height(), parent: stepsContainer});
 
         // Colours
         nx.colorize("accent", "#ffbb4c");
@@ -32601,7 +32625,7 @@ generateSequencerElement.generate = function (callback) {
         var elements = {};
 
         // Set the element
-        elements.matrix = matrix1;
+        elements.matrix = matrix;
         elements.volume = $(volume);
 
         // Send the elements back
@@ -32614,32 +32638,6 @@ module.exports = generateSequencerElement;
 },{"jquery":1}],6:[function(require,module,exports){
 var Tone = require('tone');
 var trigger = require('../../../helpers/trigger');
-
-// Initialise empty matrix
-var steps;
-
-//create a synth and connect it to the master output (your speakers)
-var synth = new Tone.AMSynth().toMaster();
-
-// 16n note
-var duration = '16n';
-
-// Set the bpm default bpm
-Tone.Transport.bpm.value = 120;
-
-// Sequence notes
-var seq = new Tone.Sequence(function(time, col) {
-
-    // Get the array of columns from the matrix
-    var column = steps.matrix[col];
-
-    if (1 === column[0]) {
-        // Trigger synth to play note at the time passed in to the callback
-        trigger(synth, "C4", '32n');
-    }
-
-}, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], duration);
-
 Tone.Transport.start();
 
 /**
@@ -32647,33 +32645,52 @@ Tone.Transport.start();
  *
  * @returns{sequencer} instance of itself
  */
-var sequencer = function () {
+function sequencer () {
+
+    // Initialise empty matrix
+    this.steps;
+
+    //create a synth and connect it to the master output (your speakers)
+    this.synth = new Tone.AMSynth().toMaster();
+
+    // Set the bpm default bpm
+    Tone.Transport.bpm.value = 120;
+
+    var self = this;
+
+    // Sequence notes
+    this.seq = new Tone.Sequence(function(time, col) {
+
+        // Get the array of columns from the matrix
+        var column = self.steps.matrix[col];
+
+        if (1 === column[0]) {
+            // Trigger synth to play note at the time passed in to the callback
+            trigger(self.synth, "C4", '32n');
+        }
+
+    }, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], '16n');
+
+
     return this;
 };
 
 /**
  * Start the loop sequence
  */
-sequencer.start = function () {
+sequencer.prototype.start = function (index) {
+    console.log('index', index);
+
     // Start the Transport timer
-    seq.start();
+    this.seq.start();
 };
 
 /**
  * Stop the loop sequence
  */
-sequencer.stop = function () {
+sequencer.prototype.stop = function () {
     // Stop the transport timer
-    seq.stop();
-};
-
-/**
- * Setter for bpm
- *
- * @param{int} bpm  The bpm for the loop
- */
-sequencer.setBpm = function(bpm) {
-   Tone.Transport.bpm.value = bpm;
+    this.seq.stop();
 };
 
 /**
@@ -32681,8 +32698,8 @@ sequencer.setBpm = function(bpm) {
  *
  * @param {DOM} matrix  The matrix DOM that is the steps of the sequencer
  */
-sequencer.setMatrix = function (matrix) {
-    steps = matrix;
+sequencer.prototype.setMatrix = function (matrix) {
+    this.steps = matrix;
 };
 
 /**
@@ -32690,7 +32707,9 @@ sequencer.setMatrix = function (matrix) {
  *
  * @param {JQuery object} volume  The volume slider jquery object
  */
-sequencer.setVolume = function (volume) {
+sequencer.prototype.setVolume = function (volume) {
+
+    var self = this;
 
     volume.on('input', function(event) {
 
@@ -32698,7 +32717,7 @@ sequencer.setVolume = function (volume) {
         var db = parseInt(event.target.value);
 
         // Set the volume
-        synth.volume.value = db;
+        self.synth.volume.value = db;
 
     });
 };

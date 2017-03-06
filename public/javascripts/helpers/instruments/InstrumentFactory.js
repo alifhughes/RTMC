@@ -1,5 +1,5 @@
 var generateSequencerElement = require('./sequencer/GenerateSequencerElement');
-var sequencer = require('./sequencer/sequencer');
+var Sequencer = require('./sequencer/sequencer');
 
 /**
  * Constructor
@@ -16,7 +16,7 @@ var instrumentFactory = function () {
  * @param {string} instrument  The name of the instrument to be created
  * @returns {HTML}  instrumentTrack  The html of the instrument
  */
-instrumentFactory.createInstrument = function (instrument) {
+instrumentFactory.prototype.createInstrument = function (instrument) {
 
     // Switch on the instrument passed in
     switch (instrument) {
@@ -25,18 +25,23 @@ instrumentFactory.createInstrument = function (instrument) {
         case 'step-sequencer':
 
             // Create the html
-            generateSequencerElement.generate(function (elements) {
+            return new Promise(function(resolve, reject) {
+                generateSequencerElement.generate(function (elements) {
 
-                // Get the elements
-                var matrix = elements.matrix;
-                var volume = elements.volume;
+                    // Get the elements
+                    var matrix = elements.matrix;
+                    var volume = elements.volume;
 
-                // Set the sequencer objects
-                sequencer.setMatrix(matrix);
-                sequencer.setVolume(volume);
+                    var seq = new Sequencer();
 
+                    // Set the sequencer objects
+                    seq.setMatrix(matrix);
+                    seq.setVolume(volume);
+
+                    resolve(seq);
+
+                });
             });
-
             break;
 
         default:

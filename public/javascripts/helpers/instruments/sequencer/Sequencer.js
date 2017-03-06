@@ -1,31 +1,5 @@
 var Tone = require('tone');
 var trigger = require('../../../helpers/trigger');
-
-// Initialise empty matrix
-var steps;
-
-//create a synth and connect it to the master output (your speakers)
-var synth = new Tone.AMSynth().toMaster();
-
-// 16n note
-var duration = '16n';
-
-// Set the bpm default bpm
-Tone.Transport.bpm.value = 120;
-
-// Sequence notes
-var seq = new Tone.Sequence(function(time, col) {
-
-    // Get the array of columns from the matrix
-    var column = steps.matrix[col];
-
-    if (1 === column[0]) {
-        // Trigger synth to play note at the time passed in to the callback
-        trigger(synth, "C4", '32n');
-    }
-
-}, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], duration);
-
 Tone.Transport.start();
 
 /**
@@ -33,33 +7,50 @@ Tone.Transport.start();
  *
  * @returns{sequencer} instance of itself
  */
-var sequencer = function () {
+function sequencer () {
+
+    // Initialise empty matrix
+    this.steps;
+
+    //create a synth and connect it to the master output (your speakers)
+    this.synth = new Tone.AMSynth().toMaster();
+
+    // Set the bpm default bpm
+    Tone.Transport.bpm.value = 120;
+
+    var self = this;
+
+    // Sequence notes
+    this.seq = new Tone.Sequence(function(time, col) {
+
+        // Get the array of columns from the matrix
+        var column = self.steps.matrix[col];
+
+        if (1 === column[0]) {
+            // Trigger synth to play note at the time passed in to the callback
+            trigger(self.synth, "C4", '32n');
+        }
+
+    }, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], '16n');
+
+
     return this;
 };
 
 /**
  * Start the loop sequence
  */
-sequencer.start = function () {
+sequencer.prototype.start = function () {
     // Start the Transport timer
-    seq.start();
+    this.seq.start();
 };
 
 /**
  * Stop the loop sequence
  */
-sequencer.stop = function () {
+sequencer.prototype.stop = function () {
     // Stop the transport timer
-    seq.stop();
-};
-
-/**
- * Setter for bpm
- *
- * @param{int} bpm  The bpm for the loop
- */
-sequencer.setBpm = function(bpm) {
-   Tone.Transport.bpm.value = bpm;
+    this.seq.stop();
 };
 
 /**
@@ -67,8 +58,8 @@ sequencer.setBpm = function(bpm) {
  *
  * @param {DOM} matrix  The matrix DOM that is the steps of the sequencer
  */
-sequencer.setMatrix = function (matrix) {
-    steps = matrix;
+sequencer.prototype.setMatrix = function (matrix) {
+    this.steps = matrix;
 };
 
 /**
@@ -76,7 +67,9 @@ sequencer.setMatrix = function (matrix) {
  *
  * @param {JQuery object} volume  The volume slider jquery object
  */
-sequencer.setVolume = function (volume) {
+sequencer.prototype.setVolume = function (volume) {
+
+    var self = this;
 
     volume.on('input', function(event) {
 
@@ -84,7 +77,7 @@ sequencer.setVolume = function (volume) {
         var db = parseInt(event.target.value);
 
         // Set the volume
-        synth.volume.value = db;
+        self.synth.volume.value = db;
 
     });
 };

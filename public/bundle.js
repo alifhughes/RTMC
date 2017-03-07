@@ -32678,9 +32678,7 @@ function sequencer () {
 /**
  * Start the loop sequence
  */
-sequencer.prototype.start = function (index) {
-    console.log('index', index);
-
+sequencer.prototype.start = function () {
     // Start the Transport timer
     this.seq.start();
 };

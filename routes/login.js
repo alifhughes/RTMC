@@ -12,15 +12,10 @@ router.get('/', login.render);
  * Get post variables from login page
  */
 router.post('/', passport.authenticate('login', {
-        successRedirect: '/home',
+        successRedirect: '/portal',
         failureRedirect: '/',
         failureFlash : true
     })
 );
-
-/**
- * Get post variables from login page
- */
-//router.post('/', login.authenticate(passport));
 
 module.exports = router;

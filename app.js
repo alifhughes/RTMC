@@ -11,10 +11,10 @@ var dbConfig = require('./db');
 var mongoose = require('mongoose');
 
 // Connect to DB
-//mongoose.connect(dbConfig.url);
-//mongoose.connection.once('connected', function() {
-//        console.log("Database connected successfully")
-//});
+mongoose.connect(dbConfig.url);
+mongoose.connection.once('connected', function() {
+        console.log("Database connected successfully")
+});
 
 // Create instance of express app
 var app = express();

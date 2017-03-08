@@ -58,8 +58,31 @@ app.use('/', routes);
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'jade');
 
+// Testing for socket io no of clients connected
+var clients = 0;
+
+// On socket connect
 sockIO.on('connection', function(socket){
-        console.log('A client connection occurred!');
+    // Increase the number of clients
+    clients++;
+
+    // Broadcast out the number of clients connected
+    sockIO.sockets.emit('broadcast', {
+        description: clients + ' clients connected!'
+    });
+
+    // On disconnect
+    socket.on('disconnect', function () {
+
+        // Decrement number of clients
+        clients--;
+
+        // broadcast out how many clients
+        sockIO.sockets.emit('broadcast' , {
+            description: clients + ' clients connected!'
+        });
+
+    });
 });
 
 // catch 404 and forward to error handler

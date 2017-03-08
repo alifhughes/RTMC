@@ -4,6 +4,9 @@ var Tone = require('tone');
 
 // Connect to socket
 var socket = io.connect('http://localhost:3000');
+socket.on('broadcast',function(data){
+    console.log(data.description);
+});
 
 var observer = new MutationObserver(function(mutations) {
     // For the sake of...observation...let's output the mutation to console to see how this all works

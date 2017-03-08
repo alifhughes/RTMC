@@ -43,6 +43,7 @@ generateSequencerElement.generate = function (callback) {
         // Colours
         nx.colorize("accent", "#ffbb4c");
         nx.colorize("fill", "#1D2632");
+        nx.colorize("border", "#e9eff7");
 
         // Get the latest element added on
         // CHANGE THIS FUNCTIONALITY - WILL CAUSE BUGS

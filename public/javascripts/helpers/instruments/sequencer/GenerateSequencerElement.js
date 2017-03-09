@@ -57,9 +57,13 @@ generateSequencerElement.generate = function (callback) {
         // Init empty elements object
         var elements = {};
 
+        // Create the raw html of the instrument container and its children
+        var html = instrumentContainer.outerHTML;
+
         // Set the element
         elements.matrix = matrix;
         elements.volume = $(volume);
+        elements.html = html;
 
         // Send the elements back
         callback(elements);

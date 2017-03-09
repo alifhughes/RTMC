@@ -38,7 +38,12 @@ instrumentFactory.prototype.createInstrument = function (instrument) {
                     seq.setMatrix(matrix);
                     seq.setVolume(volume);
 
-                    resolve(seq);
+                    // Create a return object containing sequencer instance
+                    // and the raw html to sync with other clients
+                    var instrumentContainer = {};
+                    instrumentContainer.seq = seq;
+                    instrumentContainer.html = elements.html;
+                    resolve(instrumentContainer);
 
                 });
             });

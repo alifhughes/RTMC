@@ -50,8 +50,8 @@ initPassport(passport);
 // Attach socket io to it
 app.sockIO = sockIO;
 
+// Define the routes
 var routes = require('./routes');
-
 app.use('/', routes);
 
 // view engine setup
@@ -63,13 +63,16 @@ var clients = 0;
 
 // On socket connect
 sockIO.on('connection', function(socket){
+
     // Increase the number of clients
     clients++;
 
+    /*
     // Broadcast out the number of clients connected
     sockIO.sockets.emit('broadcast', {
         description: clients + ' clients connected!'
     });
+    */
 
     // On disconnect
     socket.on('disconnect', function () {
@@ -78,8 +81,22 @@ sockIO.on('connection', function(socket){
         clients--;
 
         // broadcast out how many clients
+        /*
         sockIO.sockets.emit('broadcast' , {
             description: clients + ' clients connected!'
+        });
+        */
+
+    });
+
+    socket.on('edit', function (yo) {
+
+        // Change
+        var html = yo.clientEdit[0]
+
+        // Broadcast out the number of clients connected
+        socket.broadcast.emit('sync', {
+            desc : html
         });
 
     });

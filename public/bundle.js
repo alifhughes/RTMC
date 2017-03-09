@@ -32439,31 +32439,15 @@ return jQuery;
 var InstrumentFactory = require('./helpers/instruments/InstrumentFactory');
 var $ = require('jquery');
 var Tone = require('tone');
+var Sync = require('./helpers/sync');
 
 // Connect to socket
 var socket = io.connect('http://localhost:3000');
-socket.on('broadcast',function(data){
-    console.log(data.description);
-});
 
-var observer = new MutationObserver(function(mutations) {
-    // For the sake of...observation...let's output the mutation to console to see how this all works
-    mutations.forEach(function(mutation) {
-        console.log(mutation);
-    });
-});
+// Create new instance of sync
+var sync = new Sync(socket);
 
-// Notify me of everything!
-var observerConfig = {
-    attributes: true,
-    childList: true,
-    characterData: true
-};
-
-// Node, config
-// In this case we'll listen to all changes to body and child nodes
-var targetNode = document.body;
-observer.observe(targetNode, observerConfig);
+// Array of sequences
 var sequences = [];
 
 // Get the intial value of the bpm slider
@@ -32521,17 +32505,20 @@ $('#addInstrument').on('click', function () {
     var instrumentFactory = new InstrumentFactory();
 
     // Create the instrument selected
-    instrumentFactory.createInstrument(instrument).then(function(sequence) {
+    instrumentFactory.createInstrument(instrument).then(function(instrumentContainer) {
+
+
+        // Sync the instrument
+        sync.addChange(instrumentContainer.html);
 
         // Push the sequence on to the sequences
-        sequences.push(sequence);
-        console.log('sequence', sequence);
+        sequences.push(instrumentContainer.sequence);
 
     });
 
 });
 
-},{"./helpers/instruments/InstrumentFactory":4,"jquery":1,"tone":2}],4:[function(require,module,exports){
+},{"./helpers/instruments/InstrumentFactory":4,"./helpers/sync":7,"jquery":1,"tone":2}],4:[function(require,module,exports){
 var generateSequencerElement = require('./sequencer/GenerateSequencerElement');
 var Sequencer = require('./sequencer/sequencer');
 
@@ -32572,7 +32559,12 @@ instrumentFactory.prototype.createInstrument = function (instrument) {
                     seq.setMatrix(matrix);
                     seq.setVolume(volume);
 
-                    resolve(seq);
+                    // Create a return object containing sequencer instance
+                    // and the raw html to sync with other clients
+                    var instrumentContainer = {};
+                    instrumentContainer.seq = seq;
+                    instrumentContainer.html = elements.html;
+                    resolve(instrumentContainer);
 
                 });
             });
@@ -32649,9 +32641,13 @@ generateSequencerElement.generate = function (callback) {
         // Init empty elements object
         var elements = {};
 
+        // Create the raw html of the instrument container and its children
+        var html = instrumentContainer.outerHTML;
+
         // Set the element
         elements.matrix = matrix;
         elements.volume = $(volume);
+        elements.html = html;
 
         // Send the elements back
         callback(elements);
@@ -32747,7 +32743,78 @@ sequencer.prototype.setVolume = function (volume) {
 
 module.exports = sequencer;
 
-},{"../../../helpers/trigger":7,"tone":2}],7:[function(require,module,exports){
+},{"../../../helpers/trigger":8,"tone":2}],7:[function(require,module,exports){
+var $ = require('jquery');
+
+/**
+ * Constructor
+ *
+ * @param   {socket.io socket} socket The socket that the client is connected through
+ * @returns {sync}                    Instance of self
+ */
+var sync = function (socket) {
+
+    // Set the socket
+    this.socket = socket;
+
+    // Create an array to hold the changes from the client
+    this.clientChanges = [];
+
+    /**
+     * Send the client changes
+     */
+    this.sendChanges = function () {
+       socket.emit('edit', {
+           clientEdit: this.clientChanges
+        });
+    };
+
+    socket.on('sync', function(data) {
+        // If broadcasted data
+        //
+        // Could get the data from the server via the client
+        // call whatever is going to append the new data to the client
+        console.log(data);
+
+        $('#instrumentTracks').append(data.desc);
+
+
+    });
+
+    return this;
+};
+
+/**
+ * Add a change to be sync'd
+ * @param {string} html The html to be added as a change
+ */
+sync.prototype.addChange = function () {
+
+    // Append the html to the client changes
+    this.clientChanges.push(html);
+
+    /*
+     * Check if changes are diff from from servers copy
+     * Check if its already not syncing
+     * otherwise sync
+     */
+    // Sync the changes
+    this.sendChanges();
+
+
+    // Implement fluent interface
+    return this;
+};
+
+/*
+
+// Watch for broadcasted data
+
+*/
+
+module.exports = sync;
+
+},{"jquery":1}],8:[function(require,module,exports){
 // Require tone
 var Tone = require('tone');
 

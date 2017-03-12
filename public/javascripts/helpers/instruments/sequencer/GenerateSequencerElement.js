@@ -21,7 +21,7 @@ generateSequencerElement.generate = function (callback) {
 
         // Create the steps container column div
         var stepsContainer = document.createElement("div");
-        stepsContainer.className = 'col-md-9 step-sequencer-container light-grey-background-colour';
+        stepsContainer.className = 'col-md-9 step-sequencer-container';
 
         // Create volume range for sequencer
         var volume = document.createElement("input");
@@ -39,11 +39,6 @@ generateSequencerElement.generate = function (callback) {
 
         // Add the matrix
         nx.add("matrix", {w: $('.step-sequencer-container').width(), h:  $('.step-sequencer-container').height(), parent: stepsContainer});
-
-        // Colours
-        nx.colorize("accent", "#ffbb4c");
-        nx.colorize("fill", "#1D2632");
-        nx.colorize("border", "#e9eff7");
 
         // Get the latest element added on
         // CHANGE THIS FUNCTIONALITY - WILL CAUSE BUGS

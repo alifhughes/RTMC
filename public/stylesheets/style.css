@@ -275,6 +275,16 @@ h6 {
     margin-bottom: 20px;
 }
 
+.control-bar p {
+    margin-left: 5px !important;
+    display:inline !important;
+}
+
+.control-bar input {
+    margin-left: 5px !important;
+    display:inline !important;
+}
+
 .instrument-container {
     margin-top: 10px;
 }

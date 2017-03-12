@@ -3,6 +3,11 @@ var $ = require('jquery');
 var Tone = require('tone');
 var Sync = require('./helpers/sync');
 var proxify = require('./helpers/proxify');
+var NXLoader = require('./helpers/nxloader');
+
+// Load the nexus ui
+nxloader = new NXLoader();
+nxloader.load();
 
 // Connect to socket
 var socket = io.connect('http://localhost:3000');

@@ -42,7 +42,7 @@ var sync = function (socket) {
  * Add a change to be sync'd
  * @param {string} html The html to be added as a change
  */
-sync.prototype.addChange = function () {
+sync.prototype.addChange = function (html) {
 
     // Append the html to the client changes
     this.clientChanges.push(html);

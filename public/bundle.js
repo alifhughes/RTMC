@@ -32440,6 +32440,7 @@ var InstrumentFactory = require('./helpers/instruments/InstrumentFactory');
 var $ = require('jquery');
 var Tone = require('tone');
 var Sync = require('./helpers/sync');
+var proxify = require('./helpers/proxify');
 
 // Connect to socket
 var socket = io.connect('http://localhost:3000');
@@ -32507,18 +32508,17 @@ $('#addInstrument').on('click', function () {
     // Create the instrument selected
     instrumentFactory.createInstrument(instrument).then(function(instrumentContainer) {
 
-
         // Sync the instrument
         sync.addChange(instrumentContainer.html);
 
         // Push the sequence on to the sequences
-        sequences.push(instrumentContainer.sequence);
+        sequences.push(instrumentContainer.seq);
 
     });
 
 });
 
-},{"./helpers/instruments/InstrumentFactory":4,"./helpers/sync":7,"jquery":1,"tone":2}],4:[function(require,module,exports){
+},{"./helpers/instruments/InstrumentFactory":4,"./helpers/proxify":7,"./helpers/sync":8,"jquery":1,"tone":2}],4:[function(require,module,exports){
 var generateSequencerElement = require('./sequencer/GenerateSequencerElement');
 var Sequencer = require('./sequencer/sequencer');
 
@@ -32562,7 +32562,7 @@ instrumentFactory.prototype.createInstrument = function (instrument) {
                     // Create a return object containing sequencer instance
                     // and the raw html to sync with other clients
                     var instrumentContainer = {};
-                    instrumentContainer.seq = seq;
+                   instrumentContainer.seq = seq;
                     instrumentContainer.html = elements.html;
                     resolve(instrumentContainer);
 
@@ -32743,7 +32743,40 @@ sequencer.prototype.setVolume = function (volume) {
 
 module.exports = sequencer;
 
-},{"../../../helpers/trigger":8,"tone":2}],7:[function(require,module,exports){
+},{"../../../helpers/trigger":9,"tone":2}],7:[function(require,module,exports){
+/**
+ * Create proxy object for as an observer
+ *
+ * @param {object}   object The object to be observered
+ * @param {function} change The handler for the change
+ * @param {bool}     deep   A flag setter to say if all children of the object should be proxied as well
+ * @returns {Proxy}  proxy  The proxy object observing the object passed in
+ */
+function proxify(object, change, deepProxy) {
+    var proxy = new Proxy(object, {
+        set: function(object, name, value) {
+            var old = object[name];
+            if (value && typeof value == 'object') {
+                // new object need to be proxify as well
+                value = proxify(value, change);
+            }
+            object[name] = value;
+            change(object, name, old, value);
+        }
+    });
+    for (var prop in object) {
+        if (object.hasOwnProperty(prop) && object[prop] &&
+            typeof object[prop] == 'object') {
+                // proxify all child objects
+                object[prop] = proxify(object[prop], change);
+        }
+    }
+    return proxy;
+}
+
+module.exports = proxify;
+
+},{}],8:[function(require,module,exports){
 var $ = require('jquery');
 
 /**
@@ -32788,7 +32821,7 @@ var sync = function (socket) {
  * Add a change to be sync'd
  * @param {string} html The html to be added as a change
  */
-sync.prototype.addChange = function () {
+sync.prototype.addChange = function (html) {
 
     // Append the html to the client changes
     this.clientChanges.push(html);
@@ -32814,7 +32847,7 @@ sync.prototype.addChange = function () {
 
 module.exports = sync;
 
-},{"jquery":1}],8:[function(require,module,exports){
+},{"jquery":1}],9:[function(require,module,exports){
 // Require tone
 var Tone = require('tone');
 

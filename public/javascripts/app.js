@@ -2,6 +2,7 @@ var InstrumentFactory = require('./helpers/instruments/InstrumentFactory');
 var $ = require('jquery');
 var Tone = require('tone');
 var Sync = require('./helpers/sync');
+var proxify = require('./helpers/proxify');
 
 // Connect to socket
 var socket = io.connect('http://localhost:3000');
@@ -69,12 +70,11 @@ $('#addInstrument').on('click', function () {
     // Create the instrument selected
     instrumentFactory.createInstrument(instrument).then(function(instrumentContainer) {
 
-
         // Sync the instrument
         sync.addChange(instrumentContainer.html);
 
         // Push the sequence on to the sequences
-        sequences.push(instrumentContainer.sequence);
+        sequences.push(instrumentContainer.seq);
 
     });
 

@@ -4,7 +4,7 @@ var bCrypt = require('bcrypt-nodejs');
 
 module.exports = function(passport){
 
-	passport.use('signup', new LocalStrategy({
+        passport.use('signup', new LocalStrategy({
             passReqToCallback : true // allows us to pass back the entire request to the callback
         },
         function(req, username, password, done) {
@@ -29,6 +29,9 @@ module.exports = function(passport){
                         // set the user's local credentials
                         newUser.username = username;
                         newUser.password = createHash(password);
+                        newUser.email = req.param('email');
+                        newUser.firstName = req.param('firstName');
+                        newUser.lastName = req.param('lastName');
 
                         // save the user
                         newUser.save(function(err) {

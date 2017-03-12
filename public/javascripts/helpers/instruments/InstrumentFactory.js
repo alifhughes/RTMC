@@ -41,7 +41,7 @@ instrumentFactory.prototype.createInstrument = function (instrument) {
                     // Create a return object containing sequencer instance
                     // and the raw html to sync with other clients
                     var instrumentContainer = {};
-                    instrumentContainer.seq = seq;
+                   instrumentContainer.seq = seq;
                     instrumentContainer.html = elements.html;
                     resolve(instrumentContainer);
 

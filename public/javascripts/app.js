@@ -4,6 +4,8 @@ var Tone = require('tone');
 var Sync = require('./helpers/sync');
 var proxify = require('./helpers/proxify');
 var NXLoader = require('./helpers/nxloader');
+var guid = require('./helpers/idgenerator');
+var arrangement = require('./model/arrangement');
 
 // Load the nexus ui
 nxloader = new NXLoader();
@@ -26,11 +28,19 @@ var bpm = $('#bpm').attr("value");
  */
 $('#bpm').on('input', function(event) {
 
-    // Get the bpm value
-    bpm = parseInt(event.target.value);
+    // Check if bpm is set
+    if ('' !== event.target.value) {
 
-    // Set the BPM value
-    Tone.Transport.bpm.value = bpm;
+        // Get the bpm value
+        bpm = parseInt(event.target.value);
+
+        // Set the BPM value
+        Tone.Transport.bpm.value = bpm;
+
+        // Set the bpm of the arrangement
+        arrangement.setBpm(bpm);
+    }
+
 });
 
 /**

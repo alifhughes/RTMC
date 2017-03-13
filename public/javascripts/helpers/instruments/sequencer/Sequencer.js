@@ -1,5 +1,10 @@
 var Tone = require('tone');
 var trigger = require('../../../helpers/trigger');
+var guid = require('../../../helpers/idgenerator');
+var proxify = require('../../../helpers/proxify');
+var arrangement = require('../../../model/arrangement');
+
+// Start the tone timer
 Tone.Transport.start();
 
 /**
@@ -33,6 +38,61 @@ function sequencer () {
 
     }, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], '16n');
 
+    /**
+     * Track struct
+     * {
+     *    id: 'id',
+     *    type: 'step-sequencer',
+     *    volume: 60,
+     *    pattern: this.steps.matrix
+     * }
+     */
+    this.createTrackJSON = function () {
+
+        // JSON object container meta data of track
+        var track = {
+            id: guid(),
+            type: 'step-sequencer',
+            volume: self.synth.volume.value,
+            pattern: []
+        };
+
+        return track;
+    };
+
+    // Init JSON struct of the track
+    this.track = this.createTrackJSON();
+
+
+    // Add the track to the arrangement
+    arrangement.addTrack(this.track);
+
+    /**
+     * Proxy that picks up the changes when a step is pressed and sets the track
+     * pattern to the steps
+     */
+    this.setStepsObserver = function () {
+
+        // Proxify the steps
+        proxify(this.track, function(object, property, oldValue, newValue) {
+
+            // Set the track pattern
+            self.track.pattern = self.steps.matrix;
+
+            // Push the changes of the track to the arrangement
+            self.pushChanges();
+        });
+    };
+
+    /**
+     * Push track changes to the arrangement
+     */
+    this.pushChanges = function () {
+
+        // replace the track in the arrangement with updated track
+        arrangement.replaceTrack(this.track);
+
+    };
 
     return this;
 };
@@ -59,7 +119,25 @@ sequencer.prototype.stop = function () {
  * @param {DOM} matrix  The matrix DOM that is the steps of the sequencer
  */
 sequencer.prototype.setMatrix = function (matrix) {
+
+    // Set the steps
     this.steps = matrix;
+
+    // Set the track pattern
+    this.track.pattern = this.steps.matrix;
+
+    // Set the steps observer
+    this.setStepsObserver();
+
+};
+
+/**
+ * Get the matrix for the steps sequencer
+ *
+ * @returns {matrix} steps  The steps for the sequencer
+ */
+sequencer.prototype.getMatrix = function () {
+    return this.steps;
 };
 
 /**
@@ -78,6 +156,12 @@ sequencer.prototype.setVolume = function (volume) {
 
         // Set the volume
         self.synth.volume.value = db;
+
+        // Set the track volume
+        self.track.volume = db;
+
+        // Push changes of the track to the arrangement
+        self.pushChanges();
 
     });
 };

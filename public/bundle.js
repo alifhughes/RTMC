@@ -32442,6 +32442,8 @@ var Tone = require('tone');
 var Sync = require('./helpers/sync');
 var proxify = require('./helpers/proxify');
 var NXLoader = require('./helpers/nxloader');
+var guid = require('./helpers/idgenerator');
+var arrangement = require('./model/arrangement');
 
 // Load the nexus ui
 nxloader = new NXLoader();
@@ -32464,11 +32466,19 @@ var bpm = $('#bpm').attr("value");
  */
 $('#bpm').on('input', function(event) {
 
-    // Get the bpm value
-    bpm = parseInt(event.target.value);
+    // Check if bpm is set
+    if ('' !== event.target.value) {
 
-    // Set the BPM value
-    Tone.Transport.bpm.value = bpm;
+        // Get the bpm value
+        bpm = parseInt(event.target.value);
+
+        // Set the BPM value
+        Tone.Transport.bpm.value = bpm;
+
+        // Set the bpm of the arrangement
+        arrangement.setBpm(bpm);
+    }
+
 });
 
 /**
@@ -32523,7 +32533,21 @@ $('#addInstrument').on('click', function () {
 
 });
 
-},{"./helpers/instruments/InstrumentFactory":4,"./helpers/nxloader":7,"./helpers/proxify":8,"./helpers/sync":9,"jquery":1,"tone":2}],4:[function(require,module,exports){
+},{"./helpers/idgenerator":4,"./helpers/instruments/InstrumentFactory":5,"./helpers/nxloader":8,"./helpers/proxify":9,"./helpers/sync":10,"./model/arrangement":12,"jquery":1,"tone":2}],4:[function(require,module,exports){
+function guid() {
+  return s4() + s4() + '-' + s4() + '-' + s4() + '-' +
+    s4() + '-' + s4() + s4() + s4();
+}
+
+function s4() {
+  return Math.floor((1 + Math.random()) * 0x10000)
+    .toString(16)
+    .substring(1);
+}
+
+module.exports = guid;
+
+},{}],5:[function(require,module,exports){
 var generateSequencerElement = require('./sequencer/GenerateSequencerElement');
 var Sequencer = require('./sequencer/sequencer');
 
@@ -32586,7 +32610,7 @@ instrumentFactory.prototype.createInstrument = function (instrument) {
 
 module.exports = instrumentFactory;
 
-},{"./sequencer/GenerateSequencerElement":5,"./sequencer/sequencer":6}],5:[function(require,module,exports){
+},{"./sequencer/GenerateSequencerElement":6,"./sequencer/sequencer":7}],6:[function(require,module,exports){
 var $ = require('jquery');
 
 /**
@@ -32656,9 +32680,14 @@ generateSequencerElement.generate = function (callback) {
 
 module.exports = generateSequencerElement;
 
-},{"jquery":1}],6:[function(require,module,exports){
+},{"jquery":1}],7:[function(require,module,exports){
 var Tone = require('tone');
 var trigger = require('../../../helpers/trigger');
+var guid = require('../../../helpers/idgenerator');
+var proxify = require('../../../helpers/proxify');
+var arrangement = require('../../../model/arrangement');
+
+// Start the tone timer
 Tone.Transport.start();
 
 /**
@@ -32692,6 +32721,61 @@ function sequencer () {
 
     }, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], '16n');
 
+    /**
+     * Track struct
+     * {
+     *    id: 'id',
+     *    type: 'step-sequencer',
+     *    volume: 60,
+     *    pattern: this.steps.matrix
+     * }
+     */
+    this.createTrackJSON = function () {
+
+        // JSON object container meta data of track
+        var track = {
+            id: guid(),
+            type: 'step-sequencer',
+            volume: self.synth.volume.value,
+            pattern: []
+        };
+
+        return track;
+    };
+
+    // Init JSON struct of the track
+    this.track = this.createTrackJSON();
+
+
+    // Add the track to the arrangement
+    arrangement.addTrack(this.track);
+
+    /**
+     * Proxy that picks up the changes when a step is pressed and sets the track
+     * pattern to the steps
+     */
+    this.setStepsObserver = function () {
+
+        // Proxify the steps
+        proxify(this.track, function(object, property, oldValue, newValue) {
+
+            // Set the track pattern
+            self.track.pattern = self.steps.matrix;
+
+            // Push the changes of the track to the arrangement
+            self.pushChanges();
+        });
+    };
+
+    /**
+     * Push track changes to the arrangement
+     */
+    this.pushChanges = function () {
+
+        // replace the track in the arrangement with updated track
+        arrangement.replaceTrack(this.track);
+
+    };
 
     return this;
 };
@@ -32718,7 +32802,25 @@ sequencer.prototype.stop = function () {
  * @param {DOM} matrix  The matrix DOM that is the steps of the sequencer
  */
 sequencer.prototype.setMatrix = function (matrix) {
+
+    // Set the steps
     this.steps = matrix;
+
+    // Set the track pattern
+    this.track.pattern = this.steps.matrix;
+
+    // Set the steps observer
+    this.setStepsObserver();
+
+};
+
+/**
+ * Get the matrix for the steps sequencer
+ *
+ * @returns {matrix} steps  The steps for the sequencer
+ */
+sequencer.prototype.getMatrix = function () {
+    return this.steps;
 };
 
 /**
@@ -32738,12 +32840,18 @@ sequencer.prototype.setVolume = function (volume) {
         // Set the volume
         self.synth.volume.value = db;
 
+        // Set the track volume
+        self.track.volume = db;
+
+        // Push changes of the track to the arrangement
+        self.pushChanges();
+
     });
 };
 
 module.exports = sequencer;
 
-},{"../../../helpers/trigger":10,"tone":2}],7:[function(require,module,exports){
+},{"../../../helpers/idgenerator":4,"../../../helpers/proxify":9,"../../../helpers/trigger":11,"../../../model/arrangement":12,"tone":2}],8:[function(require,module,exports){
 var nxloader = function () {
 };
 
@@ -32760,7 +32868,7 @@ nxloader.prototype.load = function () {
 
 module.exports = nxloader;
 
-},{}],8:[function(require,module,exports){
+},{}],9:[function(require,module,exports){
 /**
  * Create proxy object for as an observer
  *
@@ -32793,7 +32901,7 @@ function proxify(object, change, deepProxy) {
 
 module.exports = proxify;
 
-},{}],9:[function(require,module,exports){
+},{}],10:[function(require,module,exports){
 var $ = require('jquery');
 
 /**
@@ -32864,7 +32972,7 @@ sync.prototype.addChange = function (html) {
 
 module.exports = sync;
 
-},{"jquery":1}],10:[function(require,module,exports){
+},{"jquery":1}],11:[function(require,module,exports){
 // Require tone
 var Tone = require('tone');
 
@@ -32882,4 +32990,86 @@ var trigger = function(instrument, note, duration) {
 
 module.exports = trigger;
 
-},{"tone":2}]},{},[3]);
+},{"tone":2}],12:[function(require,module,exports){
+var guid = require('../helpers/idgenerator');
+var sync = require('../helpers/sync');
+var proxify = require('../helpers/proxify');
+
+/**
+ * Arrangement singleton class that holds all tracks and their information
+ */
+module.exports = {
+
+    /**
+     * Arrangement struct to hold all track
+     * {
+     *    id: 'id',
+     *    tracks: {objects},
+     *    bpm: 
+     * }
+     */
+    arrangement: {
+        id: guid(),
+        tracks: [],
+        bpm: 120
+    },
+    addTrack: function (track) {
+
+        // Add a track to the arrangements
+        this.arrangement.tracks.push(track);
+
+        console.log('addTrack');
+        this.sync();
+    },
+    setBpm: function (bpm) {
+
+        // Set the bpm of the arrangement
+        this.arrangement.bpm = bpm;
+
+        console.log('setBPM');
+        this.sync();
+    },
+    replaceTrack: function (track) {
+
+        // Reference to self
+        var self = this;
+
+        // Loop all of the tracks in the arrangement
+        this.arrangement.tracks.forEach(function (existingTrack) {
+
+            // Check if the id of the track being passed in is same as current exisiting track
+            if (track.id == existingTrack.id) {
+                // Ids match, replace the track
+                self.arrangement.tracks[existingTrack] = track;
+            }
+
+        });
+        console.log('replaceTrack');
+        this.sync();
+    },
+    sync: function () {
+        console.log('sync');
+        /**
+         * All methods call this
+         * sends the arrangement to the server to be broadcasted to the other clients
+         */
+    }
+};
+
+/**
+ * Functions:
+ *  MUST HAVE:
+ *  - adding the proxy to the arrangement struct
+ *  - adding a track to the arrangement
+ *  - making the changes reflected in step sequencer in the pattern
+ *          - the step sequencer needs to have a set pattern function
+ *              - everytime it is changes it sets the pattern
+ *              - everytime the pattern changes it sets what is used in the sequence
+ *                      - potentially if you convert the array to 0/1 it reflects in the front end
+ *
+ *  SHOULD HAVE:
+ *  - Getting the track by id
+ *  - getting the arrangement by id
+ */
+
+},{"../helpers/idgenerator":4,"../helpers/proxify":9,"../helpers/sync":10}]},{},[3]);

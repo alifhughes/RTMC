@@ -116,7 +116,7 @@ sequencer.prototype.stop = function () {
 /**
  * Set the matrix for the steps sequencer
  *
- * @param {DOM} matrix  The matrix DOM that is the steps of the sequencer
+* @param {DOM} matrix  The matrix DOM that is the steps of the sequencer
  */
 sequencer.prototype.setMatrix = function (matrix) {
 

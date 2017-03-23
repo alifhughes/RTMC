@@ -10221,6 +10221,1419 @@ return jQuery;
 } );
 
 },{}],2:[function(require,module,exports){
+
+var isArray = (typeof Array.isArray === 'function') ?
+  // use native function
+  Array.isArray :
+  // use instanceof operator
+  function(a) {
+    return a instanceof Array;
+  };
+
+function cloneRegExp(re) {
+  var regexMatch = /^\/(.*)\/([gimyu]*)$/.exec(re.toString());
+  return new RegExp(regexMatch[1], regexMatch[2]);
+}
+
+function clone(arg) {
+  if (typeof arg !== 'object') {
+    return arg;
+  }
+  if (arg === null) {
+    return null;
+  }
+  if (isArray(arg)) {
+    return arg.map(clone);
+  }
+  if (arg instanceof Date) {
+    return new Date(arg.getTime());
+  }
+  if (arg instanceof RegExp) {
+    return cloneRegExp(arg);
+  }
+  var cloned = {};
+  for (var name in arg) {
+    if (Object.prototype.hasOwnProperty.call(arg, name)) {
+      cloned[name] = clone(arg[name]);
+    }
+  }
+  return cloned;
+}
+
+module.exports = clone;
+
+},{}],3:[function(require,module,exports){
+
+var Pipe = require('../pipe').Pipe;
+
+var Context = function Context(){
+};
+
+Context.prototype.setResult = function(result) {
+	this.result = result;
+	this.hasResult = true;
+	return this;
+};
+
+Context.prototype.exit = function() {
+	this.exiting = true;
+	return this;
+};
+
+Context.prototype.switchTo = function(next, pipe) {
+	if (typeof next === 'string' || next instanceof Pipe) {
+		this.nextPipe = next;
+	} else {
+		this.next = next;
+		if (pipe) {
+			this.nextPipe = pipe;
+		}
+	}
+	return this;
+};
+
+Context.prototype.push = function(child, name) {
+	child.parent = this;
+	if (typeof name !== 'undefined') {
+		child.childName = name;
+	}
+	child.root = this.root || this;
+	child.options = child.options || this.options;
+	if (!this.children) {
+		this.children = [child];
+		this.nextAfterChildren = this.next || null;
+		this.next = child;
+	} else {
+		this.children[this.children.length - 1].next = child;
+		this.children.push(child);
+	}
+	child.next = this;
+	return this;
+};
+
+exports.Context = Context;
+
+},{"../pipe":17}],4:[function(require,module,exports){
+var Context = require('./context').Context;
+var defaultClone = require('../clone');
+
+var DiffContext = function DiffContext(left, right) {
+  this.left = left;
+  this.right = right;
+  this.pipe = 'diff';
+};
+
+DiffContext.prototype = new Context();
+
+DiffContext.prototype.setResult = function(result) {
+  if (this.options.cloneDiffValues && typeof result === 'object') {
+    var clone = typeof this.options.cloneDiffValues === 'function' ?
+      this.options.cloneDiffValues : defaultClone;
+    if (typeof result[0] === 'object') {
+      result[0] = clone(result[0]);
+    }
+    if (typeof result[1] === 'object') {
+      result[1] = clone(result[1]);
+    }
+  }
+  return Context.prototype.setResult.apply(this, arguments);
+};
+
+exports.DiffContext = DiffContext;
+
+},{"../clone":2,"./context":3}],5:[function(require,module,exports){
+var Context = require('./context').Context;
+
+var PatchContext = function PatchContext(left, delta) {
+  this.left = left;
+  this.delta = delta;
+  this.pipe = 'patch';
+};
+
+PatchContext.prototype = new Context();
+
+exports.PatchContext = PatchContext;
+
+},{"./context":3}],6:[function(require,module,exports){
+var Context = require('./context').Context;
+
+var ReverseContext = function ReverseContext(delta) {
+  this.delta = delta;
+  this.pipe = 'reverse';
+};
+
+ReverseContext.prototype = new Context();
+
+exports.ReverseContext = ReverseContext;
+
+},{"./context":3}],7:[function(require,module,exports){
+// use as 2nd parameter for JSON.parse to revive Date instances
+module.exports = function dateReviver(key, value) {
+  var parts;
+  if (typeof value === 'string') {
+    parts = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d*))?(Z|([+\-])(\d{2}):(\d{2}))$/.exec(value);
+    if (parts) {
+      return new Date(Date.UTC(+parts[1], +parts[2] - 1, +parts[3], +parts[4], +parts[5], +parts[6], +(parts[7] || 0)));
+    }
+  }
+  return value;
+};
+
+},{}],8:[function(require,module,exports){
+var Processor = require('./processor').Processor;
+var Pipe = require('./pipe').Pipe;
+var DiffContext = require('./contexts/diff').DiffContext;
+var PatchContext = require('./contexts/patch').PatchContext;
+var ReverseContext = require('./contexts/reverse').ReverseContext;
+
+var clone = require('./clone');
+
+var trivial = require('./filters/trivial');
+var nested = require('./filters/nested');
+var arrays = require('./filters/arrays');
+var dates = require('./filters/dates');
+var texts = require('./filters/texts');
+
+var DiffPatcher = function DiffPatcher(options) {
+  this.processor = new Processor(options);
+  this.processor.pipe(new Pipe('diff').append(
+    nested.collectChildrenDiffFilter,
+    trivial.diffFilter,
+    dates.diffFilter,
+    texts.diffFilter,
+    nested.objectsDiffFilter,
+    arrays.diffFilter
+  ).shouldHaveResult());
+  this.processor.pipe(new Pipe('patch').append(
+    nested.collectChildrenPatchFilter,
+    arrays.collectChildrenPatchFilter,
+    trivial.patchFilter,
+    texts.patchFilter,
+    nested.patchFilter,
+    arrays.patchFilter
+  ).shouldHaveResult());
+  this.processor.pipe(new Pipe('reverse').append(
+    nested.collectChildrenReverseFilter,
+    arrays.collectChildrenReverseFilter,
+    trivial.reverseFilter,
+    texts.reverseFilter,
+    nested.reverseFilter,
+    arrays.reverseFilter
+  ).shouldHaveResult());
+};
+
+DiffPatcher.prototype.options = function() {
+  return this.processor.options.apply(this.processor, arguments);
+};
+
+DiffPatcher.prototype.diff = function(left, right) {
+  return this.processor.process(new DiffContext(left, right));
+};
+
+DiffPatcher.prototype.patch = function(left, delta) {
+  return this.processor.process(new PatchContext(left, delta));
+};
+
+DiffPatcher.prototype.reverse = function(delta) {
+  return this.processor.process(new ReverseContext(delta));
+};
+
+DiffPatcher.prototype.unpatch = function(right, delta) {
+  return this.patch(right, this.reverse(delta));
+};
+
+DiffPatcher.prototype.clone = function(value) {
+  return clone(value);
+};
+
+exports.DiffPatcher = DiffPatcher;
+
+},{"./clone":2,"./contexts/diff":4,"./contexts/patch":5,"./contexts/reverse":6,"./filters/arrays":10,"./filters/dates":11,"./filters/nested":13,"./filters/texts":14,"./filters/trivial":15,"./pipe":17,"./processor":18}],9:[function(require,module,exports){
+
+exports.isBrowser = typeof window !== 'undefined';
+
+},{}],10:[function(require,module,exports){
+var DiffContext = require('../contexts/diff').DiffContext;
+var PatchContext = require('../contexts/patch').PatchContext;
+var ReverseContext = require('../contexts/reverse').ReverseContext;
+
+var lcs = require('./lcs');
+
+var ARRAY_MOVE = 3;
+
+var isArray = (typeof Array.isArray === 'function') ?
+  // use native function
+  Array.isArray :
+  // use instanceof operator
+  function(a) {
+    return a instanceof Array;
+  };
+
+var arrayIndexOf = typeof Array.prototype.indexOf === 'function' ?
+  function(array, item) {
+    return array.indexOf(item);
+  } : function(array, item) {
+    var length = array.length;
+    for (var i = 0; i < length; i++) {
+      if (array[i] === item) {
+        return i;
+      }
+    }
+    return -1;
+  };
+
+function arraysHaveMatchByRef(array1, array2, len1, len2) {
+  for (var index1 = 0; index1 < len1; index1++) {
+    var val1 = array1[index1];
+    for (var index2 = 0; index2 < len2; index2++) {
+      var val2 = array2[index2];
+      if (index1 !== index2 && val1 === val2) {
+        return true;
+      }
+    }
+  }
+}
+
+function matchItems(array1, array2, index1, index2, context) {
+  var value1 = array1[index1];
+  var value2 = array2[index2];
+  if (value1 === value2) {
+    return true;
+  }
+  if (typeof value1 !== 'object' || typeof value2 !== 'object') {
+    return false;
+  }
+  var objectHash = context.objectHash;
+  if (!objectHash) {
+    // no way to match objects was provided, try match by position
+    return context.matchByPosition && index1 === index2;
+  }
+  var hash1;
+  var hash2;
+  if (typeof index1 === 'number') {
+    context.hashCache1 = context.hashCache1 || [];
+    hash1 = context.hashCache1[index1];
+    if (typeof hash1 === 'undefined') {
+      context.hashCache1[index1] = hash1 = objectHash(value1, index1);
+    }
+  } else {
+    hash1 = objectHash(value1);
+  }
+  if (typeof hash1 === 'undefined') {
+    return false;
+  }
+  if (typeof index2 === 'number') {
+    context.hashCache2 = context.hashCache2 || [];
+    hash2 = context.hashCache2[index2];
+    if (typeof hash2 === 'undefined') {
+      context.hashCache2[index2] = hash2 = objectHash(value2, index2);
+    }
+  } else {
+    hash2 = objectHash(value2);
+  }
+  if (typeof hash2 === 'undefined') {
+    return false;
+  }
+  return hash1 === hash2;
+}
+
+var diffFilter = function arraysDiffFilter(context) {
+  if (!context.leftIsArray) {
+    return;
+  }
+
+  var matchContext = {
+    objectHash: context.options && context.options.objectHash,
+    matchByPosition: context.options && context.options.matchByPosition
+  };
+  var commonHead = 0;
+  var commonTail = 0;
+  var index;
+  var index1;
+  var index2;
+  var array1 = context.left;
+  var array2 = context.right;
+  var len1 = array1.length;
+  var len2 = array2.length;
+
+  var child;
+
+  if (len1 > 0 && len2 > 0 && !matchContext.objectHash &&
+    typeof matchContext.matchByPosition !== 'boolean') {
+    matchContext.matchByPosition = !arraysHaveMatchByRef(array1, array2, len1, len2);
+  }
+
+  // separate common head
+  while (commonHead < len1 && commonHead < len2 &&
+    matchItems(array1, array2, commonHead, commonHead, matchContext)) {
+    index = commonHead;
+    child = new DiffContext(context.left[index], context.right[index]);
+    context.push(child, index);
+    commonHead++;
+  }
+  // separate common tail
+  while (commonTail + commonHead < len1 && commonTail + commonHead < len2 &&
+    matchItems(array1, array2, len1 - 1 - commonTail, len2 - 1 - commonTail, matchContext)) {
+    index1 = len1 - 1 - commonTail;
+    index2 = len2 - 1 - commonTail;
+    child = new DiffContext(context.left[index1], context.right[index2]);
+    context.push(child, index2);
+    commonTail++;
+  }
+  var result;
+  if (commonHead + commonTail === len1) {
+    if (len1 === len2) {
+      // arrays are identical
+      context.setResult(undefined).exit();
+      return;
+    }
+    // trivial case, a block (1 or more consecutive items) was added
+    result = result || {
+      _t: 'a'
+    };
+    for (index = commonHead; index < len2 - commonTail; index++) {
+      result[index] = [array2[index]];
+    }
+    context.setResult(result).exit();
+    return;
+  }
+  if (commonHead + commonTail === len2) {
+    // trivial case, a block (1 or more consecutive items) was removed
+    result = result || {
+      _t: 'a'
+    };
+    for (index = commonHead; index < len1 - commonTail; index++) {
+      result['_' + index] = [array1[index], 0, 0];
+    }
+    context.setResult(result).exit();
+    return;
+  }
+  // reset hash cache
+  delete matchContext.hashCache1;
+  delete matchContext.hashCache2;
+
+  // diff is not trivial, find the LCS (Longest Common Subsequence)
+  var trimmed1 = array1.slice(commonHead, len1 - commonTail);
+  var trimmed2 = array2.slice(commonHead, len2 - commonTail);
+  var seq = lcs.get(
+    trimmed1, trimmed2,
+    matchItems,
+    matchContext
+  );
+  var removedItems = [];
+  result = result || {
+    _t: 'a'
+  };
+  for (index = commonHead; index < len1 - commonTail; index++) {
+    if (arrayIndexOf(seq.indices1, index - commonHead) < 0) {
+      // removed
+      result['_' + index] = [array1[index], 0, 0];
+      removedItems.push(index);
+    }
+  }
+
+  var detectMove = true;
+  if (context.options && context.options.arrays && context.options.arrays.detectMove === false) {
+    detectMove = false;
+  }
+  var includeValueOnMove = false;
+  if (context.options && context.options.arrays && context.options.arrays.includeValueOnMove) {
+    includeValueOnMove = true;
+  }
+
+  var removedItemsLength = removedItems.length;
+  for (index = commonHead; index < len2 - commonTail; index++) {
+    var indexOnArray2 = arrayIndexOf(seq.indices2, index - commonHead);
+    if (indexOnArray2 < 0) {
+      // added, try to match with a removed item and register as position move
+      var isMove = false;
+      if (detectMove && removedItemsLength > 0) {
+        for (var removeItemIndex1 = 0; removeItemIndex1 < removedItemsLength; removeItemIndex1++) {
+          index1 = removedItems[removeItemIndex1];
+          if (matchItems(trimmed1, trimmed2, index1 - commonHead,
+            index - commonHead, matchContext)) {
+            // store position move as: [originalValue, newPosition, ARRAY_MOVE]
+            result['_' + index1].splice(1, 2, index, ARRAY_MOVE);
+            if (!includeValueOnMove) {
+              // don't include moved value on diff, to save bytes
+              result['_' + index1][0] = '';
+            }
+
+            index2 = index;
+            child = new DiffContext(context.left[index1], context.right[index2]);
+            context.push(child, index2);
+            removedItems.splice(removeItemIndex1, 1);
+            isMove = true;
+            break;
+          }
+        }
+      }
+      if (!isMove) {
+        // added
+        result[index] = [array2[index]];
+      }
+    } else {
+      // match, do inner diff
+      index1 = seq.indices1[indexOnArray2] + commonHead;
+      index2 = seq.indices2[indexOnArray2] + commonHead;
+      child = new DiffContext(context.left[index1], context.right[index2]);
+      context.push(child, index2);
+    }
+  }
+
+  context.setResult(result).exit();
+
+};
+diffFilter.filterName = 'arrays';
+
+var compare = {
+  numerically: function(a, b) {
+    return a - b;
+  },
+  numericallyBy: function(name) {
+    return function(a, b) {
+      return a[name] - b[name];
+    };
+  }
+};
+
+var patchFilter = function nestedPatchFilter(context) {
+  if (!context.nested) {
+    return;
+  }
+  if (context.delta._t !== 'a') {
+    return;
+  }
+  var index, index1;
+
+  var delta = context.delta;
+  var array = context.left;
+
+  // first, separate removals, insertions and modifications
+  var toRemove = [];
+  var toInsert = [];
+  var toModify = [];
+  for (index in delta) {
+    if (index !== '_t') {
+      if (index[0] === '_') {
+        // removed item from original array
+        if (delta[index][2] === 0 || delta[index][2] === ARRAY_MOVE) {
+          toRemove.push(parseInt(index.slice(1), 10));
+        } else {
+          throw new Error('only removal or move can be applied at original array indices' +
+            ', invalid diff type: ' + delta[index][2]);
+        }
+      } else {
+        if (delta[index].length === 1) {
+          // added item at new array
+          toInsert.push({
+            index: parseInt(index, 10),
+            value: delta[index][0]
+          });
+        } else {
+          // modified item at new array
+          toModify.push({
+            index: parseInt(index, 10),
+            delta: delta[index]
+          });
+        }
+      }
+    }
+  }
+
+  // remove items, in reverse order to avoid sawing our own floor
+  toRemove = toRemove.sort(compare.numerically);
+  for (index = toRemove.length - 1; index >= 0; index--) {
+    index1 = toRemove[index];
+    var indexDiff = delta['_' + index1];
+    var removedValue = array.splice(index1, 1)[0];
+    if (indexDiff[2] === ARRAY_MOVE) {
+      // reinsert later
+      toInsert.push({
+        index: indexDiff[1],
+        value: removedValue
+      });
+    }
+  }
+
+  // insert items, in reverse order to avoid moving our own floor
+  toInsert = toInsert.sort(compare.numericallyBy('index'));
+  var toInsertLength = toInsert.length;
+  for (index = 0; index < toInsertLength; index++) {
+    var insertion = toInsert[index];
+    array.splice(insertion.index, 0, insertion.value);
+  }
+
+  // apply modifications
+  var toModifyLength = toModify.length;
+  var child;
+  if (toModifyLength > 0) {
+    for (index = 0; index < toModifyLength; index++) {
+      var modification = toModify[index];
+      child = new PatchContext(context.left[modification.index], modification.delta);
+      context.push(child, modification.index);
+    }
+  }
+
+  if (!context.children) {
+    context.setResult(context.left).exit();
+    return;
+  }
+  context.exit();
+};
+patchFilter.filterName = 'arrays';
+
+var collectChildrenPatchFilter = function collectChildrenPatchFilter(context) {
+  if (!context || !context.children) {
+    return;
+  }
+  if (context.delta._t !== 'a') {
+    return;
+  }
+  var length = context.children.length;
+  var child;
+  for (var index = 0; index < length; index++) {
+    child = context.children[index];
+    context.left[child.childName] = child.result;
+  }
+  context.setResult(context.left).exit();
+};
+collectChildrenPatchFilter.filterName = 'arraysCollectChildren';
+
+var reverseFilter = function arraysReverseFilter(context) {
+  if (!context.nested) {
+    if (context.delta[2] === ARRAY_MOVE) {
+      context.newName = '_' + context.delta[1];
+      context.setResult([context.delta[0], parseInt(context.childName.substr(1), 10), ARRAY_MOVE]).exit();
+    }
+    return;
+  }
+  if (context.delta._t !== 'a') {
+    return;
+  }
+  var name, child;
+  for (name in context.delta) {
+    if (name === '_t') {
+      continue;
+    }
+    child = new ReverseContext(context.delta[name]);
+    context.push(child, name);
+  }
+  context.exit();
+};
+reverseFilter.filterName = 'arrays';
+
+var reverseArrayDeltaIndex = function(delta, index, itemDelta) {
+  if (typeof index === 'string' && index[0] === '_') {
+    return parseInt(index.substr(1), 10);
+  } else if (isArray(itemDelta) && itemDelta[2] === 0) {
+    return '_' + index;
+  }
+
+  var reverseIndex = +index;
+  for (var deltaIndex in delta) {
+    var deltaItem = delta[deltaIndex];
+    if (isArray(deltaItem)) {
+      if (deltaItem[2] === ARRAY_MOVE) {
+        var moveFromIndex = parseInt(deltaIndex.substr(1), 10);
+        var moveToIndex = deltaItem[1];
+        if (moveToIndex === +index) {
+          return moveFromIndex;
+        }
+        if (moveFromIndex <= reverseIndex && moveToIndex > reverseIndex) {
+          reverseIndex++;
+        } else if (moveFromIndex >= reverseIndex && moveToIndex < reverseIndex) {
+          reverseIndex--;
+        }
+      } else if (deltaItem[2] === 0) {
+        var deleteIndex = parseInt(deltaIndex.substr(1), 10);
+        if (deleteIndex <= reverseIndex) {
+          reverseIndex++;
+        }
+      } else if (deltaItem.length === 1 && deltaIndex <= reverseIndex) {
+        reverseIndex--;
+      }
+    }
+  }
+
+  return reverseIndex;
+};
+
+var collectChildrenReverseFilter = function collectChildrenReverseFilter(context) {
+  if (!context || !context.children) {
+    return;
+  }
+  if (context.delta._t !== 'a') {
+    return;
+  }
+  var length = context.children.length;
+  var child;
+  var delta = {
+    _t: 'a'
+  };
+
+  for (var index = 0; index < length; index++) {
+    child = context.children[index];
+    var name = child.newName;
+    if (typeof name === 'undefined') {
+      name = reverseArrayDeltaIndex(context.delta, child.childName, child.result);
+    }
+    if (delta[name] !== child.result) {
+      delta[name] = child.result;
+    }
+  }
+  context.setResult(delta).exit();
+};
+collectChildrenReverseFilter.filterName = 'arraysCollectChildren';
+
+exports.diffFilter = diffFilter;
+exports.patchFilter = patchFilter;
+exports.collectChildrenPatchFilter = collectChildrenPatchFilter;
+exports.reverseFilter = reverseFilter;
+exports.collectChildrenReverseFilter = collectChildrenReverseFilter;
+
+},{"../contexts/diff":4,"../contexts/patch":5,"../contexts/reverse":6,"./lcs":12}],11:[function(require,module,exports){
+var diffFilter = function datesDiffFilter(context) {
+  if (context.left instanceof Date) {
+    if (context.right instanceof Date) {
+      if (context.left.getTime() !== context.right.getTime()) {
+        context.setResult([context.left, context.right]);
+      } else {
+        context.setResult(undefined);
+      }
+    } else {
+      context.setResult([context.left, context.right]);
+    }
+    context.exit();
+  } else if (context.right instanceof Date) {
+    context.setResult([context.left, context.right]).exit();
+  }
+};
+diffFilter.filterName = 'dates';
+
+exports.diffFilter = diffFilter;
+
+},{}],12:[function(require,module,exports){
+/*
+
+LCS implementation that supports arrays or strings
+
+reference: http://en.wikipedia.org/wiki/Longest_common_subsequence_problem
+
+*/
+
+var defaultMatch = function(array1, array2, index1, index2) {
+  return array1[index1] === array2[index2];
+};
+
+var lengthMatrix = function(array1, array2, match, context) {
+  var len1 = array1.length;
+  var len2 = array2.length;
+  var x, y;
+
+  // initialize empty matrix of len1+1 x len2+1
+  var matrix = [len1 + 1];
+  for (x = 0; x < len1 + 1; x++) {
+    matrix[x] = [len2 + 1];
+    for (y = 0; y < len2 + 1; y++) {
+      matrix[x][y] = 0;
+    }
+  }
+  matrix.match = match;
+  // save sequence lengths for each coordinate
+  for (x = 1; x < len1 + 1; x++) {
+    for (y = 1; y < len2 + 1; y++) {
+      if (match(array1, array2, x - 1, y - 1, context)) {
+        matrix[x][y] = matrix[x - 1][y - 1] + 1;
+      } else {
+        matrix[x][y] = Math.max(matrix[x - 1][y], matrix[x][y - 1]);
+      }
+    }
+  }
+  return matrix;
+};
+
+var backtrack = function(matrix, array1, array2, index1, index2, context) {
+  if (index1 === 0 || index2 === 0) {
+    return {
+      sequence: [],
+      indices1: [],
+      indices2: []
+    };
+  }
+
+  if (matrix.match(array1, array2, index1 - 1, index2 - 1, context)) {
+    var subsequence = backtrack(matrix, array1, array2, index1 - 1, index2 - 1, context);
+    subsequence.sequence.push(array1[index1 - 1]);
+    subsequence.indices1.push(index1 - 1);
+    subsequence.indices2.push(index2 - 1);
+    return subsequence;
+  }
+
+  if (matrix[index1][index2 - 1] > matrix[index1 - 1][index2]) {
+    return backtrack(matrix, array1, array2, index1, index2 - 1, context);
+  } else {
+    return backtrack(matrix, array1, array2, index1 - 1, index2, context);
+  }
+};
+
+var get = function(array1, array2, match, context) {
+  context = context || {};
+  var matrix = lengthMatrix(array1, array2, match || defaultMatch, context);
+  var result = backtrack(matrix, array1, array2, array1.length, array2.length, context);
+  if (typeof array1 === 'string' && typeof array2 === 'string') {
+    result.sequence = result.sequence.join('');
+  }
+  return result;
+};
+
+exports.get = get;
+
+},{}],13:[function(require,module,exports){
+var DiffContext = require('../contexts/diff').DiffContext;
+var PatchContext = require('../contexts/patch').PatchContext;
+var ReverseContext = require('../contexts/reverse').ReverseContext;
+
+var collectChildrenDiffFilter = function collectChildrenDiffFilter(context) {
+  if (!context || !context.children) {
+    return;
+  }
+  var length = context.children.length;
+  var child;
+  var result = context.result;
+  for (var index = 0; index < length; index++) {
+    child = context.children[index];
+    if (typeof child.result === 'undefined') {
+      continue;
+    }
+    result = result || {};
+    result[child.childName] = child.result;
+  }
+  if (result && context.leftIsArray) {
+    result._t = 'a';
+  }
+  context.setResult(result).exit();
+};
+collectChildrenDiffFilter.filterName = 'collectChildren';
+
+var objectsDiffFilter = function objectsDiffFilter(context) {
+  if (context.leftIsArray || context.leftType !== 'object') {
+    return;
+  }
+
+  var name, child, propertyFilter = context.options.propertyFilter;
+  for (name in context.left) {
+    if (!Object.prototype.hasOwnProperty.call(context.left, name)) {
+      continue;
+    }
+    if (propertyFilter && !propertyFilter(name, context)) {
+      continue;
+    }
+    child = new DiffContext(context.left[name], context.right[name]);
+    context.push(child, name);
+  }
+  for (name in context.right) {
+    if (!Object.prototype.hasOwnProperty.call(context.right, name)) {
+      continue;
+    }
+    if (propertyFilter && !propertyFilter(name, context)) {
+      continue;
+    }
+    if (typeof context.left[name] === 'undefined') {
+      child = new DiffContext(undefined, context.right[name]);
+      context.push(child, name);
+    }
+  }
+
+  if (!context.children || context.children.length === 0) {
+    context.setResult(undefined).exit();
+    return;
+  }
+  context.exit();
+};
+objectsDiffFilter.filterName = 'objects';
+
+var patchFilter = function nestedPatchFilter(context) {
+  if (!context.nested) {
+    return;
+  }
+  if (context.delta._t) {
+    return;
+  }
+  var name, child;
+  for (name in context.delta) {
+    child = new PatchContext(context.left[name], context.delta[name]);
+    context.push(child, name);
+  }
+  context.exit();
+};
+patchFilter.filterName = 'objects';
+
+var collectChildrenPatchFilter = function collectChildrenPatchFilter(context) {
+  if (!context || !context.children) {
+    return;
+  }
+  if (context.delta._t) {
+    return;
+  }
+  var length = context.children.length;
+  var child;
+  for (var index = 0; index < length; index++) {
+    child = context.children[index];
+    if (Object.prototype.hasOwnProperty.call(context.left, child.childName) && child.result === undefined) {
+      delete context.left[child.childName];
+    } else if (context.left[child.childName] !== child.result) {
+      context.left[child.childName] = child.result;
+    }
+  }
+  context.setResult(context.left).exit();
+};
+collectChildrenPatchFilter.filterName = 'collectChildren';
+
+var reverseFilter = function nestedReverseFilter(context) {
+  if (!context.nested) {
+    return;
+  }
+  if (context.delta._t) {
+    return;
+  }
+  var name, child;
+  for (name in context.delta) {
+    child = new ReverseContext(context.delta[name]);
+    context.push(child, name);
+  }
+  context.exit();
+};
+reverseFilter.filterName = 'objects';
+
+var collectChildrenReverseFilter = function collectChildrenReverseFilter(context) {
+  if (!context || !context.children) {
+    return;
+  }
+  if (context.delta._t) {
+    return;
+  }
+  var length = context.children.length;
+  var child;
+  var delta = {};
+  for (var index = 0; index < length; index++) {
+    child = context.children[index];
+    if (delta[child.childName] !== child.result) {
+      delta[child.childName] = child.result;
+    }
+  }
+  context.setResult(delta).exit();
+};
+collectChildrenReverseFilter.filterName = 'collectChildren';
+
+exports.collectChildrenDiffFilter = collectChildrenDiffFilter;
+exports.objectsDiffFilter = objectsDiffFilter;
+exports.patchFilter = patchFilter;
+exports.collectChildrenPatchFilter = collectChildrenPatchFilter;
+exports.reverseFilter = reverseFilter;
+exports.collectChildrenReverseFilter = collectChildrenReverseFilter;
+
+},{"../contexts/diff":4,"../contexts/patch":5,"../contexts/reverse":6}],14:[function(require,module,exports){
+/* global diff_match_patch */
+var TEXT_DIFF = 2;
+var DEFAULT_MIN_LENGTH = 60;
+var cachedDiffPatch = null;
+
+var getDiffMatchPatch = function(required) {
+  /*jshint camelcase: false */
+
+  if (!cachedDiffPatch) {
+    var instance;
+    if (typeof diff_match_patch !== 'undefined') {
+      // already loaded, probably a browser
+      instance = typeof diff_match_patch === 'function' ?
+        new diff_match_patch() : new diff_match_patch.diff_match_patch();
+    } else if (typeof require === 'function') {
+      try {
+        var dmpModuleName = 'diff_match_patch_uncompressed';
+        var dmp = require('../../public/external/' + dmpModuleName);
+        instance = new dmp.diff_match_patch();
+      } catch (err) {
+        instance = null;
+      }
+    }
+    if (!instance) {
+      if (!required) {
+        return null;
+      }
+      var error = new Error('text diff_match_patch library not found');
+      error.diff_match_patch_not_found = true;
+      throw error;
+    }
+    cachedDiffPatch = {
+      diff: function(txt1, txt2) {
+        return instance.patch_toText(instance.patch_make(txt1, txt2));
+      },
+      patch: function(txt1, patch) {
+        var results = instance.patch_apply(instance.patch_fromText(patch), txt1);
+        for (var i = 0; i < results[1].length; i++) {
+          if (!results[1][i]) {
+            var error = new Error('text patch failed');
+            error.textPatchFailed = true;
+          }
+        }
+        return results[0];
+      }
+    };
+  }
+  return cachedDiffPatch;
+};
+
+var diffFilter = function textsDiffFilter(context) {
+  if (context.leftType !== 'string') {
+    return;
+  }
+  var minLength = (context.options && context.options.textDiff &&
+    context.options.textDiff.minLength) || DEFAULT_MIN_LENGTH;
+  if (context.left.length < minLength ||
+    context.right.length < minLength) {
+    context.setResult([context.left, context.right]).exit();
+    return;
+  }
+  // large text, try to use a text-diff algorithm
+  var diffMatchPatch = getDiffMatchPatch();
+  if (!diffMatchPatch) {
+    // diff-match-patch library not available, fallback to regular string replace
+    context.setResult([context.left, context.right]).exit();
+    return;
+  }
+  var diff = diffMatchPatch.diff;
+  context.setResult([diff(context.left, context.right), 0, TEXT_DIFF]).exit();
+};
+diffFilter.filterName = 'texts';
+
+var patchFilter = function textsPatchFilter(context) {
+  if (context.nested) {
+    return;
+  }
+  if (context.delta[2] !== TEXT_DIFF) {
+    return;
+  }
+
+  // text-diff, use a text-patch algorithm
+  var patch = getDiffMatchPatch(true).patch;
+  context.setResult(patch(context.left, context.delta[0])).exit();
+};
+patchFilter.filterName = 'texts';
+
+var textDeltaReverse = function(delta) {
+  var i, l, lines, line, lineTmp, header = null,
+    headerRegex = /^@@ +\-(\d+),(\d+) +\+(\d+),(\d+) +@@$/,
+    lineHeader, lineAdd, lineRemove;
+  lines = delta.split('\n');
+  for (i = 0, l = lines.length; i < l; i++) {
+    line = lines[i];
+    var lineStart = line.slice(0, 1);
+    if (lineStart === '@') {
+      header = headerRegex.exec(line);
+      lineHeader = i;
+      lineAdd = null;
+      lineRemove = null;
+
+      // fix header
+      lines[lineHeader] = '@@ -' + header[3] + ',' + header[4] + ' +' + header[1] + ',' + header[2] + ' @@';
+    } else if (lineStart === '+') {
+      lineAdd = i;
+      lines[i] = '-' + lines[i].slice(1);
+      if (lines[i - 1].slice(0, 1) === '+') {
+        // swap lines to keep default order (-+)
+        lineTmp = lines[i];
+        lines[i] = lines[i - 1];
+        lines[i - 1] = lineTmp;
+      }
+    } else if (lineStart === '-') {
+      lineRemove = i;
+      lines[i] = '+' + lines[i].slice(1);
+    }
+  }
+  return lines.join('\n');
+};
+
+var reverseFilter = function textsReverseFilter(context) {
+  if (context.nested) {
+    return;
+  }
+  if (context.delta[2] !== TEXT_DIFF) {
+    return;
+  }
+
+  // text-diff, use a text-diff algorithm
+  context.setResult([textDeltaReverse(context.delta[0]), 0, TEXT_DIFF]).exit();
+};
+reverseFilter.filterName = 'texts';
+
+exports.diffFilter = diffFilter;
+exports.patchFilter = patchFilter;
+exports.reverseFilter = reverseFilter;
+
+},{}],15:[function(require,module,exports){
+var isArray = (typeof Array.isArray === 'function') ?
+  // use native function
+  Array.isArray :
+  // use instanceof operator
+  function(a) {
+    return a instanceof Array;
+  };
+
+var diffFilter = function trivialMatchesDiffFilter(context) {
+  if (context.left === context.right) {
+    context.setResult(undefined).exit();
+    return;
+  }
+  if (typeof context.left === 'undefined') {
+    if (typeof context.right === 'function') {
+      throw new Error('functions are not supported');
+    }
+    context.setResult([context.right]).exit();
+    return;
+  }
+  if (typeof context.right === 'undefined') {
+    context.setResult([context.left, 0, 0]).exit();
+    return;
+  }
+  if (typeof context.left === 'function' || typeof context.right === 'function') {
+    throw new Error('functions are not supported');
+  }
+  context.leftType = context.left === null ? 'null' : typeof context.left;
+  context.rightType = context.right === null ? 'null' : typeof context.right;
+  if (context.leftType !== context.rightType) {
+    context.setResult([context.left, context.right]).exit();
+    return;
+  }
+  if (context.leftType === 'boolean' || context.leftType === 'number') {
+    context.setResult([context.left, context.right]).exit();
+    return;
+  }
+  if (context.leftType === 'object') {
+    context.leftIsArray = isArray(context.left);
+  }
+  if (context.rightType === 'object') {
+    context.rightIsArray = isArray(context.right);
+  }
+  if (context.leftIsArray !== context.rightIsArray) {
+    context.setResult([context.left, context.right]).exit();
+    return;
+  }
+
+  if (context.left instanceof RegExp) {
+    if (context.right instanceof RegExp) {
+      context.setResult([context.left.toString(), context.right.toString()]).exit();
+    } else {
+      context.setResult([context.left, context.right]).exit();
+      return;
+    }
+  }
+};
+diffFilter.filterName = 'trivial';
+
+var patchFilter = function trivialMatchesPatchFilter(context) {
+  if (typeof context.delta === 'undefined') {
+    context.setResult(context.left).exit();
+    return;
+  }
+  context.nested = !isArray(context.delta);
+  if (context.nested) {
+    return;
+  }
+  if (context.delta.length === 1) {
+    context.setResult(context.delta[0]).exit();
+    return;
+  }
+  if (context.delta.length === 2) {
+    if (context.left instanceof RegExp) {
+      var regexArgs = /^\/(.*)\/([gimyu]+)$/.exec(context.delta[1]);
+      if (regexArgs) {
+        context.setResult(new RegExp(regexArgs[1], regexArgs[2])).exit();
+        return;
+      }
+    }
+    context.setResult(context.delta[1]).exit();
+    return;
+  }
+  if (context.delta.length === 3 && context.delta[2] === 0) {
+    context.setResult(undefined).exit();
+    return;
+  }
+};
+patchFilter.filterName = 'trivial';
+
+var reverseFilter = function trivialReferseFilter(context) {
+  if (typeof context.delta === 'undefined') {
+    context.setResult(context.delta).exit();
+    return;
+  }
+  context.nested = !isArray(context.delta);
+  if (context.nested) {
+    return;
+  }
+  if (context.delta.length === 1) {
+    context.setResult([context.delta[0], 0, 0]).exit();
+    return;
+  }
+  if (context.delta.length === 2) {
+    context.setResult([context.delta[1], context.delta[0]]).exit();
+    return;
+  }
+  if (context.delta.length === 3 && context.delta[2] === 0) {
+    context.setResult([context.delta[0]]).exit();
+    return;
+  }
+};
+reverseFilter.filterName = 'trivial';
+
+exports.diffFilter = diffFilter;
+exports.patchFilter = patchFilter;
+exports.reverseFilter = reverseFilter;
+
+},{}],16:[function(require,module,exports){
+
+var environment = require('./environment');
+
+var DiffPatcher = require('./diffpatcher').DiffPatcher;
+exports.DiffPatcher = DiffPatcher;
+
+exports.create = function(options){
+  return new DiffPatcher(options);
+};
+
+exports.dateReviver = require('./date-reviver');
+
+var defaultInstance;
+
+exports.diff = function() {
+  if (!defaultInstance) {
+    defaultInstance = new DiffPatcher();
+  }
+  return defaultInstance.diff.apply(defaultInstance, arguments);
+};
+
+exports.patch = function() {
+  if (!defaultInstance) {
+    defaultInstance = new DiffPatcher();
+  }
+  return defaultInstance.patch.apply(defaultInstance, arguments);
+};
+
+exports.unpatch = function() {
+  if (!defaultInstance) {
+    defaultInstance = new DiffPatcher();
+  }
+  return defaultInstance.unpatch.apply(defaultInstance, arguments);
+};
+
+exports.reverse = function() {
+  if (!defaultInstance) {
+    defaultInstance = new DiffPatcher();
+  }
+  return defaultInstance.reverse.apply(defaultInstance, arguments);
+};
+
+exports.clone = function() {
+  if (!defaultInstance) {
+    defaultInstance = new DiffPatcher();
+  }
+  return defaultInstance.clone.apply(defaultInstance, arguments);
+};
+
+
+if (environment.isBrowser) {
+  exports.homepage = '{{package-homepage}}';
+  exports.version = '{{package-version}}';
+} else {
+  var packageInfoModuleName = '../package.json';
+  var packageInfo = require(packageInfoModuleName);
+  exports.homepage = packageInfo.homepage;
+  exports.version = packageInfo.version;
+
+  var formatterModuleName = './formatters';
+  var formatters = require(formatterModuleName);
+  exports.formatters = formatters;
+  // shortcut for console
+  exports.console = formatters.console;
+}
+
+},{"./date-reviver":7,"./diffpatcher":8,"./environment":9}],17:[function(require,module,exports){
+var Pipe = function Pipe(name) {
+  this.name = name;
+  this.filters = [];
+};
+
+Pipe.prototype.process = function(input) {
+  if (!this.processor) {
+    throw new Error('add this pipe to a processor before using it');
+  }
+  var debug = this.debug;
+  var length = this.filters.length;
+  var context = input;
+  for (var index = 0; index < length; index++) {
+    var filter = this.filters[index];
+    if (debug) {
+      this.log('filter: ' + filter.filterName);
+    }
+    filter(context);
+    if (typeof context === 'object' && context.exiting) {
+      context.exiting = false;
+      break;
+    }
+  }
+  if (!context.next && this.resultCheck) {
+    this.resultCheck(context);
+  }
+};
+
+Pipe.prototype.log = function(msg) {
+  console.log('[jsondiffpatch] ' + this.name + ' pipe, ' + msg);
+};
+
+Pipe.prototype.append = function() {
+  this.filters.push.apply(this.filters, arguments);
+  return this;
+};
+
+Pipe.prototype.prepend = function() {
+  this.filters.unshift.apply(this.filters, arguments);
+  return this;
+};
+
+Pipe.prototype.indexOf = function(filterName) {
+  if (!filterName) {
+    throw new Error('a filter name is required');
+  }
+  for (var index = 0; index < this.filters.length; index++) {
+    var filter = this.filters[index];
+    if (filter.filterName === filterName) {
+      return index;
+    }
+  }
+  throw new Error('filter not found: ' + filterName);
+};
+
+Pipe.prototype.list = function() {
+  var names = [];
+  for (var index = 0; index < this.filters.length; index++) {
+    var filter = this.filters[index];
+    names.push(filter.filterName);
+  }
+  return names;
+};
+
+Pipe.prototype.after = function(filterName) {
+  var index = this.indexOf(filterName);
+  var params = Array.prototype.slice.call(arguments, 1);
+  if (!params.length) {
+    throw new Error('a filter is required');
+  }
+  params.unshift(index + 1, 0);
+  Array.prototype.splice.apply(this.filters, params);
+  return this;
+};
+
+Pipe.prototype.before = function(filterName) {
+  var index = this.indexOf(filterName);
+  var params = Array.prototype.slice.call(arguments, 1);
+  if (!params.length) {
+    throw new Error('a filter is required');
+  }
+  params.unshift(index, 0);
+  Array.prototype.splice.apply(this.filters, params);
+  return this;
+};
+
+Pipe.prototype.clear = function() {
+  this.filters.length = 0;
+  return this;
+};
+
+Pipe.prototype.shouldHaveResult = function(should) {
+  if (should === false) {
+    this.resultCheck = null;
+    return;
+  }
+  if (this.resultCheck) {
+    return;
+  }
+  var pipe = this;
+  this.resultCheck = function(context) {
+    if (!context.hasResult) {
+      console.log(context);
+      var error = new Error(pipe.name + ' failed');
+      error.noResult = true;
+      throw error;
+    }
+  };
+  return this;
+};
+
+exports.Pipe = Pipe;
+
+},{}],18:[function(require,module,exports){
+
+var Processor = function Processor(options){
+  this.selfOptions = options || {};
+  this.pipes = {};
+};
+
+Processor.prototype.options = function(options) {
+  if (options) {
+    this.selfOptions = options;
+  }
+  return this.selfOptions;
+};
+
+Processor.prototype.pipe = function(name, pipe) {
+  if (typeof name === 'string') {
+    if (typeof pipe === 'undefined') {
+      return this.pipes[name];
+    } else {
+      this.pipes[name] = pipe;
+    }
+  }
+  if (name && name.name) {
+    pipe = name;
+    if (pipe.processor === this) { return pipe; }
+    this.pipes[pipe.name] = pipe;
+  }
+  pipe.processor = this;
+  return pipe;
+};
+
+Processor.prototype.process = function(input, pipe) {
+  var context = input;
+  context.options = this.options();
+  var nextPipe = pipe || input.pipe || 'default';
+  var lastPipe, lastContext;
+  while (nextPipe) {
+    if (typeof context.nextAfterChildren !== 'undefined') {
+      // children processed and coming back to parent
+      context.next = context.nextAfterChildren;
+      context.nextAfterChildren = null;
+    }
+
+    if (typeof nextPipe === 'string') {
+      nextPipe = this.pipe(nextPipe);
+    }
+    nextPipe.process(context);
+    lastContext = context;
+    lastPipe = nextPipe;
+    nextPipe = null;
+    if (context) {
+      if (context.next) {
+        context = context.next;
+        nextPipe = lastContext.nextPipe || context.pipe || lastPipe;
+      }
+    }
+  }
+  return context.hasResult ? context.result : undefined;
+};
+
+exports.Processor = Processor;
+
+},{}],19:[function(require,module,exports){
 (function(root, factory){
 
 	//UMD
@@ -32435,25 +33848,31 @@ return jQuery;
 	
 	return Tone;
 }));
-},{}],3:[function(require,module,exports){
+},{}],20:[function(require,module,exports){
 var InstrumentFactory = require('./helpers/instruments/InstrumentFactory');
 var $ = require('jquery');
 var Tone = require('tone');
 var Sync = require('./helpers/sync');
 var proxify = require('./helpers/proxify');
 var NXLoader = require('./helpers/nxloader');
-var guid = require('./helpers/idgenerator');
 var arrangement = require('./model/arrangement');
 
 // Load the nexus ui
 nxloader = new NXLoader();
 nxloader.load();
 
+// Get the arrangement Id from the URL
+var url = window.location.pathname;
+var arrangementId = url.split('/')[3];
+
+// Set the arrangement id
+arrangement.setId(arrangementId);
+
 // Connect to socket
 var socket = io.connect('http://localhost:3000');
 
 // Create new instance of sync
-var sync = new Sync(socket);
+var sync = new Sync(socket, arrangementId);
 
 // Array of sequences
 var sequences = [];
@@ -32523,9 +33942,6 @@ $('#addInstrument').on('click', function () {
     // Create the instrument selected
     instrumentFactory.createInstrument(instrument).then(function(instrumentContainer) {
 
-        // Sync the instrument
-        sync.addChange(instrumentContainer.html);
-
         // Push the sequence on to the sequences
         sequences.push(instrumentContainer.seq);
 
@@ -32533,7 +33949,7 @@ $('#addInstrument').on('click', function () {
 
 });
 
-},{"./helpers/idgenerator":4,"./helpers/instruments/InstrumentFactory":5,"./helpers/nxloader":8,"./helpers/proxify":9,"./helpers/sync":10,"./model/arrangement":12,"jquery":1,"tone":2}],4:[function(require,module,exports){
+},{"./helpers/instruments/InstrumentFactory":22,"./helpers/nxloader":25,"./helpers/proxify":26,"./helpers/sync":27,"./model/arrangement":29,"jquery":1,"tone":19}],21:[function(require,module,exports){
 function guid() {
   return s4() + s4() + '-' + s4() + '-' + s4() + '-' +
     s4() + '-' + s4() + s4() + s4();
@@ -32547,7 +33963,7 @@ function s4() {
 
 module.exports = guid;
 
-},{}],5:[function(require,module,exports){
+},{}],22:[function(require,module,exports){
 var generateSequencerElement = require('./sequencer/GenerateSequencerElement');
 var Sequencer = require('./sequencer/sequencer');
 
@@ -32610,7 +34026,7 @@ instrumentFactory.prototype.createInstrument = function (instrument) {
 
 module.exports = instrumentFactory;
 
-},{"./sequencer/GenerateSequencerElement":6,"./sequencer/sequencer":7}],6:[function(require,module,exports){
+},{"./sequencer/GenerateSequencerElement":23,"./sequencer/sequencer":24}],23:[function(require,module,exports){
 var $ = require('jquery');
 
 /**
@@ -32680,7 +34096,7 @@ generateSequencerElement.generate = function (callback) {
 
 module.exports = generateSequencerElement;
 
-},{"jquery":1}],7:[function(require,module,exports){
+},{"jquery":1}],24:[function(require,module,exports){
 var Tone = require('tone');
 var trigger = require('../../../helpers/trigger');
 var guid = require('../../../helpers/idgenerator');
@@ -32851,7 +34267,7 @@ sequencer.prototype.setVolume = function (volume) {
 
 module.exports = sequencer;
 
-},{"../../../helpers/idgenerator":4,"../../../helpers/proxify":9,"../../../helpers/trigger":11,"../../../model/arrangement":12,"tone":2}],8:[function(require,module,exports){
+},{"../../../helpers/idgenerator":21,"../../../helpers/proxify":26,"../../../helpers/trigger":28,"../../../model/arrangement":29,"tone":19}],25:[function(require,module,exports){
 var nxloader = function () {
 };
 
@@ -32868,7 +34284,7 @@ nxloader.prototype.load = function () {
 
 module.exports = nxloader;
 
-},{}],9:[function(require,module,exports){
+},{}],26:[function(require,module,exports){
 /**
  * Create proxy object for as an observer
  *
@@ -32901,78 +34317,310 @@ function proxify(object, change, deepProxy) {
 
 module.exports = proxify;
 
-},{}],10:[function(require,module,exports){
-var $ = require('jquery');
+},{}],27:[function(require,module,exports){
+var arrangement = require('../model/arrangement');
+var jsondiffpatch = require('jsondiffpatch');
 
 /**
  * Constructor
  *
- * @param   {socket.io socket} socket The socket that the client is connected through
- * @returns {sync}                    Instance of self
+ * @param   {socket.io|socket} socket         The socket that the client is connected through
+ * @param   {string}           arrangementId  The ID of the arrangement that it is syncing with
+ * @returns {sync}                            Instance of self
  */
-var sync = function (socket) {
+var sync = function (socket, arrangementId) {
+
+    // Init a document that gets passed between server and client
+    this.doc = {
+        localVersion: 0,
+        serverVersion: 0,
+        shadow: {},
+        localCopy: {},
+        edits: []
+    }
+
+    // Flag to ensure for single syncing at a time
+    this.syncing = false;
+
+    // Flag to check if arrangement has been initialised
+    this.initialised = false;
+
+    // Flag to check if a edits are to be scheduled
+    this.scheduled = false;
 
     // Set the socket
     this.socket = socket;
 
-    // Create an array to hold the changes from the client
-    this.clientChanges = [];
+    // Set the arrangement Id
+    this.arrangementId = arrangementId;
+
+    // Set up object comparison
+    jsondiffpatch = jsondiffpatch.create({
+        objectHash: function(obj) {
+            return obj.id || JSON.stringify(obj);
+        }
+    });
+
+    // Set this sync variable in the arrangement class
+    arrangement.setSync(this);
+
+    /**
+     * When Initialising class, get the latest arrangement to init the client
+     *
+     * @returns {this}   Implement fluent interface
+     */
+    this.initArrangement = function () {
+
+        // Check if initialised
+        if (this.isInitialised()) {
+            return false;
+        }
+
+        // Get the latest document
+        this.getLatestDocument();
+
+        // Implement fluent interface
+        return this;
+    };
 
     /**
      * Send the client changes
      */
-    this.sendChanges = function () {
-       socket.emit('edit', {
-           clientEdit: this.clientChanges
+    this.sendEditMessage = function (editMessage) {
+
+        // Send the message to the other sockets and handle the incoming return message
+        this.socket.emit('send-edit', editMessage, function(serverEdits) {
+            this.applyServerEdits(serverEdits);
+        }.bind(this));
+
+    };
+
+    /**
+     * Gets the latest document from the server
+     */
+    this.getLatestDocument = function () {
+
+        // Check if already syncing
+        if (this.isSyncing()) {
+            return false;
+        }
+
+        // Start syncing with server
+        this.syncing = true;
+
+        // Request the latest document
+        this.socket.emit('get-latest-document', arrangementId, this.initLocalVersion.bind(this));
+
+    };
+
+    /**
+     * Initialise the local version of the document
+     *
+     * @params {object} latestVersion  The latest version of the document from the server
+     */
+    this.initLocalVersion = function (latestVersion) {
+
+        // Not syncing any more
+        this.syncing = false;
+
+        // Init the client side document
+        this.doc.localCopy = this.deepCopy(latestVersion.doc);
+        this.doc.shadow = this.deepCopy(latestVersion.doc);
+        this.doc.serverVersion = latestVersion.version;
+
+        // Initialised this client
+        this.initialised = true;
+
+        // That should trickle down/trigger a reload in the front end
+        // Set the local arrangement
+        arrangement.setArrangement(this.doc.localCopy);
+
+        // listen to incoming updates from the server
+        this.socket.on('updated-document', this.syncWithServer.bind(this));
+
+        // listen to errors and reload
+        this.socket.on('error', function(message){
+            window.location.reload();
         });
     };
 
-    socket.on('sync', function(data) {
-        // If broadcasted data
-        //
-        // Could get the data from the server via the client
-        // call whatever is going to append the new data to the client
-        console.log(data);
-
-        $('#instrumentTracks').append(data.desc);
-
-
-    });
-
-    return this;
-};
-
-/**
- * Add a change to be sync'd
- * @param {string} html The html to be added as a change
- */
-sync.prototype.addChange = function (html) {
-
-    // Append the html to the client changes
-    this.clientChanges.push(html);
-
-    /*
-     * Check if changes are diff from from servers copy
-     * Check if its already not syncing
-     * otherwise sync
+    /**
+     * Apply all edits from the server
      */
-    // Sync the changes
-    this.sendChanges();
+    this.applyServerEdits = function(serverEdits){
 
+        // Check if versions match and there is edits to apply
+        if (serverEdits && serverEdits.localVersion == this.doc.localVersion){
+
+            // Delete all previous edits
+            this.doc.edits = [];
+
+            // Iterate over all edits
+            serverEdits.edits.forEach(this.applyServerEdit.bind(this));
+
+        } else {
+
+            console.log('rejected patch because localVersions don\'t match');
+
+        }
+
+        this.syncing = false;
+        this.scheduled = false;
+    };
+
+    /**
+     * Apply the individual edit from the server to the client doc
+     */
+    this.applyServerEdit = function(edit) {
+
+      // Check the version numbers
+      if (edit.localVersion == this.doc.localVersion &&
+        edit.serverVersion == this.doc.serverVersion) {
+        // Versions match
+
+        // Patch the shadow
+        jsondiffpatch.patch(this.doc.shadow, edit.diff);
+
+        // Check if there is a diff
+        if (undefined !== edit.diff) {
+            // Is an edit increase the version number for the
+            // shadow
+            this.doc.serverVersion++;
+        }
+
+        // Apply the patch to the local document
+        // IMPORTANT: Use a copy of the diff, or newly created objects will be copied by reference!
+        jsondiffpatch.patch(this.doc.localCopy, this.deepCopy(edit.diff));
+
+        // trigger a generic sync event
+
+        // Set the arrangement
+        arrangement.setArrangement(this.doc.localCopy);
+
+      } else {
+        console.log('patch from server rejected, due to not matching version numbers');
+      }
+    };
+
+    // utility function for deep object copying
+    this.deepCopy = function (obj) {
+      return JSON.parse(JSON.stringify(obj));
+    };
+
+    /**
+     * Creates the send edit message
+     */
+    this.createSendEditMessage = function () {
+        return {
+            id: this.doc.localCopy._id,
+            edits: this.doc.edits,
+            localVersion: this.doc.localVersion
+
+        };
+    }
+
+    /**
+     * Add the edit to the list of edits in the doc
+     */
+    this.addEdit = function(diff, baseVersion){
+
+      this.doc.edits.push({
+        serverVersion: this.doc.serverVersion,
+        localVersion: baseVersion,
+        diff: diff
+      });
+
+      // Update the local version number
+      this.doc.localVersion++;
+    };
+
+    /**
+     * Checks whether the client is already syncing
+     *
+     * @returns {bool} syncing  The flag to check if it is syncing
+     */
+    this.isSyncing = function () {
+        return this.syncing;
+    };
+
+    /**
+     * Checks whether document has been initialised already
+     *
+     * @returns {bool} initialised  The flag to check if it has been initialised
+     */
+    this.isInitialised = function () {
+        return this.initialised;
+    };
+
+    /**
+     * Sync document with server
+     *
+     * @returns {this}  Implements fluent interface
+     */
+    this.syncWithServer = function () {
+
+        // FOR NOW! Check if the shadow document has a copy/hasn't been initialised
+        if (Object.keys(this.doc.shadow).length === 0) {
+            // The shadow doc hasn't been initialised
+            this.doc.shadow = this.deepCopy(this.doc.localCopy);
+        }
+
+        // Create a diff of the local copy and the shadow copy
+        var diff = jsondiffpatch.diff(this.doc.shadow, this.doc.localCopy);
+
+        // Check if there is a diff
+        if (undefined === diff) {
+            // No diff made
+            return;
+        }
+
+        // Create running copy of local version number
+        var baseVersion = this.doc.localVersion;
+
+        // Add this edit to the stack of edits
+        this.addEdit(diff, baseVersion);
+
+        // Create the send edit message
+        var editMessage = this.createSendEditMessage();
+
+        // Apply the the diff to the shadow document
+        jsondiffpatch.patch(this.doc.shadow, diff);
+
+        // Send to the server
+        this.sendEditMessage(editMessage);
+
+        // Implement fluent interface
+        return this;
+
+    };
+
+    // Initialise 
+    this.initArrangement();
 
     // Implement fluent interface
     return this;
 };
 
-/*
+/**
+ * Add a change to be sync'd
+ *
+ * @param {object} arrangement  The updated client version of the arrangement
+ */
+sync.prototype.addChange = function (arrangement) {
 
-// Watch for broadcasted data
+    // Change to arrangement made update the local copy
+    this.doc.localCopy = this.deepCopy(arrangement);
 
-*/
+    // Sync with the server
+    this.syncWithServer();
+
+    // Implements fluent interface
+    return this;
+};
 
 module.exports = sync;
 
-},{"jquery":1}],11:[function(require,module,exports){
+},{"../model/arrangement":29,"jsondiffpatch":16}],28:[function(require,module,exports){
 // Require tone
 var Tone = require('tone');
 
@@ -32990,9 +34638,7 @@ var trigger = function(instrument, note, duration) {
 
 module.exports = trigger;
 
-},{"tone":2}],12:[function(require,module,exports){
-var guid = require('../helpers/idgenerator');
-var sync = require('../helpers/sync');
+},{"tone":19}],29:[function(require,module,exports){
 var proxify = require('../helpers/proxify');
 
 /**
@@ -33009,25 +34655,24 @@ module.exports = {
      * }
      */
     arrangement: {
-        id: guid(),
+        id: null,
         tracks: [],
         bpm: 120
     },
+    sync: null,
     addTrack: function (track) {
 
         // Add a track to the arrangements
         this.arrangement.tracks.push(track);
 
-        console.log('addTrack');
-        this.sync();
+        this.syncClientToServer();
     },
     setBpm: function (bpm) {
 
         // Set the bpm of the arrangement
         this.arrangement.bpm = bpm;
 
-        console.log('setBPM');
-        this.sync();
+        this.syncClientToServer();
     },
     replaceTrack: function (track) {
 
@@ -33044,32 +34689,31 @@ module.exports = {
             }
 
         });
-        console.log('replaceTrack');
-        this.sync();
+
+        this.syncClientToServer();
     },
-    sync: function () {
-        console.log('sync');
-        /**
-         * All methods call this
-         * sends the arrangement to the server to be broadcasted to the other clients
-         */
+    setSync: function (sync) {
+
+        // Dependancy injection for the sync class
+        this.sync = sync;
+
+    },
+    syncClientToServer: function () {
+        // Sync the changes applied from the subsequent functions to the server
+        this.sync.addChange(this.arrangement);
+    },
+    setId: function (arrangementId) {
+        this.arrangement.id = arrangementId;
+    },
+    getId: function () {
+        return this.arrangement.id;
+    },
+    setArrangement: function (arrangement) {
+        this.arrangement = arrangement;
+    },
+    getArrangement: function () {
+        return this.arrangement;
     }
 };
 
-/**
- * Functions:
- *  MUST HAVE:
- *  - adding the proxy to the arrangement struct
- *  - adding a track to the arrangement
- *  - making the changes reflected in step sequencer in the pattern
- *          - the step sequencer needs to have a set pattern function
- *              - everytime it is changes it sets the pattern
- *              - everytime the pattern changes it sets what is used in the sequence
- *                      - potentially if you convert the array to 0/1 it reflects in the front end
- *
- *  SHOULD HAVE:
- *  - Getting the track by id
- *  - getting the arrangement by id
- */
-
-},{"../helpers/idgenerator":4,"../helpers/proxify":9,"../helpers/sync":10}]},{},[3]);
+},{"../helpers/proxify":26}]},{},[20]);

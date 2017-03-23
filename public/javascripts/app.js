@@ -4,18 +4,24 @@ var Tone = require('tone');
 var Sync = require('./helpers/sync');
 var proxify = require('./helpers/proxify');
 var NXLoader = require('./helpers/nxloader');
-var guid = require('./helpers/idgenerator');
 var arrangement = require('./model/arrangement');
 
 // Load the nexus ui
 nxloader = new NXLoader();
 nxloader.load();
 
+// Get the arrangement Id from the URL
+var url = window.location.pathname;
+var arrangementId = url.split('/')[3];
+
+// Set the arrangement id
+arrangement.setId(arrangementId);
+
 // Connect to socket
 var socket = io.connect('http://localhost:3000');
 
 // Create new instance of sync
-var sync = new Sync(socket);
+var sync = new Sync(socket, arrangementId);
 
 // Array of sequences
 var sequences = [];
@@ -84,9 +90,6 @@ $('#addInstrument').on('click', function () {
 
     // Create the instrument selected
     instrumentFactory.createInstrument(instrument).then(function(instrumentContainer) {
-
-        // Sync the instrument
-        sync.addChange(instrumentContainer.html);
 
         // Push the sequence on to the sequences
         sequences.push(instrumentContainer.seq);

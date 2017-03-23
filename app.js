@@ -6,6 +6,7 @@ var logger = require('morgan');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
 var sockIO = require('socket.io')();
+var Synchronise = require('./sync/sync');
 
 // Configure and connect to mongodb
 var dbConfig = require('./db');
@@ -32,7 +33,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 var passport = require('passport');
 var expressSession = require('express-session');
 
-
 // Set up express session and passport
 app.use(expressSession({secret: 'mySecretKey'}));
 app.use(passport.initialize());
@@ -58,49 +58,8 @@ app.use('/', routes);
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'jade');
 
-// Testing for socket io no of clients connected
-var clients = 0;
-
-// On socket connect
-sockIO.on('connection', function(socket){
-
-    // Increase the number of clients
-    clients++;
-
-    /*
-    // Broadcast out the number of clients connected
-    sockIO.sockets.emit('broadcast', {
-        description: clients + ' clients connected!'
-    });
-    */
-
-    // On disconnect
-    socket.on('disconnect', function () {
-
-        // Decrement number of clients
-        clients--;
-
-        // broadcast out how many clients
-        /*
-        sockIO.sockets.emit('broadcast' , {
-            description: clients + ' clients connected!'
-        });
-        */
-
-    });
-
-    socket.on('edit', function (yo) {
-
-        // Change
-        var html = yo.clientEdit[0]
-
-        // Broadcast out the number of clients connected
-        socket.broadcast.emit('sync', {
-            desc : html
-        });
-
-    });
-});
+// Set the socketio of the app to file
+var sync = new Synchronise(sockIO);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {

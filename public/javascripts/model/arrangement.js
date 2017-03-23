@@ -1,5 +1,3 @@
-var guid = require('../helpers/idgenerator');
-var sync = require('../helpers/sync');
 var proxify = require('../helpers/proxify');
 
 /**
@@ -16,25 +14,24 @@ module.exports = {
      * }
      */
     arrangement: {
-        id: guid(),
+        id: null,
         tracks: [],
         bpm: 120
     },
+    sync: null,
     addTrack: function (track) {
 
         // Add a track to the arrangements
         this.arrangement.tracks.push(track);
 
-        console.log('addTrack');
-        this.sync();
+        this.syncClientToServer();
     },
     setBpm: function (bpm) {
 
         // Set the bpm of the arrangement
         this.arrangement.bpm = bpm;
 
-        console.log('setBPM');
-        this.sync();
+        this.syncClientToServer();
     },
     replaceTrack: function (track) {
 
@@ -51,30 +48,29 @@ module.exports = {
             }
 
         });
-        console.log('replaceTrack');
-        this.sync();
+
+        this.syncClientToServer();
     },
-    sync: function () {
-        console.log('sync');
-        /**
-         * All methods call this
-         * sends the arrangement to the server to be broadcasted to the other clients
-         */
+    setSync: function (sync) {
+
+        // Dependancy injection for the sync class
+        this.sync = sync;
+
+    },
+    syncClientToServer: function () {
+        // Sync the changes applied from the subsequent functions to the server
+        this.sync.addChange(this.arrangement);
+    },
+    setId: function (arrangementId) {
+        this.arrangement.id = arrangementId;
+    },
+    getId: function () {
+        return this.arrangement.id;
+    },
+    setArrangement: function (arrangement) {
+        this.arrangement = arrangement;
+    },
+    getArrangement: function () {
+        return this.arrangement;
     }
 };
-
-/**
- * Functions:
- *  MUST HAVE:
- *  - adding the proxy to the arrangement struct
- *  - adding a track to the arrangement
- *  - making the changes reflected in step sequencer in the pattern
- *          - the step sequencer needs to have a set pattern function
- *              - everytime it is changes it sets the pattern
- *              - everytime the pattern changes it sets what is used in the sequence
- *                      - potentially if you convert the array to 0/1 it reflects in the front end
- *
- *  SHOULD HAVE:
- *  - Getting the track by id
- *  - getting the arrangement by id
- */

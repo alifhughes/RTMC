@@ -39,7 +39,9 @@
     "passport-local": "~1.0.0",
     "serve-favicon": "~2.3.0",
     "socket.io": "^1.7.3",
+    "underscore": "^1.8.3",
     "utf-8-validate": "^3.0.1",
+    "uuid": "^3.0.1",
     "ws": "^2.2.0"
   },
   "devDependencies": {
@@ -48,6 +50,7 @@
     "fly": "^1.4.1",
     "gulp": "^3.9.1",
     "gulp-mocha": "^3.0.1",
+    "jsondiffpatch": "^0.2.4",
     "watchify": "^3.9.0"
   }
 }

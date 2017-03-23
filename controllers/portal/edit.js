@@ -31,6 +31,7 @@ exports.submit = function(req, res, next) {
             console.error('No entry found');
         }
 
+        console.log(doc);
         doc.firstName = req.param('firstName');
         doc.lastName = req.param('lastName');
         doc.username = req.param('username');

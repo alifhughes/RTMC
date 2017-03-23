@@ -1,6 +1,7 @@
 extends layout
 
 block content
+  input(type='hidden', value=local_data)#myLocalDataObj
   div.width-100.control-bar.dark-grey-background-colour
     button#start Start
     button#stop Stop
@@ -14,3 +15,5 @@ block content
       div.col-md-6
         select#instruments
           option(value="step-sequencer") Step Sequencer
+
+    script(src='/bundle.js')

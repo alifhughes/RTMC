@@ -1,5 +1,7 @@
 var arrangement = require('../model/arrangement');
 var jsondiffpatch = require('jsondiffpatch');
+var WindowUpdater = require('../windowupdater');
+var deepClone = require('../helpers/deepclone');
 
 /**
  * Constructor
@@ -30,6 +32,9 @@ var sync = function (socket, arrangementId) {
 
     // Set the socket
     this.socket = socket;
+
+    // Init a new instance of the window updater
+    this.windowUpdater = new WindowUpdater();
 
     // Set the arrangement Id
     this.arrangementId = arrangementId;
@@ -100,20 +105,31 @@ var sync = function (socket, arrangementId) {
      */
     this.initLocalVersion = function (latestVersion) {
 
+        console.log('latestVerson \n', latestVersion.doc);
+        console.log('\n');
+
         // Not syncing any more
         this.syncing = false;
 
         // Init the client side document
-        this.doc.localCopy = this.deepCopy(latestVersion.doc);
-        this.doc.shadow = this.deepCopy(latestVersion.doc);
+        this.doc.localCopy = deepClone(latestVersion.doc);
+        this.doc.shadow = deepClone(latestVersion.doc);
         this.doc.serverVersion = latestVersion.version;
 
         // Initialised this client
         this.initialised = true;
 
-        // That should trickle down/trigger a reload in the front end
+        console.log('this.doc.localCopy \n', this.doc.localCopy);
+        console.log('\n');
+
         // Set the local arrangement
         arrangement.setArrangement(this.doc.localCopy);
+
+        console.log('getArrangement \n', arrangement.getArrangement());
+        console.log('local copy \n', this.doc.localCopy);
+
+        // Set the local arrangement to window updater
+        this.windowUpdater.initialise(this.doc.localCopy);
 
         // listen to incoming updates from the server
         this.socket.on('updated-document', this.syncWithServer.bind(this));
@@ -128,6 +144,7 @@ var sync = function (socket, arrangementId) {
      * Apply all edits from the server
      */
     this.applyServerEdits = function(serverEdits){
+        console.log('serverEdits', serverEdits);
 
         // Check if versions match and there is edits to apply
         if (serverEdits && serverEdits.localVersion == this.doc.localVersion){
@@ -139,9 +156,7 @@ var sync = function (socket, arrangementId) {
             serverEdits.edits.forEach(this.applyServerEdit.bind(this));
 
         } else {
-
             console.log('rejected patch because localVersions don\'t match');
-
         }
 
         this.syncing = false;
@@ -153,38 +168,33 @@ var sync = function (socket, arrangementId) {
      */
     this.applyServerEdit = function(edit) {
 
-      // Check the version numbers
-      if (edit.localVersion == this.doc.localVersion &&
-        edit.serverVersion == this.doc.serverVersion) {
-        // Versions match
+        // Check the version numbers
+        if (edit.localVersion == this.doc.localVersion &&
+            edit.serverVersion == this.doc.serverVersion) {
+            // Versions match
 
-        // Patch the shadow
-        jsondiffpatch.patch(this.doc.shadow, edit.diff);
+            // Patch the shadow
+            jsondiffpatch.patch(this.doc.shadow, edit.diff);
 
-        // Check if there is a diff
-        if (undefined !== edit.diff) {
-            // Is an edit increase the version number for the
-            // shadow
-            this.doc.serverVersion++;
+            // Check if there is a diff
+            if (undefined !== edit.diff) {
+                // Is an edit increase the version number for the
+                // shadow
+                this.doc.serverVersion++;
+            }
+
+            // Apply the patch to the local document
+            jsondiffpatch.patch(this.doc.localCopy, deepClone(edit.diff));
+
+            // Set the arrangement
+            arrangement.setArrangement(this.doc.localCopy);
+
+            // Update the window
+            //this.windowUpdater.update(this.doc.localCopy);
+
+        } else {
+            console.log('patch from server rejected, due to not matching version numbers');
         }
-
-        // Apply the patch to the local document
-        // IMPORTANT: Use a copy of the diff, or newly created objects will be copied by reference!
-        jsondiffpatch.patch(this.doc.localCopy, this.deepCopy(edit.diff));
-
-        // trigger a generic sync event
-
-        // Set the arrangement
-        arrangement.setArrangement(this.doc.localCopy);
-
-      } else {
-        console.log('patch from server rejected, due to not matching version numbers');
-      }
-    };
-
-    // utility function for deep object copying
-    this.deepCopy = function (obj) {
-      return JSON.parse(JSON.stringify(obj));
     };
 
     /**
@@ -195,7 +205,6 @@ var sync = function (socket, arrangementId) {
             id: this.doc.localCopy._id,
             edits: this.doc.edits,
             localVersion: this.doc.localVersion
-
         };
     }
 
@@ -242,7 +251,7 @@ var sync = function (socket, arrangementId) {
         // FOR NOW! Check if the shadow document has a copy/hasn't been initialised
         if (Object.keys(this.doc.shadow).length === 0) {
             // The shadow doc hasn't been initialised
-            this.doc.shadow = this.deepCopy(this.doc.localCopy);
+            this.doc.shadow = deepClone(this.doc.localCopy);
         }
 
         // Create a diff of the local copy and the shadow copy
@@ -274,8 +283,18 @@ var sync = function (socket, arrangementId) {
 
     };
 
+    /**
+     * Schedules a server-sync
+     */
+    this.scheduleSync = function () {
+      this.syncWithServer();
+    };
+
     // Initialise 
     this.initArrangement();
+
+    // Update client every 5 seconds
+    setInterval(this.scheduleSync.bind(this), 5000);
 
     // Implement fluent interface
     return this;
@@ -289,7 +308,7 @@ var sync = function (socket, arrangementId) {
 sync.prototype.addChange = function (arrangement) {
 
     // Change to arrangement made update the local copy
-    this.doc.localCopy = this.deepCopy(arrangement);
+    this.doc.localCopy = deepClone(arrangement);
 
     // Sync with the server
     this.syncWithServer();

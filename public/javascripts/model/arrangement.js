@@ -52,10 +52,8 @@ module.exports = {
         this.syncClientToServer();
     },
     setSync: function (sync) {
-
         // Dependancy injection for the sync class
         this.sync = sync;
-
     },
     syncClientToServer: function () {
         // Sync the changes applied from the subsequent functions to the server

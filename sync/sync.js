@@ -180,7 +180,8 @@ var Synchronise = function(socketIO) {
                         // notify all sockets about the update, all but this one
                         doc.registeredSockets.forEach(function(soc){
                             if(soc.id != socket.id){
-                                soc.emit('updated-doc');
+                                console.log(soc.id);
+                                soc.emit('updated-document');
                             }
                         });
 
@@ -266,14 +267,11 @@ var Synchronise = function(socketIO) {
             doc._id,
             { $set: deepCopy(doc) },
             function (err, result) {
-
                 // Check for error
                 if (err) {
                     // Log the error
                     console.log(err);
                 }
-
-                console.log("RESULT: " + result);
             }
         );
     };

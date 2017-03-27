@@ -63,7 +63,6 @@ function sequencer () {
     // Init JSON struct of the track
     this.track = this.createTrackJSON();
 
-
     // Add the track to the arrangement
     arrangement.addTrack(this.track);
 
@@ -164,6 +163,19 @@ sequencer.prototype.setVolume = function (volume) {
         self.pushChanges();
 
     });
+};
+
+/**
+ * Set the track JSON object, used for the syncing/updating of tracks from
+ * other clients.
+ *
+ * @param {object} track  JSON object of the track
+ */
+sequencer.prototype.setTrackJSON = function (track) {
+
+    // Set the track json
+    this.track = JSON.parse(JSON.stringify(track));
+
 };
 
 module.exports = sequencer;

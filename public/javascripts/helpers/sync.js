@@ -178,7 +178,7 @@ var sync = function (socket, arrangementId) {
             arrangement.setArrangement(this.doc.localCopy);
 
             // Update the window
-            //this.windowUpdater.update(this.doc.localCopy);
+            this.windowUpdater.update(this.doc.localCopy);
 
         } else {
             console.log('patch from server rejected, due to not matching version numbers');

@@ -1,13 +1,32 @@
 extends layout
 
 block content
-  div.base-background-colour.no-margin
+  div.base-background-colour
     div.container
       div.row
-        h2.dark-grey-colour.no-margin.col-lg-2 User portal
-        a(href="\portal\\edit").btn.btn-default.col-lg-2.col-lg-offset-1 Edit your information
-        a(href="\workstation\\setup").btn.btn-default.col-lg-2.col-lg-offset-1  Create a project
-  div.light-grey-background-colour.full-screen
-    h4.no-margin.padding-20 Hello #{firstName} #{lastName}
-
-
+        h2.white-colour.col-lg-2 User portal
+        a(href="/portal/edit").btn.btn-default.col-lg-2.col-lg-offset-1.portal-header-btn Edit your information
+        a(href="/workstation/setup").btn.btn-default.col-lg-2.col-lg-offset-1.portal-header-btn  Create a project
+  div.light-grey-background-colour
+    h3.no-margin.portal-user-names Hello #{firstName} #{lastName}
+    if userTracks.length > 0
+        h4.no-margin.portal-user-names Your arrangements:
+        div.container
+          div.row
+            table.col-lg-12
+              tr
+                th Name of track
+                th BPM of track
+              for track in userTracks
+                tr
+                  td
+                    a(href="/workstation/arrangement/#{track.id}")
+                      p #{track.name}
+                  td
+                    a(href="/workstation/arrangement/#{track.id}")
+                      if track.bpm
+                        p #{track.bpm}
+                      else
+                        p -
+    else
+        h4.no-margin.portal-user-names No arrangements yet!

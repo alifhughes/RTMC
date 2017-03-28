@@ -20,7 +20,7 @@ router.get('/', function(req, res, next) {
     {
         title: 'Real-Time Music Collaborator',
         buttonText1: 'Login',
-        buttonText2: 'Start Creating',
+        buttonText2: 'Signup',
     }
   );
 });

@@ -253,6 +253,12 @@ tr:nth-child(even) {
 /*-------- SPECIFIC CLASSES--------- */
 /*---------------------------------- */
 
+.btn-workstation-back {
+    right: 10px;
+    top: 3px;
+    position: absolute;
+}
+
 .portal-user-names {
     padding: 30px;
 }

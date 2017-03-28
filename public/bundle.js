@@ -35490,7 +35490,7 @@ $('#addInstrument').on('click', function () {
     var instrumentFactory = new InstrumentFactory();
 
     // Create the instrument selected
-    instrumentFactory.createInstrument(instrument).then(function(instrumentContainer) {
+    instrumentFactory.createInstrument(instrument, false).then(function(instrumentContainer) {
 
         // Push the sequence on to the sequences
         sequences.push(instrumentContainer.seq);
@@ -35501,19 +35501,13 @@ $('#addInstrument').on('click', function () {
 
 },{"./helpers/instruments/InstrumentFactory":24,"./helpers/nxloader":27,"./helpers/proxify":28,"./helpers/sync":29,"./model/arrangement":31,"jquery":1,"tone":19}],22:[function(require,module,exports){
 /**
- * Utility function for deep object copying
+ * Utility function for deep object cloning
  *
- * @param   {object} obj  Object to be copied
- * @returns {object}      The deep-copied object
+ * @param   {object} obj  Object to be cloned
+ * @returns {object}      The deep-cloned object
  */
-function deepClone (o) {
-    var _out, v, _key;
-    _out = Array.isArray(o) ? [] : {};
-    for (_key in o) {
-        v = o[_key];
-        _out[_key] = (typeof v === "object") ? deepClone(v) : v;
-    }
-    return _out;
+function deepClone (object) {
+    return JSON.parse(JSON.stringify(object));
 };
 
 module.exports = deepClone;
@@ -35548,10 +35542,11 @@ var instrumentFactory = function () {
 /**
  * Factory for creating instrument's HTML and initialise the instrument object
  *
- * @param {string} instrument  The name of the instrument to be created
- * @returns {HTML}  instrumentTrack  The html of the instrument
+ * @param {string}      instrument       The name of the instrument to be created
+ * @param {string|bool} id               The guid of the instrument if it is already created
+ * @returns {HTML}      instrumentTrack  The html of the instrument
  */
-instrumentFactory.prototype.createInstrument = function (instrument) {
+instrumentFactory.prototype.createInstrument = function (instrument, id) {
 
     // Switch on the instrument passed in
     switch (instrument) {
@@ -35567,7 +35562,8 @@ instrumentFactory.prototype.createInstrument = function (instrument) {
                     var matrix = elements.matrix;
                     var volume = elements.volume;
 
-                    var seq = new Sequencer();
+                    // Init new sequencer object with id
+                    var seq = new Sequencer(id);
 
                     // Set the sequencer objects
                     seq.setMatrix(matrix);
@@ -35670,6 +35666,7 @@ var Tone = require('tone');
 var trigger = require('../../../helpers/trigger');
 var guid = require('../../../helpers/idgenerator');
 var proxify = require('../../../helpers/proxify');
+var deepClone = require('../../../helpers/deepclone');
 var arrangement = require('../../../model/arrangement');
 
 // Start the tone timer
@@ -35678,12 +35675,17 @@ Tone.Transport.start();
 /**
  * Constructor
  *
- * @returns{sequencer} instance of itself
+ * @param {string|bool} id  If track already exists from client or initalise
+ *                          use the id to create it
+ * @returns{sequencer}      Instance of itself
  */
-function sequencer () {
+function sequencer (id) {
 
     // Initialise empty matrix
     this.steps;
+
+    // Init local guid
+    this.id = id;
 
     //create a synth and connect it to the master output (your speakers)
     this.synth = new Tone.AMSynth().toMaster();
@@ -35717,9 +35719,15 @@ function sequencer () {
      */
     this.createTrackJSON = function () {
 
+        // Check if guid has been set
+        if (this.id == false) {
+            // Guid hasn't been set, create one
+            this.id = guid();
+        }
+
         // JSON object container meta data of track
         var track = {
-            id: guid(),
+            id: this.id,
             type: 'step-sequencer',
             volume: self.synth.volume.value,
             pattern: []
@@ -35842,13 +35850,13 @@ sequencer.prototype.setVolume = function (volume) {
 sequencer.prototype.setTrackJSON = function (track) {
 
     // Set the track json
-    this.track = JSON.parse(JSON.stringify(track));
+    this.track = deepClone(track);
 
 };
 
 module.exports = sequencer;
 
-},{"../../../helpers/idgenerator":23,"../../../helpers/proxify":28,"../../../helpers/trigger":30,"../../../model/arrangement":31,"tone":19}],27:[function(require,module,exports){
+},{"../../../helpers/deepclone":22,"../../../helpers/idgenerator":23,"../../../helpers/proxify":28,"../../../helpers/trigger":30,"../../../model/arrangement":31,"tone":19}],27:[function(require,module,exports){
 var nxloader = function () {
 };
 
@@ -35973,12 +35981,10 @@ var sync = function (socket, arrangementId) {
      * Send the client changes
      */
     this.sendEditMessage = function (editMessage) {
-
         // Send the message to the other sockets and handle the incoming return message
         this.socket.emit('send-edit', editMessage, function(serverEdits) {
             this.applyServerEdits(serverEdits);
         }.bind(this));
-
     };
 
     /**
@@ -36006,9 +36012,6 @@ var sync = function (socket, arrangementId) {
      */
     this.initLocalVersion = function (latestVersion) {
 
-        console.log('latestVerson \n', latestVersion.doc);
-        console.log('\n');
-
         // Not syncing any more
         this.syncing = false;
 
@@ -36020,14 +36023,8 @@ var sync = function (socket, arrangementId) {
         // Initialised this client
         this.initialised = true;
 
-        console.log('this.doc.localCopy \n', this.doc.localCopy);
-        console.log('\n');
-
         // Set the local arrangement
         arrangement.setArrangement(this.doc.localCopy);
-
-        console.log('getArrangement \n', arrangement.getArrangement());
-        console.log('local copy \n', this.doc.localCopy);
 
         // Set the local arrangement to window updater
         this.windowUpdater.initialise(this.doc.localCopy);
@@ -36045,7 +36042,6 @@ var sync = function (socket, arrangementId) {
      * Apply all edits from the server
      */
     this.applyServerEdits = function(serverEdits){
-        console.log('serverEdits', serverEdits);
 
         // Check if versions match and there is edits to apply
         if (serverEdits && serverEdits.localVersion == this.doc.localVersion){
@@ -36188,14 +36184,14 @@ var sync = function (socket, arrangementId) {
      * Schedules a server-sync
      */
     this.scheduleSync = function () {
-      this.syncWithServer();
+        this.syncWithServer();
     };
 
     // Initialise 
     this.initArrangement();
 
     // Update client every 5 seconds
-    setInterval(this.scheduleSync.bind(this), 5000);
+    //setInterval(this.scheduleSync.bind(this), 5000);
 
     // Implement fluent interface
     return this;
@@ -36262,10 +36258,31 @@ module.exports = {
     sync: null,
     addTrack: function (track) {
 
-        // Add a track to the arrangements
-        this.arrangement.tracks.push(track);
+        // Set flag for track being found or not
+        var found = false;
 
-        this.syncClientToServer();
+        // Loop all of the tracks in the arrangement
+        this.arrangement.tracks.forEach(function (existingTrack) {
+
+            // Check if the id of the track being passed in is same as current exisiting track
+            if (track.id == existingTrack.id) {
+                // Track found
+                found = true;
+            }
+        });
+
+        // Check if track was found
+        if (!found) {
+            // Wasn't found
+
+            // Add a track to the arrangements
+            this.arrangement.tracks.push(track);
+
+            // Sync with client
+            this.syncClientToServer();
+
+        }
+
     },
     setBpm: function (bpm) {
 
@@ -36333,7 +36350,16 @@ var InstrumentFactory = require('./helpers/instruments/InstrumentFactory');
 var WindowUpdater = function () {
 
     // Init arrangement object
-    this.arrangement = {};
+    this.arrangement = {
+        _id: "",
+        bpm: 120,
+        type: "arrangement",
+        name: "",
+        ownerId: "",
+        __v: 0,
+        tracks: [],
+        contributors: []
+    };
 
     // Initiliasation flag
     this.isInitialised = false;
@@ -36371,9 +36397,10 @@ var WindowUpdater = function () {
 
         // Get the type
         var type = track.type;
+        var id = track.id;
 
         // Create the instrument selected
-        instrumentFactory.createInstrument(type).then(function(instrumentContainer) {
+        instrumentFactory.createInstrument(type, id).then(function(instrumentContainer) {
 
             // Push the sequence on to the sequences
             //sequences.push(instrumentContainer.seq);
@@ -36388,19 +36415,14 @@ var WindowUpdater = function () {
      */
     this.updateTracks = function (tracks) {
 
-        console.log('tracks', tracks);
-
         // Check if initilised
         if (this.isInitialised == false) {
 
-            console.log('not initialised');
-
             // Not initalised, create all tracks
-            this.arrangement.tracks.map(this.addTrack);
+            tracks.map(this.addTrack);
 
         } else if (tracks.length > this.arrangement.tracks.length) {
             // A track needs to be added
-            console.log('add a track');
 
             // Get how many tracks to add
             var noOfTracksToAdd = tracks.length - this.arrangement.tracks.length;
@@ -36411,7 +36433,6 @@ var WindowUpdater = function () {
             // Add the tracks
             tracksToAdd.map(this.addTrack);
         }
-
 
     };
 
@@ -36429,10 +36450,6 @@ WindowUpdater.prototype.update = function (arrangement) {
         // set the bpm of window
         this.updateBpm(arrangement.bpm);
     }
-
-    console.log('this.arrangement.tracks', this.arrangement.tracks);
-    console.log('arrangement.tracks', arrangement.tracks);
-    console.log('isEqual', !_.isEqual(this.arrangement.tracks, arrangement.tracks));
 
     // Check tracks diff
     if (!_.isEqual(this.arrangement.tracks, arrangement.tracks)) {
@@ -36454,10 +36471,6 @@ WindowUpdater.prototype.update = function (arrangement) {
  * @param {object} arrangement  The initialised arrangement
  */
 WindowUpdater.prototype.initialise = function (arrangement) {
-    console.log('arrangement', arrangement);
-
-    // Set the local copy of arrangement
-    this.arrangement = deepClone(arrangement);
 
     // Update the window
     this.updateBpm(arrangement.bpm);
@@ -36466,7 +36479,8 @@ WindowUpdater.prototype.initialise = function (arrangement) {
     // Set is initialised
     this.isInitialised = true;
 
-    console.log('initialised');
+    // Set the local copy of arrangement
+    this.arrangement = deepClone(arrangement);
 
 };
 

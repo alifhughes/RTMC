@@ -89,7 +89,7 @@ $('#addInstrument').on('click', function () {
     var instrumentFactory = new InstrumentFactory();
 
     // Create the instrument selected
-    instrumentFactory.createInstrument(instrument).then(function(instrumentContainer) {
+    instrumentFactory.createInstrument(instrument, false).then(function(instrumentContainer) {
 
         // Push the sequence on to the sequences
         sequences.push(instrumentContainer.seq);

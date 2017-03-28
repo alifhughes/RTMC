@@ -16,7 +16,16 @@ var InstrumentFactory = require('./helpers/instruments/InstrumentFactory');
 var WindowUpdater = function () {
 
     // Init arrangement object
-    this.arrangement = {};
+    this.arrangement = {
+        _id: "",
+        bpm: 120,
+        type: "arrangement",
+        name: "",
+        ownerId: "",
+        __v: 0,
+        tracks: [],
+        contributors: []
+    };
 
     // Initiliasation flag
     this.isInitialised = false;
@@ -54,9 +63,10 @@ var WindowUpdater = function () {
 
         // Get the type
         var type = track.type;
+        var id = track.id;
 
         // Create the instrument selected
-        instrumentFactory.createInstrument(type).then(function(instrumentContainer) {
+        instrumentFactory.createInstrument(type, id).then(function(instrumentContainer) {
 
             // Push the sequence on to the sequences
             //sequences.push(instrumentContainer.seq);
@@ -71,19 +81,14 @@ var WindowUpdater = function () {
      */
     this.updateTracks = function (tracks) {
 
-        console.log('tracks', tracks);
-
         // Check if initilised
         if (this.isInitialised == false) {
 
-            console.log('not initialised');
-
             // Not initalised, create all tracks
-            this.arrangement.tracks.map(this.addTrack);
+            tracks.map(this.addTrack);
 
         } else if (tracks.length > this.arrangement.tracks.length) {
             // A track needs to be added
-            console.log('add a track');
 
             // Get how many tracks to add
             var noOfTracksToAdd = tracks.length - this.arrangement.tracks.length;
@@ -94,7 +99,6 @@ var WindowUpdater = function () {
             // Add the tracks
             tracksToAdd.map(this.addTrack);
         }
-
 
     };
 
@@ -112,10 +116,6 @@ WindowUpdater.prototype.update = function (arrangement) {
         // set the bpm of window
         this.updateBpm(arrangement.bpm);
     }
-
-    console.log('this.arrangement.tracks', this.arrangement.tracks);
-    console.log('arrangement.tracks', arrangement.tracks);
-    console.log('isEqual', !_.isEqual(this.arrangement.tracks, arrangement.tracks));
 
     // Check tracks diff
     if (!_.isEqual(this.arrangement.tracks, arrangement.tracks)) {
@@ -137,10 +137,6 @@ WindowUpdater.prototype.update = function (arrangement) {
  * @param {object} arrangement  The initialised arrangement
  */
 WindowUpdater.prototype.initialise = function (arrangement) {
-    console.log('arrangement', arrangement);
-
-    // Set the local copy of arrangement
-    this.arrangement = deepClone(arrangement);
 
     // Update the window
     this.updateBpm(arrangement.bpm);
@@ -149,7 +145,8 @@ WindowUpdater.prototype.initialise = function (arrangement) {
     // Set is initialised
     this.isInitialised = true;
 
-    console.log('initialised');
+    // Set the local copy of arrangement
+    this.arrangement = deepClone(arrangement);
 
 };
 

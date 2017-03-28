@@ -21,10 +21,31 @@ module.exports = {
     sync: null,
     addTrack: function (track) {
 
-        // Add a track to the arrangements
-        this.arrangement.tracks.push(track);
+        // Set flag for track being found or not
+        var found = false;
 
-        this.syncClientToServer();
+        // Loop all of the tracks in the arrangement
+        this.arrangement.tracks.forEach(function (existingTrack) {
+
+            // Check if the id of the track being passed in is same as current exisiting track
+            if (track.id == existingTrack.id) {
+                // Track found
+                found = true;
+            }
+        });
+
+        // Check if track was found
+        if (!found) {
+            // Wasn't found
+
+            // Add a track to the arrangements
+            this.arrangement.tracks.push(track);
+
+            // Sync with client
+            this.syncClientToServer();
+
+        }
+
     },
     setBpm: function (bpm) {
 

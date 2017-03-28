@@ -2,6 +2,7 @@ var Tone = require('tone');
 var trigger = require('../../../helpers/trigger');
 var guid = require('../../../helpers/idgenerator');
 var proxify = require('../../../helpers/proxify');
+var deepClone = require('../../../helpers/deepclone');
 var arrangement = require('../../../model/arrangement');
 
 // Start the tone timer
@@ -10,12 +11,17 @@ Tone.Transport.start();
 /**
  * Constructor
  *
- * @returns{sequencer} instance of itself
+ * @param {string|bool} id  If track already exists from client or initalise
+ *                          use the id to create it
+ * @returns{sequencer}      Instance of itself
  */
-function sequencer () {
+function sequencer (id) {
 
     // Initialise empty matrix
     this.steps;
+
+    // Init local guid
+    this.id = id;
 
     //create a synth and connect it to the master output (your speakers)
     this.synth = new Tone.AMSynth().toMaster();
@@ -49,9 +55,15 @@ function sequencer () {
      */
     this.createTrackJSON = function () {
 
+        // Check if guid has been set
+        if (this.id == false) {
+            // Guid hasn't been set, create one
+            this.id = guid();
+        }
+
         // JSON object container meta data of track
         var track = {
-            id: guid(),
+            id: this.id,
             type: 'step-sequencer',
             volume: self.synth.volume.value,
             pattern: []
@@ -174,7 +186,7 @@ sequencer.prototype.setVolume = function (volume) {
 sequencer.prototype.setTrackJSON = function (track) {
 
     // Set the track json
-    this.track = JSON.parse(JSON.stringify(track));
+    this.track = deepClone(track);
 
 };
 

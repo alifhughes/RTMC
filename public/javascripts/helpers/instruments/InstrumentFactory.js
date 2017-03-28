@@ -13,10 +13,11 @@ var instrumentFactory = function () {
 /**
  * Factory for creating instrument's HTML and initialise the instrument object
  *
- * @param {string} instrument  The name of the instrument to be created
- * @returns {HTML}  instrumentTrack  The html of the instrument
+ * @param {string}      instrument       The name of the instrument to be created
+ * @param {string|bool} id               The guid of the instrument if it is already created
+ * @returns {HTML}      instrumentTrack  The html of the instrument
  */
-instrumentFactory.prototype.createInstrument = function (instrument) {
+instrumentFactory.prototype.createInstrument = function (instrument, id) {
 
     // Switch on the instrument passed in
     switch (instrument) {
@@ -32,7 +33,8 @@ instrumentFactory.prototype.createInstrument = function (instrument) {
                     var matrix = elements.matrix;
                     var volume = elements.volume;
 
-                    var seq = new Sequencer();
+                    // Init new sequencer object with id
+                    var seq = new Sequencer(id);
 
                     // Set the sequencer objects
                     seq.setMatrix(matrix);

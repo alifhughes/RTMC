@@ -72,12 +72,10 @@ var sync = function (socket, arrangementId) {
      * Send the client changes
      */
     this.sendEditMessage = function (editMessage) {
-
         // Send the message to the other sockets and handle the incoming return message
         this.socket.emit('send-edit', editMessage, function(serverEdits) {
             this.applyServerEdits(serverEdits);
         }.bind(this));
-
     };
 
     /**
@@ -105,9 +103,6 @@ var sync = function (socket, arrangementId) {
      */
     this.initLocalVersion = function (latestVersion) {
 
-        console.log('latestVerson \n', latestVersion.doc);
-        console.log('\n');
-
         // Not syncing any more
         this.syncing = false;
 
@@ -119,14 +114,8 @@ var sync = function (socket, arrangementId) {
         // Initialised this client
         this.initialised = true;
 
-        console.log('this.doc.localCopy \n', this.doc.localCopy);
-        console.log('\n');
-
         // Set the local arrangement
         arrangement.setArrangement(this.doc.localCopy);
-
-        console.log('getArrangement \n', arrangement.getArrangement());
-        console.log('local copy \n', this.doc.localCopy);
 
         // Set the local arrangement to window updater
         this.windowUpdater.initialise(this.doc.localCopy);
@@ -144,7 +133,6 @@ var sync = function (socket, arrangementId) {
      * Apply all edits from the server
      */
     this.applyServerEdits = function(serverEdits){
-        console.log('serverEdits', serverEdits);
 
         // Check if versions match and there is edits to apply
         if (serverEdits && serverEdits.localVersion == this.doc.localVersion){
@@ -287,14 +275,14 @@ var sync = function (socket, arrangementId) {
      * Schedules a server-sync
      */
     this.scheduleSync = function () {
-      this.syncWithServer();
+        this.syncWithServer();
     };
 
     // Initialise 
     this.initArrangement();
 
     // Update client every 5 seconds
-    setInterval(this.scheduleSync.bind(this), 5000);
+    //setInterval(this.scheduleSync.bind(this), 5000);
 
     // Implement fluent interface
     return this;

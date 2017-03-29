@@ -36043,7 +36043,6 @@ var sync = function (socket, arrangementId) {
      * Apply all edits from the server
      */
     this.applyServerEdits = function(serverEdits){
-        console.log('serverEdits', serverEdits);
 
         // Check if versions match and there is edits to apply
         if (serverEdits && serverEdits.localVersion == this.doc.localVersion){
@@ -36147,11 +36146,9 @@ var sync = function (socket, arrangementId) {
      * @returns {this}  Implements fluent interface
      */
     this.syncWithServer = function () {
-console.log('should be called on other client');
 
         // Check if syncing or if it isn't initialised
         if (this.isSyncing() || !this.isInitialised()) {
-            console.log('is syncing/not inited');
             // Don't sync
             return false;
         }

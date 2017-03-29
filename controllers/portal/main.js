@@ -26,6 +26,9 @@ exports.render = function(req, res) {
 
                     });
 
+                    // Reverse track to get newest first
+                    tracks.reverse();
+
                     // Create array to send back to view
                     res.render(
                         'portal/main',

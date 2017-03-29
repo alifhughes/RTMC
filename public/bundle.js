@@ -35852,7 +35852,32 @@ sequencer.prototype.setTrackJSON = function (track) {
     // Set the track json
     this.track = deepClone(track);
 
+    // Check if pattern has been set
+    if (this.track.pattern.length > 0) {
+
+        // Set all the cells and their values
+        this.track.pattern.map(this.setStep.bind(this));
+    }
+
 };
+
+/**
+ * Set an individual step value either on or off and reflect the change
+ *
+ * @param {array} step  The steps value
+ */
+sequencer.prototype.setStep = function (step, index) {
+    console.log('index', index);
+
+    // Get if it is on or off
+    var on = step[0] > 0 ? true : false;
+    console.log('on', on);
+
+    // Set the cell value
+    this.steps.setCell(index, 0, on);
+
+};
+
 
 module.exports = sequencer;
 
@@ -36075,7 +36100,7 @@ var sync = function (socket, arrangementId) {
             jsondiffpatch.patch(this.doc.shadow, edit.diff);
 
             // Check if there is a diff
-            if (undefined !== edit.diff) {
+            if (!_.isEmpty(edit.diff)) {
                 // Is an edit increase the version number for the
                 // shadow
                 this.doc.serverVersion++;
@@ -36335,6 +36360,7 @@ var $ = require('jquery');
 var deepClone = require('./helpers/deepclone');
 var _ = require('underscore')._;
 var InstrumentFactory = require('./helpers/instruments/InstrumentFactory');
+var jsondiffpatch = require('jsondiffpatch');
 
 /**
  * Gets called from the sync class
@@ -36366,6 +36392,13 @@ var WindowUpdater = function () {
     // Init instrument factory
     var instrumentFactory = new InstrumentFactory();
 
+    // Set up object comparison
+    jsondiffpatch = jsondiffpatch.create({
+        objectHash: function(obj) {
+            return obj.id || JSON.stringify(obj);
+        }
+    });
+
     /**
      * Updates the bpm input field
      *
@@ -36393,6 +36426,7 @@ var WindowUpdater = function () {
      * @param {object} track  The track to initialise
      */
     this.addTrack = function (track) {
+        console.log('track', track);
 
         // Get the type
         var type = track.type;
@@ -36413,6 +36447,9 @@ var WindowUpdater = function () {
      * Updates the tracks in the arrangement accordingly
      */
     this.updateTracks = function (tracks) {
+    var diff = jsondiffpatch.diff(this.arrangement, tracks);
+    console.log('diff', diff);
+
 
         // Check if initilised
         if (this.isInitialised == false) {
@@ -36485,4 +36522,4 @@ WindowUpdater.prototype.initialise = function (arrangement) {
 
 module.exports = WindowUpdater;
 
-},{"./helpers/deepclone":22,"./helpers/instruments/InstrumentFactory":24,"jquery":1,"underscore":20}]},{},[21]);
+},{"./helpers/deepclone":22,"./helpers/instruments/InstrumentFactory":24,"jquery":1,"jsondiffpatch":16,"underscore":20}]},{},[21]);

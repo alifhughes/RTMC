@@ -166,7 +166,7 @@ var sync = function (socket, arrangementId) {
             jsondiffpatch.patch(this.doc.shadow, edit.diff);
 
             // Check if there is a diff
-            if (undefined !== edit.diff) {
+            if (!_.isEmpty(edit.diff)) {
                 // Is an edit increase the version number for the
                 // shadow
                 this.doc.serverVersion++;

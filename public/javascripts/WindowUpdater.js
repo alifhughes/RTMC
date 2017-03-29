@@ -2,6 +2,7 @@ var $ = require('jquery');
 var deepClone = require('./helpers/deepclone');
 var _ = require('underscore')._;
 var InstrumentFactory = require('./helpers/instruments/InstrumentFactory');
+var jsondiffpatch = require('jsondiffpatch');
 
 /**
  * Gets called from the sync class
@@ -32,6 +33,13 @@ var WindowUpdater = function () {
 
     // Init instrument factory
     var instrumentFactory = new InstrumentFactory();
+
+    // Set up object comparison
+    jsondiffpatch = jsondiffpatch.create({
+        objectHash: function(obj) {
+            return obj.id || JSON.stringify(obj);
+        }
+    });
 
     /**
      * Updates the bpm input field

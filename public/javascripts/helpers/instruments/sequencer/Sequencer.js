@@ -188,6 +188,29 @@ sequencer.prototype.setTrackJSON = function (track) {
     // Set the track json
     this.track = deepClone(track);
 
+    // Check if pattern has been set
+    if (this.track.pattern.length > 0) {
+
+        // Set all the cells and their values
+        this.track.pattern.map(this.setStep.bind(this));
+    }
+
 };
+
+/**
+ * Set an individual step value either on or off and reflect the change
+ *
+ * @param {array} step  The steps value
+ */
+sequencer.prototype.setStep = function (step, index) {
+
+    // Get if it is on or off
+    var on = step[0] > 0 ? true : false;
+
+    // Set the cell value
+    this.steps.setCell(index, 0, on);
+
+};
+
 
 module.exports = sequencer;

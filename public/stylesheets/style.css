@@ -253,6 +253,15 @@ tr:nth-child(even) {
 /*-------- SPECIFIC CLASSES--------- */
 /*---------------------------------- */
 
+.instrument-selector {
+    border-radius: 5px;
+}
+
+.bpm-input {
+    width: 50px;
+    margin-top: 5px;
+    border-radius: 5px;
+}
 .btn-workstation-back {
     right: 10px;
     top: 3px;

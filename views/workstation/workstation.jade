@@ -6,7 +6,7 @@ block content
     button#start Start
     button#stop Stop
     p.white-colour BPM:
-    input#bpm(type='number' value='120' min='60' max='200' style='display:inline; width:50px;')
+    input#bpm.bpm-input(type='number' value='120' min='60' max='200')
     a(href="/portal").btn.btn-default.btn-workstation-back Back to portal
   div#instrumentTracks.container-fluid
   div#gutter.container-fluid
@@ -14,7 +14,7 @@ block content
       div.col-md-6
         button#addInstrument Add Instrument
       div.col-md-6
-        select#instruments
+        select#instruments.instrument-selector
           option(value="step-sequencer") Step Sequencer
 
     script(src='/bundle.js')

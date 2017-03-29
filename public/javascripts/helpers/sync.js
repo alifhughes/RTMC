@@ -2,6 +2,7 @@ var arrangement = require('../model/arrangement');
 var jsondiffpatch = require('jsondiffpatch');
 var WindowUpdater = require('../windowupdater');
 var deepClone = require('../helpers/deepclone');
+var _ = require('underscore')._;
 
 /**
  * Constructor
@@ -188,11 +189,12 @@ var sync = function (socket, arrangementId) {
     /**
      * Creates the send edit message
      */
-    this.createSendEditMessage = function () {
+    this.createSendEditMessage = function (localBaseVersion) {
         return {
             id: this.doc.localCopy._id,
             edits: this.doc.edits,
-            localVersion: this.doc.localVersion
+            localVersion: localBaseVersion,
+            serverVersion: this.doc.serverVersion
         };
     }
 
@@ -236,29 +238,26 @@ var sync = function (socket, arrangementId) {
      */
     this.syncWithServer = function () {
 
-        // FOR NOW! Check if the shadow document has a copy/hasn't been initialised
-        if (Object.keys(this.doc.shadow).length === 0) {
-            // The shadow doc hasn't been initialised
-            this.doc.shadow = deepClone(this.doc.localCopy);
+        // Check if syncing or if it isn't initialised
+        if (this.isSyncing() || !this.isInitialised()) {
+            // Don't sync
+            return false;
         }
 
         // Create a diff of the local copy and the shadow copy
-        var diff = jsondiffpatch.diff(this.doc.shadow, this.doc.localCopy);
-
-        // Check if there is a diff
-        if (undefined === diff) {
-            // No diff made
-            return;
-        }
+        var diff = jsondiffpatch.diff(deepClone(this.doc.shadow), deepClone(this.doc.localCopy));
 
         // Create running copy of local version number
-        var baseVersion = this.doc.localVersion;
+        var localBaseVersion = this.doc.localVersion;
 
-        // Add this edit to the stack of edits
-        this.addEdit(diff, baseVersion);
+        // Check if there is a diff
+        if (!_.isEmpty(diff)) {
+            // Diff made, add edit
+            this.addEdit(diff, localBaseVersion);
+        }
 
         // Create the send edit message
-        var editMessage = this.createSendEditMessage();
+        var editMessage = this.createSendEditMessage(localBaseVersion);
 
         // Apply the the diff to the shadow document
         jsondiffpatch.patch(this.doc.shadow, diff);

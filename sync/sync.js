@@ -180,7 +180,6 @@ var Synchronise = function(socketIO) {
                         // notify all sockets about the update, all but this one
                         doc.registeredSockets.forEach(function(soc){
                             if(soc.id != socket.id){
-                                console.log(soc.id);
                                 soc.emit('updated-document');
                             }
                         });
@@ -222,7 +221,6 @@ var Synchronise = function(socketIO) {
 
         // Check if diff is empty
         if (!_.isEmpty(diff)) {
-
             // Add the difference to the server's edit stack
             clientDoc.edits.push({
               serverVersion: basedOnServerVersion,
@@ -325,7 +323,6 @@ var Synchronise = function(socketIO) {
 
         // On client sending an edit
         socket.on('send-edit', function (editMessage, send) {
-
             // Server recieved edit
             receiveEdit(editMessage, socket, send);
         });

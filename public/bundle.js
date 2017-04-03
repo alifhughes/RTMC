@@ -35629,12 +35629,10 @@ function sequencer (id) {
     //create a synth and connect it to the master output (your speakers)
     this.synth = new Tone.AMSynth().toMaster();
 
-    // Set the bpm default bpm
-    Tone.Transport.bpm.value = 120;
-
     // Set initialised flag
     this.isInitialised = false;
 
+    // Reference to self
     var self = this;
 
     // Sequence notes
@@ -35643,6 +35641,10 @@ function sequencer (id) {
         // Get the array of columns from the matrix
         var column = self.steps.matrix[col];
 
+        // Jump to the current cell
+        self.steps.jumpToCol(col);
+
+        // If cell has value, play the note
         if (1 === column[0]) {
             // Trigger synth to play note at the time passed in to the callback
             trigger(self.synth, "C4", '32n');
@@ -35721,7 +35723,10 @@ function sequencer (id) {
 sequencer.prototype.start = function () {
     // Start the Transport timer
     this.seq.start();
-    this.steps.sequence(arrangement.getBpm());
+
+    // Start matrix animation
+    //this.steps.sequence(parseFloat(arrangement.getBpm());
+    //this.steps.sequence(440);
 };
 
 /**
@@ -35730,7 +35735,11 @@ sequencer.prototype.start = function () {
 sequencer.prototype.stop = function () {
     // Stop the transport timer
     this.seq.stop();
+
+    // Stop the matrix
+    this.steps.jumpToCol(0);
     this.steps.stop();
+
 };
 
 /**

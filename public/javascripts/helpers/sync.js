@@ -137,6 +137,10 @@ var sync = function (WindowUpdater, socket, arrangementId) {
 
         // Check if any edits to apply
         if (serverEdits.edits.length == 0) {
+            // No edits, don't sync
+            this.syncing = false;
+            this.scheduled = false;
+
             return this;
         }
 
@@ -153,6 +157,7 @@ var sync = function (WindowUpdater, socket, arrangementId) {
             console.log('rejected patch because localVersions don\'t match');
         }
 
+        // Not syncing anymore
         this.syncing = false;
         this.scheduled = false;
     };
@@ -228,6 +233,15 @@ var sync = function (WindowUpdater, socket, arrangementId) {
     };
 
     /**
+     * Checks whether or not a sync has been scheduled
+     *
+     * @returns {bool} scheduled The flag to check if it has been scheduled
+     */
+    this.isScheduled = function () {
+        return this.isScheduled;
+    };
+
+    /**
      * Checks whether document has been initialised already
      *
      * @returns {bool} initialised  The flag to check if it has been initialised
@@ -248,6 +262,9 @@ var sync = function (WindowUpdater, socket, arrangementId) {
             // Don't sync
             return false;
         }
+
+        // Set syncing
+        this.syncing = true;
 
         // Create a diff of the local copy and the shadow copy
         var diff = jsondiffpatch.diff(deepClone(this.doc.shadow), deepClone(this.doc.localCopy));
@@ -279,11 +296,23 @@ var sync = function (WindowUpdater, socket, arrangementId) {
      * Schedules a server-sync
      */
     this.scheduleSync = function () {
+
+        // Check if already scheduled
+        if (this.isScheduled()) {
+            return;
+        }
+
+        // Schedule sync
+        this.scheduled = true;
         this.syncWithServer();
+
     };
 
     // Initialise 
     this.initArrangement();
+
+    // Allow 50 millisecond delay before execution to allow for data to arrive
+    this.syncWithServer = _.debounce(this.syncWithServer.bind(this), 50);
 
     // Update client every 5 seconds
     setInterval(this.scheduleSync.bind(this), 5000);

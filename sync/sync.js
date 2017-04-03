@@ -334,6 +334,9 @@ var Synchronise = function(socketIO) {
 
     };
 
+    // Allow for delay in saving
+    save = _.debounce(save, 1000);
+
     // On socket connect
     socketIO.on('connection', socketHandler);
 };

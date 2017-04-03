@@ -3,7 +3,6 @@ var trigger = require('../../../helpers/trigger');
 var proxify = require('../../../helpers/proxify');
 var deepClone = require('../../../helpers/deepclone');
 var arrangement = require('../../../model/arrangement');
-var $ = require('jquery');
 
 // Start the tone timer
 Tone.Transport.start();
@@ -13,9 +12,9 @@ Tone.Transport.start();
  *
  * @param {string|bool} id  If track already exists from client or initalise
  *                          use the id to create it
- * @returns{sequencer}      Instance of itself
+ * @returns{Sequencer}      Instance of itself
  */
-function sequencer (id) {
+function Sequencer (id) {
 
     // Initialise empty matrix
     this.steps;
@@ -28,6 +27,9 @@ function sequencer (id) {
 
     // Set initialised flag
     this.isInitialised = false;
+
+    // Initialse volume DOM element as false
+    this.volumeDOM = false;
 
     // Reference to self
     var self = this;
@@ -117,7 +119,7 @@ function sequencer (id) {
 /**
  * Start the loop sequence
  */
-sequencer.prototype.start = function () {
+Sequencer.prototype.start = function () {
     // Start the Transport timer
     this.seq.start();
 };
@@ -125,7 +127,7 @@ sequencer.prototype.start = function () {
 /**
  * Stop the loop sequence
  */
-sequencer.prototype.stop = function () {
+Sequencer.prototype.stop = function () {
     // Stop the transport timer
     this.seq.stop();
 
@@ -135,11 +137,11 @@ sequencer.prototype.stop = function () {
 };
 
 /**
- * Set the matrix for the steps sequencer
+ * Set the matrix for the steps Sequencer
  *
 * @param {DOM} matrix  The matrix DOM that is the steps of the sequencer
  */
-sequencer.prototype.setMatrix = function (matrix) {
+Sequencer.prototype.setMatrix = function (matrix) {
 
     // Set the steps
     this.steps = matrix;
@@ -157,7 +159,7 @@ sequencer.prototype.setMatrix = function (matrix) {
  *
  * @returns {matrix} steps  The steps for the sequencer
  */
-sequencer.prototype.getMatrix = function () {
+Sequencer.prototype.getMatrix = function () {
     return this.steps;
 };
 
@@ -166,11 +168,14 @@ sequencer.prototype.getMatrix = function () {
  *
  * @param {JQuery object} volume  The volume slider jquery object
  */
-sequencer.prototype.setVolume = function (volume) {
+Sequencer.prototype.setVolume = function (volume) {
 
     var self = this;
 
-    volume.on('input', function(event) {
+    // Set the class volumeDOM variable
+    this.volumeDOM = volume;
+
+    this.volumeDOM.on('input', function(event) {
 
         // Get the volume value in decibles
         var db = parseInt(event.target.value);
@@ -194,7 +199,18 @@ sequencer.prototype.setVolume = function (volume) {
  *
  * @param {object} track  JSON object of the track
  */
-sequencer.prototype.setTrackJSON = function (track) {
+Sequencer.prototype.setTrackJSON = function (track) {
+
+    // Check if volume has been changed
+    if (this.track.volume != track.volume) {
+        // Volume has been changed, update it
+
+        // Set the slider value
+        this.volumeDOM.val(track.volume);
+
+        // Set the volume
+        this.synth.volume.value = parseInt(track.volume);
+    }
 
     // Set the track json
     this.track = deepClone(track);
@@ -216,7 +232,7 @@ sequencer.prototype.setTrackJSON = function (track) {
  *
  * @param {array} step  The steps value
  */
-sequencer.prototype.setStep = function (step, index) {
+Sequencer.prototype.setStep = function (step, index) {
 
     // Get if it is on or off
     var on = step[0] > 0 ? true : false;
@@ -231,9 +247,9 @@ sequencer.prototype.setStep = function (step, index) {
  *
  * @returns {string} id  The track id of this sequencer
  */
-sequencer.prototype.getId = function () {
+Sequencer.prototype.getId = function () {
     return this.track.id;
 };
 
 
-module.exports = sequencer;
+module.exports = Sequencer;

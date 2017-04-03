@@ -35606,7 +35606,6 @@ var trigger = require('../../../helpers/trigger');
 var proxify = require('../../../helpers/proxify');
 var deepClone = require('../../../helpers/deepclone');
 var arrangement = require('../../../model/arrangement');
-var $ = require('jquery');
 
 // Start the tone timer
 Tone.Transport.start();
@@ -35616,9 +35615,9 @@ Tone.Transport.start();
  *
  * @param {string|bool} id  If track already exists from client or initalise
  *                          use the id to create it
- * @returns{sequencer}      Instance of itself
+ * @returns{Sequencer}      Instance of itself
  */
-function sequencer (id) {
+function Sequencer (id) {
 
     // Initialise empty matrix
     this.steps;
@@ -35631,6 +35630,9 @@ function sequencer (id) {
 
     // Set initialised flag
     this.isInitialised = false;
+
+    // Initialse volume DOM element as false
+    this.volumeDOM = false;
 
     // Reference to self
     var self = this;
@@ -35720,7 +35722,7 @@ function sequencer (id) {
 /**
  * Start the loop sequence
  */
-sequencer.prototype.start = function () {
+Sequencer.prototype.start = function () {
     // Start the Transport timer
     this.seq.start();
 };
@@ -35728,7 +35730,7 @@ sequencer.prototype.start = function () {
 /**
  * Stop the loop sequence
  */
-sequencer.prototype.stop = function () {
+Sequencer.prototype.stop = function () {
     // Stop the transport timer
     this.seq.stop();
 
@@ -35738,11 +35740,11 @@ sequencer.prototype.stop = function () {
 };
 
 /**
- * Set the matrix for the steps sequencer
+ * Set the matrix for the steps Sequencer
  *
 * @param {DOM} matrix  The matrix DOM that is the steps of the sequencer
  */
-sequencer.prototype.setMatrix = function (matrix) {
+Sequencer.prototype.setMatrix = function (matrix) {
 
     // Set the steps
     this.steps = matrix;
@@ -35760,7 +35762,7 @@ sequencer.prototype.setMatrix = function (matrix) {
  *
  * @returns {matrix} steps  The steps for the sequencer
  */
-sequencer.prototype.getMatrix = function () {
+Sequencer.prototype.getMatrix = function () {
     return this.steps;
 };
 
@@ -35769,11 +35771,14 @@ sequencer.prototype.getMatrix = function () {
  *
  * @param {JQuery object} volume  The volume slider jquery object
  */
-sequencer.prototype.setVolume = function (volume) {
+Sequencer.prototype.setVolume = function (volume) {
 
     var self = this;
 
-    volume.on('input', function(event) {
+    // Set the class volumeDOM variable
+    this.volumeDOM = volume;
+
+    this.volumeDOM.on('input', function(event) {
 
         // Get the volume value in decibles
         var db = parseInt(event.target.value);
@@ -35797,7 +35802,19 @@ sequencer.prototype.setVolume = function (volume) {
  *
  * @param {object} track  JSON object of the track
  */
-sequencer.prototype.setTrackJSON = function (track) {
+Sequencer.prototype.setTrackJSON = function (track) {
+
+    // Check if volume has been changed
+    if (this.track.volume != track.volume) {
+        // Volume has been changed, update it
+        console.log('volume has been changed');
+
+        // Set the slider value
+        this.volumeDOM.val(track.volume);
+
+        // Set the volume
+        this.synth.volume.value = parseInt(track.volume);
+    }
 
     // Set the track json
     this.track = deepClone(track);
@@ -35819,7 +35836,7 @@ sequencer.prototype.setTrackJSON = function (track) {
  *
  * @param {array} step  The steps value
  */
-sequencer.prototype.setStep = function (step, index) {
+Sequencer.prototype.setStep = function (step, index) {
 
     // Get if it is on or off
     var on = step[0] > 0 ? true : false;
@@ -35834,14 +35851,14 @@ sequencer.prototype.setStep = function (step, index) {
  *
  * @returns {string} id  The track id of this sequencer
  */
-sequencer.prototype.getId = function () {
+Sequencer.prototype.getId = function () {
     return this.track.id;
 };
 
 
-module.exports = sequencer;
+module.exports = Sequencer;
 
-},{"../../../helpers/deepclone":22,"../../../helpers/proxify":28,"../../../helpers/trigger":30,"../../../model/arrangement":32,"jquery":1,"tone":19}],27:[function(require,module,exports){
+},{"../../../helpers/deepclone":22,"../../../helpers/proxify":28,"../../../helpers/trigger":30,"../../../model/arrangement":32,"tone":19}],27:[function(require,module,exports){
 var nxloader = function () {
 };
 
@@ -36145,7 +36162,6 @@ var sync = function (WindowUpdater, socket, arrangementId) {
 
         // Create a diff of the local copy and the shadow copy
         var diff = jsondiffpatch.diff(deepClone(this.doc.shadow), deepClone(this.doc.localCopy));
-        console.log('diff', diff);
 
         // Create running copy of local version number
         var localBaseVersion = this.doc.localVersion;
@@ -36228,11 +36244,6 @@ module.exports = trigger;
 var $ = require('jquery');
 var Tone = require('tone');
 var InstrumentFactory = require('./helpers/instruments/InstrumentFactory');
-
-/**
- * the window updator must know about the master controls
- *  - when it creates tracks, it needs to add them to these tracks
- */
 
 /**
  * Constructor, it controls:
@@ -36613,9 +36624,6 @@ var WindowUpdater = function (MasterControls) {
 
                     // Tracks are the same, check if objects are equal
                     if (!_.isEqual(existingTrack, newTrack)) {
-                        console.log('Tracks are different! \n');
-                        console.log('newTrack: ', newTrack);
-                        console.log('existingTrack: ', existingTrack);
                         // Tracks are different
                         // Get the track, object
                         var trackToUpdate =
@@ -36623,32 +36631,6 @@ var WindowUpdater = function (MasterControls) {
 
                         // Set the new track json
                         trackToUpdate.setTrackJSON(newTrack);
-
-                        /*
-                        // Create diff of tracks
-                        var diff = jsondiffpatch.diff(
-                            deepClone(existingTrack),
-                            deepClone(newTrack)
-                        );
-
-                        // Check what diff contains
-                        if (_.has(diff, 'pattern')) {
-                            // Update the pattern
-                            console.log('has pattern!');
-                            console.log('diff.pattern', diff.pattern);
-                            for (var property in object) {
-                                console.log(prop
-                                existingTrack
-                                break;
-                            }
-
-                        } else if (_.has(diff, 'volume')) {
-                            // Update the volume
-                            console.log('has volume');
-                            console.log('diff', diff.volume);
-                        }
-                        */
-
                     }
                 });
             });

@@ -3,11 +3,6 @@ var Tone = require('tone');
 var InstrumentFactory = require('./helpers/instruments/InstrumentFactory');
 
 /**
- * the window updator must know about the master controls
- *  - when it creates tracks, it needs to add them to these tracks
- */
-
-/**
  * Constructor, it controls:
  * - Getting/Setting bpm
  * - Control of sequences, starting, stopping, etc

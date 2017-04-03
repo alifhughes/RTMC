@@ -114,4 +114,36 @@ MasterControls.prototype.addTrack = function (track) {
 
 };
 
+/**
+ * Return track from list by id
+ *
+ * @param {String}       id     Track id
+ * @return {object|bool} track  The track or false if not found
+ */
+MasterControls.prototype.getTrackById = function (id) {
+
+    // Loop through tracks
+    var track = this.tracks.reduce(function (track) {
+
+        // Check if ids match
+        if (track.id == id) {
+
+            // ids match, return track
+            return track;
+        }
+
+        // Not found
+        return;
+    });
+
+    // Check if variable is set
+    if (typeof track === 'undefined' || !track) {
+        // Not set, return false
+        return false;
+    }
+
+    // Return the found track
+    return track;
+};
+
 module.exports = MasterControls;

@@ -115,6 +115,38 @@ var WindowUpdater = function (MasterControls) {
 
             // Add the tracks
             tracksToAdd.map(this.addTrack);
+
+        } else if (tracks.length < this.arrangement.tracks.length) {
+
+            console.log('WindowUpdater: Track has been deleted!');
+
+        } else {
+            // No tracks added or deleted, an internal change to the tracks
+
+            // Loop through each track checking if their equal to exisiting tracks
+            this.arrangement.tracks.forEach(function (existingTrack) {
+
+                // Loop through tracks passed in
+                tracks.forEach(function (newTrack) {
+
+                    // Check if tracks are the same
+                    if (existingTrack.id != newTrack.id) {
+                        // Not the same, skip
+                        return;
+                    }
+
+                    // Tracks are the same, check if objects are equal
+                    if (!_.isEqual(existingTrack, newTrack)) {
+                        // Tracks are different
+                        // Get the track, object
+                        var trackToUpdate =
+                            self.masterControls.getTrackById(newTrack.id);
+
+                        // Set the new track json
+                        trackToUpdate.setTrackJSON(newTrack);
+                    }
+                });
+            });
         }
 
     };

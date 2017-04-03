@@ -185,6 +185,7 @@ sequencer.prototype.setVolume = function (volume) {
         self.pushChanges();
 
     });
+
 };
 
 /**

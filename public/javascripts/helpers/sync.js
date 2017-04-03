@@ -169,7 +169,7 @@ var sync = function (WindowUpdater, socket, arrangementId) {
 
             // Patch the shadow
             jsondiffpatch.patch(this.doc.shadow, edit.diff);
-console.log('edit.diff', edit.diff);
+
             // Check if there is a diff
             if (!_.isEmpty(edit.diff)) {
                 // Is an edit increase the version number for the
@@ -251,7 +251,6 @@ console.log('edit.diff', edit.diff);
 
         // Create a diff of the local copy and the shadow copy
         var diff = jsondiffpatch.diff(deepClone(this.doc.shadow), deepClone(this.doc.localCopy));
-        console.log('diff', diff);
 
         // Create running copy of local version number
         var localBaseVersion = this.doc.localVersion;

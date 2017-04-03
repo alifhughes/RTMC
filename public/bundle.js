@@ -35641,7 +35641,7 @@ function sequencer (id) {
         // Get the array of columns from the matrix
         var column = self.steps.matrix[col];
 
-        // Jump to the current cell
+        // Jump to the current cell to highlight the block
         self.steps.jumpToCol(col);
 
         // If cell has value, play the note
@@ -35723,10 +35723,6 @@ function sequencer (id) {
 sequencer.prototype.start = function () {
     // Start the Transport timer
     this.seq.start();
-
-    // Start matrix animation
-    //this.steps.sequence(parseFloat(arrangement.getBpm());
-    //this.steps.sequence(440);
 };
 
 /**
@@ -35736,10 +35732,9 @@ sequencer.prototype.stop = function () {
     // Stop the transport timer
     this.seq.stop();
 
-    // Stop the matrix
+    // Reset and stop the matrix animation
     this.steps.jumpToCol(0);
     this.steps.stop();
-
 };
 
 /**
@@ -35793,6 +35788,7 @@ sequencer.prototype.setVolume = function (volume) {
         self.pushChanges();
 
     });
+
 };
 
 /**
@@ -36067,7 +36063,7 @@ var sync = function (WindowUpdater, socket, arrangementId) {
 
             // Patch the shadow
             jsondiffpatch.patch(this.doc.shadow, edit.diff);
-console.log('edit.diff', edit.diff);
+
             // Check if there is a diff
             if (!_.isEmpty(edit.diff)) {
                 // Is an edit increase the version number for the
@@ -36345,6 +36341,38 @@ MasterControls.prototype.addTrack = function (track) {
 
 };
 
+/**
+ * Return track from list by id
+ *
+ * @param {String}       id     Track id
+ * @return {object|bool} track  The track or false if not found
+ */
+MasterControls.prototype.getTrackById = function (id) {
+
+    // Loop through tracks
+    var track = this.tracks.reduce(function (track) {
+
+        // Check if ids match
+        if (track.id == id) {
+
+            // ids match, return track
+            return track;
+        }
+
+        // Not found
+        return;
+    });
+
+    // Check if variable is set
+    if (typeof track === 'undefined' || !track) {
+        // Not set, return false
+        return false;
+    }
+
+    // Return the found track
+    return track;
+};
+
 module.exports = MasterControls;
 
 },{"./helpers/instruments/InstrumentFactory":24,"jquery":1,"tone":19}],32:[function(require,module,exports){
@@ -36563,6 +36591,67 @@ var WindowUpdater = function (MasterControls) {
 
             // Add the tracks
             tracksToAdd.map(this.addTrack);
+
+        } else if (tracks.length < this.arrangement.tracks.length) {
+
+            console.log('WindowUpdater: Track has been deleted!');
+
+        } else {
+            // No tracks added or deleted, an internal change to the tracks
+
+            // Loop through each track checking if their equal to exisiting tracks
+            this.arrangement.tracks.forEach(function (existingTrack) {
+
+                // Loop through tracks passed in
+                tracks.forEach(function (newTrack) {
+
+                    // Check if tracks are the same
+                    if (existingTrack.id != newTrack.id) {
+                        // Not the same, skip
+                        return;
+                    }
+
+                    // Tracks are the same, check if objects are equal
+                    if (!_.isEqual(existingTrack, newTrack)) {
+                        console.log('Tracks are different! \n');
+                        console.log('newTrack: ', newTrack);
+                        console.log('existingTrack: ', existingTrack);
+                        // Tracks are different
+                        // Get the track, object
+                        var trackToUpdate =
+                            self.masterControls.getTrackById(newTrack.id);
+
+                        // Set the new track json
+                        trackToUpdate.setTrackJSON(newTrack);
+
+                        /*
+                        // Create diff of tracks
+                        var diff = jsondiffpatch.diff(
+                            deepClone(existingTrack),
+                            deepClone(newTrack)
+                        );
+
+                        // Check what diff contains
+                        if (_.has(diff, 'pattern')) {
+                            // Update the pattern
+                            console.log('has pattern!');
+                            console.log('diff.pattern', diff.pattern);
+                            for (var property in object) {
+                                console.log(prop
+                                existingTrack
+                                break;
+                            }
+
+                        } else if (_.has(diff, 'volume')) {
+                            // Update the volume
+                            console.log('has volume');
+                            console.log('diff', diff.volume);
+                        }
+                        */
+
+                    }
+                });
+            });
         }
 
     };

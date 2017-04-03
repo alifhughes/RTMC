@@ -11,7 +11,7 @@ var _ = require('underscore')._;
  * @param   {string}           arrangementId  The ID of the arrangement that it is syncing with
  * @returns {sync}                            Instance of self
  */
-var sync = function (socket, arrangementId) {
+var sync = function (WindowUpdater, socket, arrangementId) {
 
     // Init a document that gets passed between server and client
     this.doc = {
@@ -34,8 +34,8 @@ var sync = function (socket, arrangementId) {
     // Set the socket
     this.socket = socket;
 
-    // Init a new instance of the window updater
-    this.windowUpdater = new WindowUpdater();
+    // Class's instance of window updater
+    this.windowUpdater = WindowUpdater;
 
     // Set the arrangement Id
     this.arrangementId = arrangementId;
@@ -135,6 +135,11 @@ var sync = function (socket, arrangementId) {
      */
     this.applyServerEdits = function(serverEdits){
 
+        // Check if any edits to apply
+        if (serverEdits.edits.length == 0) {
+            return this;
+        }
+
         // Check if versions match and there is edits to apply
         if (serverEdits && serverEdits.localVersion == this.doc.localVersion){
 
@@ -164,7 +169,7 @@ var sync = function (socket, arrangementId) {
 
             // Patch the shadow
             jsondiffpatch.patch(this.doc.shadow, edit.diff);
-
+console.log('edit.diff', edit.diff);
             // Check if there is a diff
             if (!_.isEmpty(edit.diff)) {
                 // Is an edit increase the version number for the
@@ -246,6 +251,7 @@ var sync = function (socket, arrangementId) {
 
         // Create a diff of the local copy and the shadow copy
         var diff = jsondiffpatch.diff(deepClone(this.doc.shadow), deepClone(this.doc.localCopy));
+        console.log('diff', diff);
 
         // Create running copy of local version number
         var localBaseVersion = this.doc.localVersion;
@@ -281,7 +287,7 @@ var sync = function (socket, arrangementId) {
     this.initArrangement();
 
     // Update client every 5 seconds
-    //setInterval(this.scheduleSync.bind(this), 5000);
+    setInterval(this.scheduleSync.bind(this), 5000);
 
     // Implement fluent interface
     return this;

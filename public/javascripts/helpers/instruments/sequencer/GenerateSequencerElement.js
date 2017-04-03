@@ -1,4 +1,5 @@
 var $ = require('jquery');
+var guid = require('../../../helpers/idgenerator');
 
 /**
  * Constructor
@@ -9,11 +10,18 @@ var generateSequencerElement = function () {
     return this;
 };
 
-generateSequencerElement.generate = function (callback) {
+generateSequencerElement.generate = function (id, callback) {
+
+        // Check if guid has been set
+        if (id == false) {
+            // Guid hasn't been set, create one
+            id = guid();
+        }
 
         // Create the instrument container row div
         var instrumentContainer = document.createElement("div");
         instrumentContainer.className = 'row instrument-container';
+        instrumentContainer.setAttribute('id', id);
 
         // Create the sample container column div
         var sampleContainer = document.createElement("div");
@@ -41,7 +49,7 @@ generateSequencerElement.generate = function (callback) {
         nx.add("matrix", {w: $('.step-sequencer-container').width(), h:  $('.step-sequencer-container').height(), parent: stepsContainer});
 
         // Get the latest element added on
-        // CHANGE THIS FUNCTIONALITY - WILL CAUSE BUGS
+        // BE WEARY OF THIS FUNCTIONALITY
         var matrix = nx.widgets[Object.keys(nx.widgets)[Object.keys(nx.widgets).length - 1]];
 
         // Set the properties of the matrix
@@ -59,6 +67,7 @@ generateSequencerElement.generate = function (callback) {
         elements.matrix = matrix;
         elements.volume = $(volume);
         elements.html = html;
+        elements.id   = id;
 
         // Send the elements back
         callback(elements);

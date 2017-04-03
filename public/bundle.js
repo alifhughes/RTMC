@@ -35399,18 +35399,15 @@ exports.Processor = Processor;
 }.call(this));
 
 },{}],21:[function(require,module,exports){
-var InstrumentFactory = require('./helpers/instruments/InstrumentFactory');
-var $ = require('jquery');
-var Tone = require('tone');
 var Sync = require('./helpers/sync');
-var proxify = require('./helpers/proxify');
 var NXLoader = require('./helpers/nxloader');
 var arrangement = require('./model/arrangement');
+var MasterControls = require('./mastercontrols');
+var WindowUpdater = require('./windowupdater');
 
 // Load the nexus ui
 nxloader = new NXLoader();
 nxloader.load();
-
 // Get the arrangement Id from the URL
 var url = window.location.pathname;
 var arrangementId = url.split('/')[3];
@@ -35421,85 +35418,17 @@ arrangement.setId(arrangementId);
 // Connect to socket
 var socket = io.connect('http://localhost:3000');
 
+// Init the master controls
+var masterControls = new MasterControls(arrangement);
+
+// Init window updater
+var windowUpdater = new WindowUpdater(masterControls);
+
 // Create new instance of sync
-var sync = new Sync(socket, arrangementId);
+var sync = new Sync(windowUpdater, socket, arrangementId);
 
-// Array of sequences
-var sequences = [];
 
-// Get the intial value of the bpm slider
-var bpm = $('#bpm').attr("value");
-
-/**
- * Add event listener for the bpm slider
- */
-$('#bpm').on('input', function(event) {
-
-    // Check if bpm is set
-    if ('' !== event.target.value) {
-
-        // Get the bpm value
-        bpm = parseInt(event.target.value);
-
-        // Set the BPM value
-        Tone.Transport.bpm.value = bpm;
-
-        // Set the bpm of the arrangement
-        arrangement.setBpm(bpm);
-    }
-
-});
-
-/**
- * Event listener for starting the playback
- */
-$('#start').on('click', function() {
-
-    // Loop all the sequences
-    sequences.forEach(function(sequence) {
-
-        // Start the sequence
-        sequence.start();
-
-    });
-});
-
-/**
- * Event listener for stopping the playback
- */
-$('#stop').on('click', function() {
-
-    // Loop all the sequences
-    sequences.forEach(function(sequence) {
-
-        // Stop the sequence
-        sequence.stop();
-
-    });
-
-});
-
-/**
- * Event listener for adding an instrument
- */
-$('#addInstrument').on('click', function () {
-
-    // Get the selected instrument from the drop down
-    var instrument = $('#instruments').val();
-
-    var instrumentFactory = new InstrumentFactory();
-
-    // Create the instrument selected
-    instrumentFactory.createInstrument(instrument, false).then(function(instrumentContainer) {
-
-        // Push the sequence on to the sequences
-        sequences.push(instrumentContainer.seq);
-
-    });
-
-});
-
-},{"./helpers/instruments/InstrumentFactory":24,"./helpers/nxloader":27,"./helpers/proxify":28,"./helpers/sync":29,"./model/arrangement":31,"jquery":1,"tone":19}],22:[function(require,module,exports){
+},{"./helpers/nxloader":27,"./helpers/sync":29,"./mastercontrols":31,"./model/arrangement":32,"./windowupdater":33}],22:[function(require,module,exports){
 /**
  * Utility function for deep object cloning
  *
@@ -35556,23 +35485,24 @@ instrumentFactory.prototype.createInstrument = function (instrument, id) {
 
             // Create the html
             return new Promise(function(resolve, reject) {
-                generateSequencerElement.generate(function (elements) {
+                generateSequencerElement.generate(id, function (elements) {
 
                     // Get the elements
-                    var matrix = elements.matrix;
-                    var volume = elements.volume;
+                    var matrix  = elements.matrix;
+                    var volume  = elements.volume;
+                    var trackId = elements.id;
 
                     // Init new sequencer object with id
-                    var seq = new Sequencer(id);
+                    var seq = new Sequencer(trackId);
 
                     // Set the sequencer objects
                     seq.setMatrix(matrix);
                     seq.setVolume(volume);
 
                     // Create a return object containing sequencer instance
-                    // and the raw html to sync with other clients
-                    var instrumentContainer = {};
-                    instrumentContainer.seq = seq;
+                    var instrumentContainer  = {};
+                    instrumentContainer.seq  = seq;
+                    instrumentContainer.id   = trackId;
                     instrumentContainer.html = elements.html;
                     resolve(instrumentContainer);
 
@@ -35593,6 +35523,7 @@ module.exports = instrumentFactory;
 
 },{"./sequencer/GenerateSequencerElement":25,"./sequencer/sequencer":26}],25:[function(require,module,exports){
 var $ = require('jquery');
+var guid = require('../../../helpers/idgenerator');
 
 /**
  * Constructor
@@ -35603,11 +35534,18 @@ var generateSequencerElement = function () {
     return this;
 };
 
-generateSequencerElement.generate = function (callback) {
+generateSequencerElement.generate = function (id, callback) {
+
+        // Check if guid has been set
+        if (id == false) {
+            // Guid hasn't been set, create one
+            id = guid();
+        }
 
         // Create the instrument container row div
         var instrumentContainer = document.createElement("div");
         instrumentContainer.className = 'row instrument-container';
+        instrumentContainer.setAttribute('id', id);
 
         // Create the sample container column div
         var sampleContainer = document.createElement("div");
@@ -35635,7 +35573,7 @@ generateSequencerElement.generate = function (callback) {
         nx.add("matrix", {w: $('.step-sequencer-container').width(), h:  $('.step-sequencer-container').height(), parent: stepsContainer});
 
         // Get the latest element added on
-        // CHANGE THIS FUNCTIONALITY - WILL CAUSE BUGS
+        // BE WEARY OF THIS FUNCTIONALITY
         var matrix = nx.widgets[Object.keys(nx.widgets)[Object.keys(nx.widgets).length - 1]];
 
         // Set the properties of the matrix
@@ -35653,6 +35591,7 @@ generateSequencerElement.generate = function (callback) {
         elements.matrix = matrix;
         elements.volume = $(volume);
         elements.html = html;
+        elements.id   = id;
 
         // Send the elements back
         callback(elements);
@@ -35661,13 +35600,13 @@ generateSequencerElement.generate = function (callback) {
 
 module.exports = generateSequencerElement;
 
-},{"jquery":1}],26:[function(require,module,exports){
+},{"../../../helpers/idgenerator":23,"jquery":1}],26:[function(require,module,exports){
 var Tone = require('tone');
 var trigger = require('../../../helpers/trigger');
-var guid = require('../../../helpers/idgenerator');
 var proxify = require('../../../helpers/proxify');
 var deepClone = require('../../../helpers/deepclone');
 var arrangement = require('../../../model/arrangement');
+var $ = require('jquery');
 
 // Start the tone timer
 Tone.Transport.start();
@@ -35692,6 +35631,9 @@ function sequencer (id) {
 
     // Set the bpm default bpm
     Tone.Transport.bpm.value = 120;
+
+    // Set initialised flag
+    this.isInitialised = false;
 
     var self = this;
 
@@ -35719,12 +35661,6 @@ function sequencer (id) {
      */
     this.createTrackJSON = function () {
 
-        // Check if guid has been set
-        if (this.id == false) {
-            // Guid hasn't been set, create one
-            this.id = guid();
-        }
-
         // JSON object container meta data of track
         var track = {
             id: this.id,
@@ -35740,7 +35676,7 @@ function sequencer (id) {
     this.track = this.createTrackJSON();
 
     // Add the track to the arrangement
-    arrangement.addTrack(this.track);
+    arrangement.addTrack(deepClone(this.track));
 
     /**
      * Proxy that picks up the changes when a step is pressed and sets the track
@@ -35751,12 +35687,19 @@ function sequencer (id) {
         // Proxify the steps
         proxify(this.track, function(object, property, oldValue, newValue) {
 
+            // If it hasn't been initialised, stop it setting the track and triggering
+            // a change
+            if (self.isInitialised == false) {
+                return;
+            }
+
             // Set the track pattern
             self.track.pattern = self.steps.matrix;
 
             // Push the changes of the track to the arrangement
             self.pushChanges();
         });
+
     };
 
     /**
@@ -35765,7 +35708,7 @@ function sequencer (id) {
     this.pushChanges = function () {
 
         // replace the track in the arrangement with updated track
-        arrangement.replaceTrack(this.track);
+        arrangement.replaceTrack(deepClone(this.track));
 
     };
 
@@ -35778,6 +35721,7 @@ function sequencer (id) {
 sequencer.prototype.start = function () {
     // Start the Transport timer
     this.seq.start();
+    this.steps.sequence(arrangement.getBpm());
 };
 
 /**
@@ -35786,6 +35730,7 @@ sequencer.prototype.start = function () {
 sequencer.prototype.stop = function () {
     // Stop the transport timer
     this.seq.stop();
+    this.steps.stop();
 };
 
 /**
@@ -35859,6 +35804,9 @@ sequencer.prototype.setTrackJSON = function (track) {
         this.track.pattern.map(this.setStep.bind(this));
     }
 
+    // Track has been initialised
+    this.isInitialised = true;
+
 };
 
 /**
@@ -35867,21 +35815,28 @@ sequencer.prototype.setTrackJSON = function (track) {
  * @param {array} step  The steps value
  */
 sequencer.prototype.setStep = function (step, index) {
-    console.log('index', index);
 
     // Get if it is on or off
     var on = step[0] > 0 ? true : false;
-    console.log('on', on);
 
     // Set the cell value
     this.steps.setCell(index, 0, on);
 
 };
 
+/**
+ * Get the sequencer ID
+ *
+ * @returns {string} id  The track id of this sequencer
+ */
+sequencer.prototype.getId = function () {
+    return this.track.id;
+};
+
 
 module.exports = sequencer;
 
-},{"../../../helpers/deepclone":22,"../../../helpers/idgenerator":23,"../../../helpers/proxify":28,"../../../helpers/trigger":30,"../../../model/arrangement":31,"tone":19}],27:[function(require,module,exports){
+},{"../../../helpers/deepclone":22,"../../../helpers/proxify":28,"../../../helpers/trigger":30,"../../../model/arrangement":32,"jquery":1,"tone":19}],27:[function(require,module,exports){
 var nxloader = function () {
 };
 
@@ -35945,7 +35900,7 @@ var _ = require('underscore')._;
  * @param   {string}           arrangementId  The ID of the arrangement that it is syncing with
  * @returns {sync}                            Instance of self
  */
-var sync = function (socket, arrangementId) {
+var sync = function (WindowUpdater, socket, arrangementId) {
 
     // Init a document that gets passed between server and client
     this.doc = {
@@ -35968,8 +35923,8 @@ var sync = function (socket, arrangementId) {
     // Set the socket
     this.socket = socket;
 
-    // Init a new instance of the window updater
-    this.windowUpdater = new WindowUpdater();
+    // Class's instance of window updater
+    this.windowUpdater = WindowUpdater;
 
     // Set the arrangement Id
     this.arrangementId = arrangementId;
@@ -36069,6 +36024,11 @@ var sync = function (socket, arrangementId) {
      */
     this.applyServerEdits = function(serverEdits){
 
+        // Check if any edits to apply
+        if (serverEdits.edits.length == 0) {
+            return this;
+        }
+
         // Check if versions match and there is edits to apply
         if (serverEdits && serverEdits.localVersion == this.doc.localVersion){
 
@@ -36098,7 +36058,7 @@ var sync = function (socket, arrangementId) {
 
             // Patch the shadow
             jsondiffpatch.patch(this.doc.shadow, edit.diff);
-
+console.log('edit.diff', edit.diff);
             // Check if there is a diff
             if (!_.isEmpty(edit.diff)) {
                 // Is an edit increase the version number for the
@@ -36180,6 +36140,7 @@ var sync = function (socket, arrangementId) {
 
         // Create a diff of the local copy and the shadow copy
         var diff = jsondiffpatch.diff(deepClone(this.doc.shadow), deepClone(this.doc.localCopy));
+        console.log('diff', diff);
 
         // Create running copy of local version number
         var localBaseVersion = this.doc.localVersion;
@@ -36215,7 +36176,7 @@ var sync = function (socket, arrangementId) {
     this.initArrangement();
 
     // Update client every 5 seconds
-    //setInterval(this.scheduleSync.bind(this), 5000);
+    setInterval(this.scheduleSync.bind(this), 5000);
 
     // Implement fluent interface
     return this;
@@ -36240,7 +36201,7 @@ sync.prototype.addChange = function (arrangement) {
 
 module.exports = sync;
 
-},{"../helpers/deepclone":22,"../model/arrangement":31,"../windowupdater":32,"jsondiffpatch":16,"underscore":20}],30:[function(require,module,exports){
+},{"../helpers/deepclone":22,"../model/arrangement":32,"../windowupdater":33,"jsondiffpatch":16,"underscore":20}],30:[function(require,module,exports){
 // Require tone
 var Tone = require('tone');
 
@@ -36259,7 +36220,126 @@ var trigger = function(instrument, note, duration) {
 module.exports = trigger;
 
 },{"tone":19}],31:[function(require,module,exports){
-var proxify = require('../helpers/proxify');
+var $ = require('jquery');
+var Tone = require('tone');
+var InstrumentFactory = require('./helpers/instruments/InstrumentFactory');
+
+/**
+ * the window updator must know about the master controls
+ *  - when it creates tracks, it needs to add them to these tracks
+ */
+
+/**
+ * Constructor, it controls:
+ * - Getting/Setting bpm
+ * - Control of sequences, starting, stopping, etc
+ * - Adding an instrument
+ *
+ * @param  {object}         arrangement  The arrangement data structure
+ * @return {MasterControls}              Instance of self
+ */
+var MasterControls = function (arrangement) {
+
+    // Array to hold a the objects of the tracks
+    this.tracks = [];
+
+    // Int to hold bpm
+    this.bpm = $('#bpm').attr("value");
+
+    // Reference to self
+    var self = this;
+
+    // Create instance of instrument factory
+    this.instrumentFactory = new InstrumentFactory();
+
+    /**
+     * Add event listener for the bpm slider
+     */
+    $('#bpm').on('input', function(event) {
+
+        // Check if bpm is set
+        if ('' !== event.target.value) {
+
+            // Get the bpm value
+            bpm = parseInt(event.target.value);
+
+            // Set the BPM value
+            Tone.Transport.bpm.value = bpm;
+
+            // Set the bpm of the arrangement
+            arrangement.setBpm(bpm);
+        }
+
+    });
+
+    /**
+     * Event listener for starting the playback
+     */
+    $('#start').on('click', function() {
+
+        // Loop all the tracks
+        self.tracks.forEach(function(track) {
+
+            // Start the track
+            track.start();
+
+        });
+    });
+
+    /**
+     * Event listener for stopping the playback
+     */
+    $('#stop').on('click', function() {
+
+        // Loop all the tracks
+        self.tracks.forEach(function(track) {
+
+            // Stop the track
+            track.stop();
+
+        });
+
+    });
+
+    /**
+     * Event listener for adding an instrument
+     */
+    $('#addInstrument').on('click', function () {
+
+        // Get the selected instrument from the drop down
+        var instrument = $('#instruments').val();
+
+        // Create the instrument selected
+        self.instrumentFactory.createInstrument(instrument, false)
+            .then(function(instrumentContainer) {
+
+                // Push the track on to the tracks
+                self.tracks.push(instrumentContainer.seq);
+
+            });
+
+    });
+
+    // Return instance of self
+    return this;
+};
+
+/**
+ * Add track to list of class tracks
+ *
+ * @param {Object} track  Sequencer/score track
+ */
+MasterControls.prototype.addTrack = function (track) {
+
+    // Push track to list of tracks
+    this.tracks.push(track);
+
+};
+
+module.exports = MasterControls;
+
+},{"./helpers/instruments/InstrumentFactory":24,"jquery":1,"tone":19}],32:[function(require,module,exports){
+var deepClone = require('../helpers/deepclone');
 
 /**
  * Arrangement singleton class that holds all tracks and their information
@@ -36315,22 +36395,23 @@ module.exports = {
 
         this.syncClientToServer();
     },
+    getBpm: function () {
+        // Get the bpm of the arrangement
+        return this.arrangement.bpm;
+    },
     replaceTrack: function (track) {
 
         // Reference to self
         var self = this;
 
-        // Loop all of the tracks in the arrangement
-        this.arrangement.tracks.forEach(function (existingTrack) {
-
-            // Check if the id of the track being passed in is same as current exisiting track
-            if (track.id == existingTrack.id) {
-                // Ids match, replace the track
-                self.arrangement.tracks[existingTrack] = track;
-            }
+        // Loop through and replace the track
+        this.arrangement.tracks = this.arrangement.tracks.map(function (existingTrack) {
+            // If track ids match, replace the track with a deep clone
+            return track.id == existingTrack.id ? deepClone(track) : existingTrack;
 
         });
 
+        // Sync with server
         this.syncClientToServer();
     },
     setSync: function (sync) {
@@ -36339,7 +36420,7 @@ module.exports = {
     },
     syncClientToServer: function () {
         // Sync the changes applied from the subsequent functions to the server
-        this.sync.addChange(this.arrangement);
+        this.sync.addChange(deepClone(this.arrangement));
     },
     setId: function (arrangementId) {
         this.arrangement.id = arrangementId;
@@ -36355,7 +36436,7 @@ module.exports = {
     }
 };
 
-},{"../helpers/proxify":28}],32:[function(require,module,exports){
+},{"../helpers/deepclone":22}],33:[function(require,module,exports){
 var $ = require('jquery');
 var deepClone = require('./helpers/deepclone');
 var _ = require('underscore')._;
@@ -36371,8 +36452,11 @@ var jsondiffpatch = require('jsondiffpatch');
  * - increase the volume of sequences
  * - set the pattern within sequences
  * - set bpm of the arrangement
+ *
+ * @param {MasterControls} MasterControls  Instance of Master controls to add
+ *                         new tracks
  */
-var WindowUpdater = function () {
+var WindowUpdater = function (MasterControls) {
 
     // Init arrangement object
     this.arrangement = {
@@ -36386,11 +36470,17 @@ var WindowUpdater = function () {
         contributors: []
     };
 
+    // Reference to this
+    var self = this;
+
     // Initiliasation flag
     this.isInitialised = false;
 
     // Init instrument factory
-    var instrumentFactory = new InstrumentFactory();
+    this.instrumentFactory = new InstrumentFactory();
+
+    // Init class instance of master controls
+    this.masterControls = MasterControls;
 
     // Set up object comparison
     jsondiffpatch = jsondiffpatch.create({
@@ -36426,18 +36516,17 @@ var WindowUpdater = function () {
      * @param {object} track  The track to initialise
      */
     this.addTrack = function (track) {
-        console.log('track', track);
 
         // Get the type
         var type = track.type;
         var id = track.id;
 
         // Create the instrument selected
-        instrumentFactory.createInstrument(type, id).then(function(instrumentContainer) {
+        self.instrumentFactory.createInstrument(type, id).then(function(instrumentContainer) {
 
             // Push the sequence on to the sequences
-            //sequences.push(instrumentContainer.seq);
             instrumentContainer.seq.setTrackJSON(track);
+            self.masterControls.addTrack(instrumentContainer.seq);
 
         });
 
@@ -36447,9 +36536,6 @@ var WindowUpdater = function () {
      * Updates the tracks in the arrangement accordingly
      */
     this.updateTracks = function (tracks) {
-    var diff = jsondiffpatch.diff(this.arrangement, tracks);
-    console.log('diff', diff);
-
 
         // Check if initilised
         if (this.isInitialised == false) {

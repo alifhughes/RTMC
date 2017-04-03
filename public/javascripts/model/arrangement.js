@@ -1,4 +1,4 @@
-var proxify = require('../helpers/proxify');
+var deepClone = require('../helpers/deepclone');
 
 /**
  * Arrangement singleton class that holds all tracks and their information
@@ -54,22 +54,23 @@ module.exports = {
 
         this.syncClientToServer();
     },
+    getBpm: function () {
+        // Get the bpm of the arrangement
+        return this.arrangement.bpm;
+    },
     replaceTrack: function (track) {
 
         // Reference to self
         var self = this;
 
-        // Loop all of the tracks in the arrangement
-        this.arrangement.tracks.forEach(function (existingTrack) {
-
-            // Check if the id of the track being passed in is same as current exisiting track
-            if (track.id == existingTrack.id) {
-                // Ids match, replace the track
-                self.arrangement.tracks[existingTrack] = track;
-            }
+        // Loop through and replace the track
+        this.arrangement.tracks = this.arrangement.tracks.map(function (existingTrack) {
+            // If track ids match, replace the track with a deep clone
+            return track.id == existingTrack.id ? deepClone(track) : existingTrack;
 
         });
 
+        // Sync with server
         this.syncClientToServer();
     },
     setSync: function (sync) {
@@ -78,7 +79,7 @@ module.exports = {
     },
     syncClientToServer: function () {
         // Sync the changes applied from the subsequent functions to the server
-        this.sync.addChange(this.arrangement);
+        this.sync.addChange(deepClone(this.arrangement));
     },
     setId: function (arrangementId) {
         this.arrangement.id = arrangementId;

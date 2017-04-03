@@ -13,8 +13,11 @@ var jsondiffpatch = require('jsondiffpatch');
  * - increase the volume of sequences
  * - set the pattern within sequences
  * - set bpm of the arrangement
+ *
+ * @param {MasterControls} MasterControls  Instance of Master controls to add
+ *                         new tracks
  */
-var WindowUpdater = function () {
+var WindowUpdater = function (MasterControls) {
 
     // Init arrangement object
     this.arrangement = {
@@ -28,11 +31,17 @@ var WindowUpdater = function () {
         contributors: []
     };
 
+    // Reference to this
+    var self = this;
+
     // Initiliasation flag
     this.isInitialised = false;
 
     // Init instrument factory
-    var instrumentFactory = new InstrumentFactory();
+    this.instrumentFactory = new InstrumentFactory();
+
+    // Init class instance of master controls
+    this.masterControls = MasterControls;
 
     // Set up object comparison
     jsondiffpatch = jsondiffpatch.create({
@@ -74,11 +83,11 @@ var WindowUpdater = function () {
         var id = track.id;
 
         // Create the instrument selected
-        instrumentFactory.createInstrument(type, id).then(function(instrumentContainer) {
+        self.instrumentFactory.createInstrument(type, id).then(function(instrumentContainer) {
 
             // Push the sequence on to the sequences
-            //sequences.push(instrumentContainer.seq);
             instrumentContainer.seq.setTrackJSON(track);
+            self.masterControls.addTrack(instrumentContainer.seq);
 
         });
 

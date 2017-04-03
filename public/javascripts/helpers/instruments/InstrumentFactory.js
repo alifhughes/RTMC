@@ -27,23 +27,24 @@ instrumentFactory.prototype.createInstrument = function (instrument, id) {
 
             // Create the html
             return new Promise(function(resolve, reject) {
-                generateSequencerElement.generate(function (elements) {
+                generateSequencerElement.generate(id, function (elements) {
 
                     // Get the elements
-                    var matrix = elements.matrix;
-                    var volume = elements.volume;
+                    var matrix  = elements.matrix;
+                    var volume  = elements.volume;
+                    var trackId = elements.id;
 
                     // Init new sequencer object with id
-                    var seq = new Sequencer(id);
+                    var seq = new Sequencer(trackId);
 
                     // Set the sequencer objects
                     seq.setMatrix(matrix);
                     seq.setVolume(volume);
 
                     // Create a return object containing sequencer instance
-                    // and the raw html to sync with other clients
-                    var instrumentContainer = {};
-                    instrumentContainer.seq = seq;
+                    var instrumentContainer  = {};
+                    instrumentContainer.seq  = seq;
+                    instrumentContainer.id   = trackId;
                     instrumentContainer.html = elements.html;
                     resolve(instrumentContainer);
 

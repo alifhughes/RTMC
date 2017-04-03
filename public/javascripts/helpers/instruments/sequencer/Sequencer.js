@@ -1,9 +1,9 @@
 var Tone = require('tone');
 var trigger = require('../../../helpers/trigger');
-var guid = require('../../../helpers/idgenerator');
 var proxify = require('../../../helpers/proxify');
 var deepClone = require('../../../helpers/deepclone');
 var arrangement = require('../../../model/arrangement');
+var $ = require('jquery');
 
 // Start the tone timer
 Tone.Transport.start();
@@ -28,6 +28,9 @@ function sequencer (id) {
 
     // Set the bpm default bpm
     Tone.Transport.bpm.value = 120;
+
+    // Set initialised flag
+    this.isInitialised = false;
 
     var self = this;
 
@@ -55,12 +58,6 @@ function sequencer (id) {
      */
     this.createTrackJSON = function () {
 
-        // Check if guid has been set
-        if (this.id == false) {
-            // Guid hasn't been set, create one
-            this.id = guid();
-        }
-
         // JSON object container meta data of track
         var track = {
             id: this.id,
@@ -76,7 +73,7 @@ function sequencer (id) {
     this.track = this.createTrackJSON();
 
     // Add the track to the arrangement
-    arrangement.addTrack(this.track);
+    arrangement.addTrack(deepClone(this.track));
 
     /**
      * Proxy that picks up the changes when a step is pressed and sets the track
@@ -87,12 +84,19 @@ function sequencer (id) {
         // Proxify the steps
         proxify(this.track, function(object, property, oldValue, newValue) {
 
+            // If it hasn't been initialised, stop it setting the track and triggering
+            // a change
+            if (self.isInitialised == false) {
+                return;
+            }
+
             // Set the track pattern
             self.track.pattern = self.steps.matrix;
 
             // Push the changes of the track to the arrangement
             self.pushChanges();
         });
+
     };
 
     /**
@@ -101,7 +105,7 @@ function sequencer (id) {
     this.pushChanges = function () {
 
         // replace the track in the arrangement with updated track
-        arrangement.replaceTrack(this.track);
+        arrangement.replaceTrack(deepClone(this.track));
 
     };
 
@@ -114,6 +118,7 @@ function sequencer (id) {
 sequencer.prototype.start = function () {
     // Start the Transport timer
     this.seq.start();
+    this.steps.sequence(arrangement.getBpm());
 };
 
 /**
@@ -122,6 +127,7 @@ sequencer.prototype.start = function () {
 sequencer.prototype.stop = function () {
     // Stop the transport timer
     this.seq.stop();
+    this.steps.stop();
 };
 
 /**
@@ -195,6 +201,9 @@ sequencer.prototype.setTrackJSON = function (track) {
         this.track.pattern.map(this.setStep.bind(this));
     }
 
+    // Track has been initialised
+    this.isInitialised = true;
+
 };
 
 /**
@@ -210,6 +219,15 @@ sequencer.prototype.setStep = function (step, index) {
     // Set the cell value
     this.steps.setCell(index, 0, on);
 
+};
+
+/**
+ * Get the sequencer ID
+ *
+ * @returns {string} id  The track id of this sequencer
+ */
+sequencer.prototype.getId = function () {
+    return this.track.id;
 };
 
 

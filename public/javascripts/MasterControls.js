@@ -19,6 +19,9 @@ var MasterControls = function (arrangement) {
     // Int to hold bpm
     this.bpm = $('#bpm').attr("value");
 
+    // Local instance of window updater
+    this.windowUpdater = false;
+
     // Reference to self
     var self = this;
 
@@ -89,8 +92,14 @@ var MasterControls = function (arrangement) {
                 // Push the track on to the tracks
                 self.tracks.push(instrumentContainer.seq);
 
-            });
+                // Initialise track locally
+                instrumentContainer.seq.setInitialised();
 
+                // Add it to the arrangement and reset the local copy of window's arrangment
+                arrangement.addTrack(instrumentContainer.seq.getTrackJSON());
+                self.windowUpdater.setArrangement(arrangement.getArrangement());
+
+            });
     });
 
     // Return instance of self
@@ -103,10 +112,17 @@ var MasterControls = function (arrangement) {
  * @param {Object} track  Sequencer/score track
  */
 MasterControls.prototype.addTrack = function (track) {
-
     // Push track to list of tracks
     this.tracks.push(track);
+};
 
+/**
+ * Setter for local copy of window updater
+ *
+ * @param {WindowUpdater} windowUpdater Instance of the class
+ */
+MasterControls.prototype.setWindowUpdater = function (windowUpdater) {
+    this.windowUpdater = windowUpdater;
 };
 
 /**
@@ -118,18 +134,16 @@ MasterControls.prototype.addTrack = function (track) {
 MasterControls.prototype.getTrackById = function (id) {
 
     // Loop through tracks
-    var track = this.tracks.reduce(function (track) {
+    for (var i = 0; i < this.tracks.length; i++) {
 
         // Check if ids match
-        if (track.id == id) {
+        if (this.tracks[i].id == id) {
 
             // ids match, return track
-            return track;
+            var track = this.tracks[i];
         }
 
-        // Not found
-        return;
-    });
+    }
 
     // Check if variable is set
     if (typeof track === 'undefined' || !track) {

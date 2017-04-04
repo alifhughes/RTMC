@@ -24,26 +24,25 @@ module.exports = {
         // Set flag for track being found or not
         var found = false;
 
-        // Loop all of the tracks in the arrangement
-        this.arrangement.tracks.forEach(function (existingTrack) {
+        // Iterate all tracks in the arrangement
+        for (var i = 0; i < this.arrangement.tracks.length; i++) {
 
             // Check if the id of the track being passed in is same as current exisiting track
-            if (track.id == existingTrack.id) {
+            if (track.id == this.arrangement.tracks[i].id) {
                 // Track found
                 found = true;
+                break;
             }
-        });
+        }
 
         // Check if track was found
         if (!found) {
             // Wasn't found
-
             // Add a track to the arrangements
             this.arrangement.tracks.push(track);
 
             // Sync with client
             this.syncClientToServer();
-
         }
 
     },
@@ -67,7 +66,6 @@ module.exports = {
         this.arrangement.tracks = this.arrangement.tracks.map(function (existingTrack) {
             // If track ids match, replace the track with a deep clone
             return track.id == existingTrack.id ? deepClone(track) : existingTrack;
-
         });
 
         // Sync with server

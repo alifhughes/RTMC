@@ -181,6 +181,15 @@ WindowUpdater.prototype.update = function (arrangement) {
 };
 
 /**
+ * Reset the arrangement, used when creating track locally
+ *
+ * @param {object} arrangement  The local updated arrangement
+ */
+WindowUpdater.prototype.setArrangement = function (arrangement) {
+    this.arrangement = arrangement
+};
+
+/**
  * Inits the arrangement so diffs can made and sets up window
  *
  * @param {object} arrangement  The initialised arrangement
@@ -194,8 +203,12 @@ WindowUpdater.prototype.initialise = function (arrangement) {
     // Set is initialised
     this.isInitialised = true;
 
+    // Set instance of self in master controls
+    this.masterControls.setWindowUpdater(this);
+
     // Set the local copy of arrangement
     this.arrangement = deepClone(arrangement);
+
 
 };
 

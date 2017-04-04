@@ -35750,7 +35750,7 @@ Sequencer.prototype.setMatrix = function (matrix) {
     this.steps = matrix;
 
     // Set the track pattern
-    this.track.pattern = this.steps.matrix;
+    this.track.pattern = matrix.matrix;
 
     // Set the steps observer
     this.setStepsObserver();
@@ -35818,16 +35818,31 @@ Sequencer.prototype.setTrackJSON = function (track) {
     // Set the track json
     this.track = deepClone(track);
 
-    // Check if pattern has been set
-    if (this.track.pattern.length > 0) {
-
-        // Set all the cells and their values
-        this.track.pattern.map(this.setStep.bind(this));
-    }
+    // Set all the cells and their values
+    this.track.pattern.map(this.setStep.bind(this));
 
     // Track has been initialised
     this.isInitialised = true;
 
+};
+
+/**
+ * Get the track JSON
+ *
+ * @return {object} this.track  The track JSON object
+ */
+Sequencer.prototype.getTrackJSON = function () {
+    return this.track;
+};
+
+
+/**
+ * Set the initialised flag, used when instrument is initalised
+ * fresh, without exisiting track JSON data
+ */
+Sequencer.prototype.setInitialised = function () {
+    // Track has been initialised
+    this.isInitialised = true;
 };
 
 /**
@@ -36290,6 +36305,9 @@ var MasterControls = function (arrangement) {
     // Int to hold bpm
     this.bpm = $('#bpm').attr("value");
 
+    // Local instance of window updater
+    this.windowUpdater = false;
+
     // Reference to self
     var self = this;
 
@@ -36360,8 +36378,14 @@ var MasterControls = function (arrangement) {
                 // Push the track on to the tracks
                 self.tracks.push(instrumentContainer.seq);
 
-            });
+                // Initialise track locally
+                instrumentContainer.seq.setInitialised();
 
+                // Add it to the arrangement and reset the local copy of window's arrangment
+                arrangement.addTrack(instrumentContainer.seq.getTrackJSON());
+                self.windowUpdater.setArrangement(arrangement.getArrangement());
+
+            });
     });
 
     // Return instance of self
@@ -36374,10 +36398,17 @@ var MasterControls = function (arrangement) {
  * @param {Object} track  Sequencer/score track
  */
 MasterControls.prototype.addTrack = function (track) {
-
     // Push track to list of tracks
     this.tracks.push(track);
+};
 
+/**
+ * Setter for local copy of window updater
+ *
+ * @param {WindowUpdater} windowUpdater Instance of the class
+ */
+MasterControls.prototype.setWindowUpdater = function (windowUpdater) {
+    this.windowUpdater = windowUpdater;
 };
 
 /**
@@ -36389,18 +36420,16 @@ MasterControls.prototype.addTrack = function (track) {
 MasterControls.prototype.getTrackById = function (id) {
 
     // Loop through tracks
-    var track = this.tracks.reduce(function (track) {
+    for (var i = 0; i < this.tracks.length; i++) {
 
         // Check if ids match
-        if (track.id == id) {
+        if (this.tracks[i].id == id) {
 
             // ids match, return track
-            return track;
+            var track = this.tracks[i];
         }
 
-        // Not found
-        return;
-    });
+    }
 
     // Check if variable is set
     if (typeof track === 'undefined' || !track) {
@@ -36441,26 +36470,25 @@ module.exports = {
         // Set flag for track being found or not
         var found = false;
 
-        // Loop all of the tracks in the arrangement
-        this.arrangement.tracks.forEach(function (existingTrack) {
+        // Iterate all tracks in the arrangement
+        for (var i = 0; i < this.arrangement.tracks.length; i++) {
 
             // Check if the id of the track being passed in is same as current exisiting track
-            if (track.id == existingTrack.id) {
+            if (track.id == this.arrangement.tracks[i].id) {
                 // Track found
                 found = true;
+                break;
             }
-        });
+        }
 
         // Check if track was found
         if (!found) {
             // Wasn't found
-
             // Add a track to the arrangements
             this.arrangement.tracks.push(track);
 
             // Sync with client
             this.syncClientToServer();
-
         }
 
     },
@@ -36484,7 +36512,6 @@ module.exports = {
         this.arrangement.tracks = this.arrangement.tracks.map(function (existingTrack) {
             // If track ids match, replace the track with a deep clone
             return track.id == existingTrack.id ? deepClone(track) : existingTrack;
-
         });
 
         // Sync with server
@@ -36696,6 +36723,15 @@ WindowUpdater.prototype.update = function (arrangement) {
 };
 
 /**
+ * Reset the arrangement, used when creating track locally
+ *
+ * @param {object} arrangement  The local updated arrangement
+ */
+WindowUpdater.prototype.setArrangement = function (arrangement) {
+    this.arrangement = arrangement
+};
+
+/**
  * Inits the arrangement so diffs can made and sets up window
  *
  * @param {object} arrangement  The initialised arrangement
@@ -36709,8 +36745,12 @@ WindowUpdater.prototype.initialise = function (arrangement) {
     // Set is initialised
     this.isInitialised = true;
 
+    // Set instance of self in master controls
+    this.masterControls.setWindowUpdater(this);
+
     // Set the local copy of arrangement
     this.arrangement = deepClone(arrangement);
+
 
 };
 

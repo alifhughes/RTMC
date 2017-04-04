@@ -147,7 +147,7 @@ Sequencer.prototype.setMatrix = function (matrix) {
     this.steps = matrix;
 
     // Set the track pattern
-    this.track.pattern = this.steps.matrix;
+    this.track.pattern = matrix.matrix;
 
     // Set the steps observer
     this.setStepsObserver();
@@ -215,16 +215,31 @@ Sequencer.prototype.setTrackJSON = function (track) {
     // Set the track json
     this.track = deepClone(track);
 
-    // Check if pattern has been set
-    if (this.track.pattern.length > 0) {
-
-        // Set all the cells and their values
-        this.track.pattern.map(this.setStep.bind(this));
-    }
+    // Set all the cells and their values
+    this.track.pattern.map(this.setStep.bind(this));
 
     // Track has been initialised
     this.isInitialised = true;
 
+};
+
+/**
+ * Get the track JSON
+ *
+ * @return {object} this.track  The track JSON object
+ */
+Sequencer.prototype.getTrackJSON = function () {
+    return this.track;
+};
+
+
+/**
+ * Set the initialised flag, used when instrument is initalised
+ * fresh, without exisiting track JSON data
+ */
+Sequencer.prototype.setInitialised = function () {
+    // Track has been initialised
+    this.isInitialised = true;
 };
 
 /**

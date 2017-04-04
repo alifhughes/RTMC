@@ -67,6 +67,9 @@ var WindowUpdater = function (MasterControls) {
         // Set the text value of input field
         bpmElement.text(bpm);
 
+        // Update the master controls
+        this.masterControls.updateBpm(bpm);
+
         // Implement fluent interface
         return this;
     };

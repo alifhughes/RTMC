@@ -142,7 +142,6 @@ MasterControls.prototype.getTrackById = function (id) {
             // ids match, return track
             var track = this.tracks[i];
         }
-
     }
 
     // Check if variable is set
@@ -153,6 +152,24 @@ MasterControls.prototype.getTrackById = function (id) {
 
     // Return the found track
     return track;
+};
+
+/**
+ * Update the Tone bpm value when syncing with server
+ *
+ * @param  {int}            bpm  The newly updated bpm of track
+ * @return {MasterControls}      Implement fluent interface
+ */
+MasterControls.prototype.updateBpm = function (bpm) {
+
+    // Get the bpm value
+    bpm = parseInt(bpm);
+
+    // Set the BPM value
+    Tone.Transport.bpm.value = bpm;
+
+    // Implement fluent interface
+    return this;
 };
 
 module.exports = MasterControls;

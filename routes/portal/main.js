@@ -18,4 +18,9 @@ router.get('/edit', edit.render);
  */
 router.post('/edit', edit.submit);
 
+/**
+ * POST request, submit edit user details
+ */
+router.post('/:id/delete', main.deleteTrack);
+
 module.exports = router;

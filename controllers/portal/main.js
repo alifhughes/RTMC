@@ -42,3 +42,37 @@ exports.render = function(req, res) {
                 });
         });
 };
+
+// Delete a track
+exports.deleteTrack = function(req, res) {
+
+    // Find arrangement by id
+    Arrangement.findById(req.params.id, function (err, arrangement) {
+        if (err) {
+            return console.error(err);
+        } else {
+            //remove it from Mongo
+            arrangement.remove(function (err, arrangement) {
+                if (err) {
+                    return console.error(err);
+                } else {
+                    //Returning success messages saying it was deleted
+                    console.log('DELETE removing ID: ' + arrangement._id);
+                    res.format({
+                        //HTML returns us back to the portal
+                          html: function(){
+                               res.redirect("/portal");
+                         },
+                         //JSON returns the item with the message that is has been deleted
+                        json: function(){
+                               res.json({message : 'deleted',
+                                   item : arrangement
+                               });
+                         }
+                      });
+                }
+            });
+        }
+    });
+
+};

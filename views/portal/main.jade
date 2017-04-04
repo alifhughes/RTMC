@@ -17,6 +17,7 @@ block content
               tr
                 th Name of track
                 th BPM of track
+                th
               for track in userTracks
                 tr
                   td
@@ -28,5 +29,40 @@ block content
                         p #{track.bpm}
                       else
                         p -
+                  td
+                    form#delete-arrangement-form(action='/portal/#{track.id}/delete', method='POST')
+                       a#delete-arrangement-a Delete
+
     else
         h4.no-margin.portal-user-names No arrangements yet!
+
+  div(id='dialog-confirm', title="Are you sure?", hidden="hidden")
+    p Deleting an arrangement is perminant, are you sure want to?
+
+  script(src="http://code.jquery.com/jquery-1.11.1.min.js")
+  script(src="http://code.jquery.com/ui/1.11.1/jquery-ui.min.js")
+  link(href='https://code.jquery.com/ui/1.11.1/themes/smoothness/jquery-ui.css', rel='stylesheet')
+
+  script.
+    $(document).ready(function() {
+      var dialog;
+      dialog = $("#dialog-confirm").dialog({
+        autoOpen: false,
+        resizable: false,
+        height: "auto",
+        width: 400,
+        modal: true,
+        buttons: {
+          "Delete Arrangement": function() {
+              $("#delete-arrangement-form").submit();
+          },
+          Cancel: function() {
+            $(this).dialog("close");
+          }
+        }
+      });
+
+      $("#delete-arrangement-a").click(function() {
+         dialog.dialog('open');
+      });
+    });

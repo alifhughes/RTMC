@@ -97,6 +97,35 @@ var WindowUpdater = function (MasterControls) {
     };
 
     /**
+     * Delete the track from the window
+     *
+     * @param {object} track  The track to delete
+     */
+    this.deleteTrack = function (track) {
+
+        // Get the id
+        var deletedTrackId = track.id;
+
+        // Iterate all the instruments
+        $('#instrumentTracks > .instrument-container').each(function() {
+
+            // Get the current iteration's track id
+            var currTrackId = $(this).attr('id');
+
+            // Check if the ids are the same
+            if (currTrackId == deletedTrackId) {
+                // Delete the track
+                $(this).remove();
+                return false;
+            }
+        });
+
+        // Remove it from the list of sequeces in the master controls
+        self.masterControls.deleteTrackById(deletedTrackId);
+
+    };
+
+    /**
      * Updates the tracks in the arrangement accordingly
      */
     this.updateTracks = function (tracks) {
@@ -121,7 +150,29 @@ var WindowUpdater = function (MasterControls) {
 
         } else if (tracks.length < this.arrangement.tracks.length) {
 
-            console.log('WindowUpdater: Track has been deleted!');
+            // Make a working copy of the tracks
+            var tracksToDelete = deepClone(this.arrangement.tracks);
+
+            // Loop through each track checking if their equal to exisiting tracks
+            this.arrangement.tracks.forEach(function (existingTrack, index) {
+
+                // Loop through tracks passed in
+                tracks.forEach(function (newTrack) {
+
+                    // Check if tracks are the same
+                    if (existingTrack.id == newTrack.id) {
+                        // Tracks match, delete it from working copy
+                        tracksToDelete.splice(index, 1);
+                        return;
+                    }
+
+                });
+            });
+
+            // Delete the tracks remaining tracks found in the class's
+            // working copy of the tracks from the window
+            tracksToDelete.map(this.deleteTrack);
+
 
         } else {
             // No tracks added or deleted, an internal change to the tracks

@@ -11,10 +11,9 @@ block content
   div#instrumentTracks.container-fluid
   div#gutter.container-fluid
     div.row
-      div.col-md-6
-        button#addInstrument Add Instrument
-      div.col-md-6
+      div.col-md-offset-5
         select#instruments.instrument-selector
           option(value="step-sequencer") Step Sequencer
+        i#addInstrument(class='fa fa-plus-circle fa-3x secondary-colour', aria-hidden='true')
 
     script(src='/bundle.js')

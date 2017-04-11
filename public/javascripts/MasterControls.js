@@ -102,6 +102,39 @@ var MasterControls = function (arrangement) {
             });
     });
 
+    /**
+     * Event handler for the deleting of a track
+     */
+    $(document).on('click', 'i.delete-track', function () {
+
+        // Get the track id to be deleted
+        var trackId = $(this).attr('track-id');
+
+        // Delete track from list of tracks
+        self.deleteTrackById(trackId);
+
+        // Iterate all the instruments
+        $('#instrumentTracks > .instrument-container').each(function() {
+
+            // Get the current iteration's track id
+            var currTrackId = $(this).attr('id');
+
+            // Check if the ids are the same
+            if (currTrackId == trackId) {
+                // Delete the track
+                $(this).remove();
+                return false;
+            }
+        });
+
+        // Remove track from arrangement
+        arrangement.deleteTrack(trackId);
+
+        // delete the arrangement and reset the local copy of window's arrangment
+        self.windowUpdater.setArrangement(arrangement.getArrangement());
+
+    });
+
     // Return instance of self
     return this;
 };
@@ -109,11 +142,38 @@ var MasterControls = function (arrangement) {
 /**
  * Add track to list of class tracks
  *
- * @param {Object} track  Sequencer/score track
+ * @param {Object}         track  Sequencer/score track
+ * @retun {MasterControls}        Instance of self
  */
 MasterControls.prototype.addTrack = function (track) {
     // Push track to list of tracks
     this.tracks.push(track);
+
+    // Implement fluent interface
+    return this;
+};
+
+/**
+ * Remove track from list of class tracks by its id
+ *
+ * @param  {Object}        trackId  Sequencer/score track id
+ * @return {MasterControls}         Instance of self
+ */
+MasterControls.prototype.deleteTrackById = function (trackId) {
+
+    // Iterate all the tracks
+    for (var i = 0; i < this.tracks.length; i++) {
+
+        // Check if current track is the track to delete
+        if (this.tracks[i].id == trackId) {
+            // Delete the track and exit the loop
+            this.tracks.splice(i, 1);
+            break;
+        }
+    }
+
+    // Implement fluent interface
+    return this;
 };
 
 /**

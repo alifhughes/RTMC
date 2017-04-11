@@ -39,9 +39,20 @@ generateSequencerElement.generate = function (id, callback) {
         volume.setAttribute('min', -12);
         volume.setAttribute('max', 12);
 
+        // Create a container div removing/clearing track actions
+        var trackRemoveActionsContainer = document.createElement("div");
+        trackRemoveActionsContainer.className = 'col-md-1 track-remove-actions-container';
+
+        // Create the remove track icon
+        var removeTrackIcon = document.createElement("i");
+        removeTrackIcon.className = 'delete-track fa fa-trash fa-3x';
+        removeTrackIcon.setAttribute('track-id', id);
+
         // Build the entire rack
         instrumentContainer.appendChild(sampleContainer);
         instrumentContainer.appendChild(stepsContainer);
+        instrumentContainer.appendChild(trackRemoveActionsContainer);
+        trackRemoveActionsContainer.appendChild(removeTrackIcon);
         sampleContainer.appendChild(volume);
         $('#instrumentTracks').append(instrumentContainer);
 

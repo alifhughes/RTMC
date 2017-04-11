@@ -46,6 +46,23 @@ module.exports = {
         }
 
     },
+    deleteTrack: function (trackId) {
+
+        // Iterate all the tracks
+        for (var i = 0; i < this.arrangement.tracks.length; i++) {
+
+            // Check if current track is the track to delete
+            if (trackId == this.arrangement.tracks[i].id) {
+                // Delete the track and exit the loop
+                this.arrangement.tracks.splice(i, 1);
+
+                // Sync with client
+                this.syncClientToServer();
+
+                break;
+            }
+        }
+    },
     setBpm: function (bpm) {
 
         // Set the bpm of the arrangement

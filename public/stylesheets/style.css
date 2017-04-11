@@ -309,6 +309,15 @@ tr:nth-child(even) {
     height: 40px;
 }
 
+.track-remove-actions-container {
+    height: 40px;
+    width: 7.333% !important;
+}
+
+.delete-track {
+    color: red;
+}
+
 .control-bar {
     height: 40px;
     margin-bottom: 20px;

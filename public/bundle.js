@@ -35563,9 +35563,20 @@ generateSequencerElement.generate = function (id, callback) {
         volume.setAttribute('min', -12);
         volume.setAttribute('max', 12);
 
+        // Create a container div removing/clearing track actions
+        var trackRemoveActionsContainer = document.createElement("div");
+        trackRemoveActionsContainer.className = 'col-md-1 track-remove-actions-container';
+
+        // Create the remove track icon
+        var removeTrackIcon = document.createElement("i");
+        removeTrackIcon.className = 'delete-track fa fa-trash fa-3x';
+        removeTrackIcon.setAttribute('track-id', id);
+
         // Build the entire rack
         instrumentContainer.appendChild(sampleContainer);
         instrumentContainer.appendChild(stepsContainer);
+        instrumentContainer.appendChild(trackRemoveActionsContainer);
+        trackRemoveActionsContainer.appendChild(removeTrackIcon);
         sampleContainer.appendChild(volume);
         $('#instrumentTracks').append(instrumentContainer);
 
@@ -36388,6 +36399,41 @@ var MasterControls = function (arrangement) {
             });
     });
 
+    /**
+     * Event handler for the deleting of a track
+     */
+    $(document).on('click', 'i.delete-track', function () {
+
+
+        // Get the track id to be deleted
+        var trackId = $(this).attr('track-id');
+        console.log('trackId', trackId);
+
+        // Delete track from list of tracks
+        self.deleteTrackById(trackId);
+
+        // Iterate all the instruments
+        $('#instrumentTracks > .instrument-container').each(function() {
+
+            // Get the current iteration's track id
+            var currTrackId = $(this).attr('id');
+
+            // Check if the ids are the same
+            if (currTrackId == trackId) {
+                // Delete the track
+                $(this).remove();
+                return false;
+            }
+        });
+
+        // Remove track from arrangement
+        arrangement.deleteTrack(trackId);
+
+        // delete the arrangement and reset the local copy of window's arrangment
+        self.windowUpdater.setArrangement(arrangement.getArrangement());
+
+    });
+
     // Return instance of self
     return this;
 };
@@ -36395,11 +36441,38 @@ var MasterControls = function (arrangement) {
 /**
  * Add track to list of class tracks
  *
- * @param {Object} track  Sequencer/score track
+ * @param {Object}         track  Sequencer/score track
+ * @retun {MasterControls}        Instance of self
  */
 MasterControls.prototype.addTrack = function (track) {
     // Push track to list of tracks
     this.tracks.push(track);
+
+    // Implement fluent interface
+    return this;
+};
+
+/**
+ * Remove track from list of class tracks by its id
+ *
+ * @param  {Object}        trackId  Sequencer/score track id
+ * @return {MasterControls}         Instance of self
+ */
+MasterControls.prototype.deleteTrackById = function (trackId) {
+
+    // Iterate all the tracks
+    for (var i = 0; i < this.tracks.length; i++) {
+
+        // Check if current track is the track to delete
+        if (this.tracks[i].id == trackId) {
+            // Delete the track and exit the loop
+            this.tracks.splice(i, 1);
+            break;
+        }
+    }
+
+    // Implement fluent interface
+    return this;
 };
 
 /**
@@ -36508,6 +36581,23 @@ module.exports = {
             this.syncClientToServer();
         }
 
+    },
+    deleteTrack: function (trackId) {
+
+        // Iterate all the tracks
+        for (var i = 0; i < this.arrangement.tracks.length; i++) {
+
+            // Check if current track is the track to delete
+            if (trackId == this.arrangement.tracks[i].id) {
+                // Delete the track and exit the loop
+                this.arrangement.tracks.splice(i, 1);
+
+                // Sync with client
+                this.syncClientToServer();
+
+                break;
+            }
+        }
     },
     setBpm: function (bpm) {
 
@@ -36656,6 +36746,35 @@ var WindowUpdater = function (MasterControls) {
     };
 
     /**
+     * Delete the track from the window
+     *
+     * @param {object} track  The track to delete
+     */
+    this.deleteTrack = function (track) {
+
+        // Get the id
+        var deletedTrackId = track.id;
+
+        // Iterate all the instruments
+        $('#instrumentTracks > .instrument-container').each(function() {
+
+            // Get the current iteration's track id
+            var currTrackId = $(this).attr('id');
+
+            // Check if the ids are the same
+            if (currTrackId == deletedTrackId) {
+                // Delete the track
+                $(this).remove();
+                return false;
+            }
+        });
+
+        // Remove it from the list of sequeces in the master controls
+        self.masterControls.deleteTrackById(deletedTrackId);
+
+    };
+
+    /**
      * Updates the tracks in the arrangement accordingly
      */
     this.updateTracks = function (tracks) {
@@ -36680,7 +36799,30 @@ var WindowUpdater = function (MasterControls) {
 
         } else if (tracks.length < this.arrangement.tracks.length) {
 
-            console.log('WindowUpdater: Track has been deleted!');
+            // Make a working copy of the tracks
+            var tracksToDelete = deepClone(this.arrangement.tracks);
+
+            // Loop through each track checking if their equal to exisiting tracks
+            this.arrangement.tracks.forEach(function (existingTrack, index) {
+
+                // Loop through tracks passed in
+                tracks.forEach(function (newTrack) {
+
+                    // Check if tracks are the same
+                    if (existingTrack.id == newTrack.id) {
+                        // Tracks match, delete it from working copy
+                        tracksToDelete.splice(index, 1);
+                        return;
+                    }
+
+                });
+            });
+
+            console.log('tracksToDelete', tracksToDelete);
+            // Delete the tracks remaining tracks found in the class's
+            // working copy of the tracks from the window
+            tracksToDelete.map(this.deleteTrack);
+
 
         } else {
             // No tracks added or deleted, an internal change to the tracks

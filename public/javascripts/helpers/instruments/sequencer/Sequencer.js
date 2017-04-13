@@ -50,7 +50,12 @@ function Sequencer (id) {
         if (1 === column[0]) {
             // Trigger synth to play note at the time passed in to the callback
             //trigger(self.synth, "C4", '32n');
-            self.source.start();
+            try {
+                self.source.start();
+            }
+            catch (e) {
+                // Siliently fail in the hopes it would have loaded next time it plays
+            }
         }
 
     }, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], '16n');

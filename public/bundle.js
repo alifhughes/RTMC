@@ -37384,8 +37384,7 @@ var WindowUpdater = function (MasterControls) {
             if (currTrackId == deletedTrackId) {
                 // Delete the track
 
-                // Fade out and remove
-                $(this).fadeOut(7000);
+                $(this).remove();
                 return false;
             }
         });

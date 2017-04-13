@@ -22,6 +22,9 @@ var MasterControls = function (arrangement) {
     // Local instance of window updater
     this.windowUpdater = false;
 
+    // Play back bool
+    this.playing = false;
+
     // Reference to self
     var self = this;
 
@@ -51,29 +54,36 @@ var MasterControls = function (arrangement) {
     /**
      * Event listener for starting the playback
      */
-    $('#start').on('click', function() {
+    $('#start-stop').on('click', function() {
 
-        // Loop all the tracks
-        self.tracks.forEach(function(track) {
+        // Set the playing toggle
+        self.playing == true ? self.playing = false : self.playing = true;
 
-            // Start the track
-            track.start();
+        // Toggle the stop class on
+        $(this).toggleClass('fa-play-circle fa-stop-circle');
 
-        });
-    });
+        // Check if playing
+        if (self.playing == true) {
 
-    /**
-     * Event listener for stopping the playback
-     */
-    $('#stop').on('click', function() {
+            // Loop all the tracks
+            self.tracks.forEach(function(track) {
 
-        // Loop all the tracks
-        self.tracks.forEach(function(track) {
+                // Start the track
+                track.start();
 
-            // Stop the track
-            track.stop();
+            });
 
-        });
+        } else {
+
+            // Loop all the tracks
+            self.tracks.forEach(function(track) {
+
+                // Start the track
+                track.stop();
+
+            });
+
+        }
 
     });
 

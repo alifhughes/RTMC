@@ -115,6 +115,7 @@ var WindowUpdater = function (MasterControls) {
             // Check if the ids are the same
             if (currTrackId == deletedTrackId) {
                 // Delete the track
+
                 $(this).remove();
                 return false;
             }

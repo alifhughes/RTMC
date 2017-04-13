@@ -274,6 +274,29 @@ Sequencer.prototype.setSettingsClickHandler = function (settings) {
 };
 
 /**
+ * Mute the track click handler
+ *
+ * @param {JQuery} muteDiv  The div containing the mute icons
+ */
+Sequencer.prototype.setMuteClickHandler = function (muteDiv) {
+
+    // Ref. to self
+    var self = this;
+
+    // Click handler
+    muteDiv.on('click', function (event) {
+
+        // Mute the source
+        self.source.mute == true ? self.source.mute = false : self.source.mute = true;
+
+        // Toggle the colour class to know its active
+        muteDiv.toggleClass('secondary-colour');
+
+    });
+
+};
+
+/**
  * Set the track JSON object, used for the syncing/updating of tracks from
  * other clients.
  *

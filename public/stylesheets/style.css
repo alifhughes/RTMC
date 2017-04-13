@@ -267,12 +267,10 @@ tr:nth-child(even) {
 
 .bpm-input {
     width: 50px;
-    margin-top: 5px;
     border-radius: 5px;
 }
 .btn-workstation-back {
     right: 10px;
-    top: 3px;
     position: absolute;
 }
 
@@ -311,11 +309,12 @@ tr:nth-child(even) {
 .sample-container {
     border-radius: 25px;
     height: 40px;
+    display:flex;
+    align-items:center;
     margin-right: 5px;
 }
 
 .volume-slider {
-    margin-top: 7px;
     margin-right: 5px;
     width: 65% !important;
     display: inline-block !important;
@@ -381,8 +380,18 @@ tr:nth-child(even) {
     cursor: pointer;
 }
 
-.track-settings {
-    margin-top: 5px;
+.track-mute-container {
+    margin-left:5px;
+    display:flex;
+    align-items:center;
+}
+
+.track-mute-container:hover {
+    transition: all .2s ease-in-out;
+    -webkit-transform: scale(1.15);
+    -ms-transform: scale(1.15);
+    transform: scale(1.15);
+    cursor: pointer;
 }
 
 .fa-plus-circle:hover {
@@ -394,12 +403,15 @@ tr:nth-child(even) {
 }
 
 .control-bar {
-    height: 40px;
+    display: flex;
+    align-items: center;
+    height: 60px;
     margin-bottom: 20px;
 }
 
 .control-bar p {
     margin-left: 5px !important;
+    margin-bottom: 0px !important;
     display:inline !important;
 }
 
@@ -408,8 +420,72 @@ tr:nth-child(even) {
     display:inline !important;
 }
 
+#start-stop:hover {
+    cursor: pointer;
+}
+
+.fa-play-circle {
+    -moz-transition: all .2s ease-in;
+    -o-transition: all .2s ease-in;
+    -webkit-transition: all .2s ease-in;
+    transition: all .2s ease-in;
+    color: white;
+}
+.fa-play-circle:hover {
+    color: #BAE559;
+}
+
+.fa-stop-circle:hover {
+    -moz-transition: all .2s ease-in;
+    -o-transition: all .2s ease-in;
+    -webkit-transition: all .2s ease-in;
+    transition: all .2s ease-in;
+    color: white;
+}
+
+.fa-stop-circle:hover {
+    color: #FF4C4C;
+}
+
 .instrument-container {
     margin-top: 5px;
+    animation: fadein 0.7s;
+    -moz-animation: fadein 0.7s; /* Firefox */
+    -webkit-animation: fadein 0.7s; /* Safari and Chrome */
+    -o-animation: fadein 0.7s; /* Opera */
+}
+
+@keyframes fadein {
+    from {
+        opacity:0;
+    }
+    to {
+        opacity:1;
+    }
+}
+@-moz-keyframes fadein { /* Firefox */
+    from {
+        opacity:0;
+    }
+    to {
+        opacity:1;
+    }
+}
+@-webkit-keyframes fadein { /* Safari and Chrome */
+    from {
+        opacity:0;
+    }
+    to {
+        opacity:1;
+    }
+}
+@-o-keyframes fadein { /* Opera */
+    from {
+        opacity:0;
+    }
+    to {
+        opacity: 1;
+    }
 }
 
 .no-padding {

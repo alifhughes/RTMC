@@ -32,6 +32,7 @@ instrumentFactory.prototype.createInstrument = function (instrument, id) {
                     // Get the elements
                     var matrix      = elements.matrix;
                     var volume      = elements.volume;
+                    var mute        = elements.mute;
                     var settings    = elements.settings;
                     var trackId     = elements.id;
 
@@ -42,6 +43,7 @@ instrumentFactory.prototype.createInstrument = function (instrument, id) {
                     seq.setMatrix(matrix);
                     seq.setVolume(volume);
                     seq.setSettingsClickHandler(settings);
+                    seq.setMuteClickHandler(mute);
 
                     // Create a return object containing sequencer instance
                     var instrumentContainer  = {};

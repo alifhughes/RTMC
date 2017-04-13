@@ -46,6 +46,18 @@ generateSequencerElement.generate = function (id, callback) {
         settingsIcon.className = "track-settings fa fa-cog fa-2x";
         settingsIcon.setAttribute('aria-hidden', 'true');
 
+        // Create mute icons
+        var muteIcon = document.createElement("i");
+        muteIcon.className = "track-mute fa fa-volume-off fa-2x";
+        muteIcon.setAttribute('aria-hidden', 'true');
+
+        var muteIconCross = document.createElement("i");
+        muteIconCross.className = "track-mute-cross fa fa-times fa-1x";
+        muteIconCross.setAttribute('aria-hidden', 'true');
+
+        var muteIconsDiv = document.createElement("div");
+        muteIconsDiv.className = "track-mute-container";
+
         // Create settings popup
         var settingsPopup = document.createElement("div");
         settingsPopup.className = "track-settings-popup light-grey-background-colour";
@@ -122,6 +134,11 @@ generateSequencerElement.generate = function (id, callback) {
         sampleContainer.appendChild(volume);
         sampleContainer.appendChild(settingsIcon);
 
+        muteIconsDiv.appendChild(muteIcon);
+        muteIconsDiv.appendChild(muteIconCross);
+
+        sampleContainer.appendChild(muteIconsDiv);
+
         $('#instrumentTracks').append(instrumentContainer);
 
         // Add the matrix
@@ -154,6 +171,7 @@ generateSequencerElement.generate = function (id, callback) {
         // Set the element
         elements.matrix   = matrix;
         elements.volume   = $(volume);
+        elements.mute     = $(muteIconsDiv);
         elements.html     = html;
         elements.id       = id;
         elements.settings = settingsPopupElements;

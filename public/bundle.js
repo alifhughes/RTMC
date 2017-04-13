@@ -35490,6 +35490,7 @@ instrumentFactory.prototype.createInstrument = function (instrument, id) {
                     // Get the elements
                     var matrix      = elements.matrix;
                     var volume      = elements.volume;
+                    var mute        = elements.mute;
                     var settings    = elements.settings;
                     var trackId     = elements.id;
 
@@ -35500,6 +35501,7 @@ instrumentFactory.prototype.createInstrument = function (instrument, id) {
                     seq.setMatrix(matrix);
                     seq.setVolume(volume);
                     seq.setSettingsClickHandler(settings);
+                    seq.setMuteClickHandler(mute);
 
                     // Create a return object containing sequencer instance
                     var instrumentContainer  = {};
@@ -35571,6 +35573,18 @@ generateSequencerElement.generate = function (id, callback) {
         var settingsIcon = document.createElement("i");
         settingsIcon.className = "track-settings fa fa-cog fa-2x";
         settingsIcon.setAttribute('aria-hidden', 'true');
+
+        // Create mute icons
+        var muteIcon = document.createElement("i");
+        muteIcon.className = "track-mute fa fa-volume-off fa-2x";
+        muteIcon.setAttribute('aria-hidden', 'true');
+
+        var muteIconCross = document.createElement("i");
+        muteIconCross.className = "track-mute-cross fa fa-times fa-1x";
+        muteIconCross.setAttribute('aria-hidden', 'true');
+
+        var muteIconsDiv = document.createElement("div");
+        muteIconsDiv.className = "track-mute-container";
 
         // Create settings popup
         var settingsPopup = document.createElement("div");
@@ -35648,6 +35662,11 @@ generateSequencerElement.generate = function (id, callback) {
         sampleContainer.appendChild(volume);
         sampleContainer.appendChild(settingsIcon);
 
+        muteIconsDiv.appendChild(muteIcon);
+        muteIconsDiv.appendChild(muteIconCross);
+
+        sampleContainer.appendChild(muteIconsDiv);
+
         $('#instrumentTracks').append(instrumentContainer);
 
         // Add the matrix
@@ -35680,6 +35699,7 @@ generateSequencerElement.generate = function (id, callback) {
         // Set the element
         elements.matrix   = matrix;
         elements.volume   = $(volume);
+        elements.mute     = $(muteIconsDiv);
         elements.html     = html;
         elements.id       = id;
         elements.settings = settingsPopupElements;
@@ -35962,6 +35982,29 @@ Sequencer.prototype.setSettingsClickHandler = function (settings) {
 
         // Load the sample
         self.source.load(sampleURL);
+
+    });
+
+};
+
+/**
+ * Mute the track click handler
+ *
+ * @param {JQuery} muteDiv  The div containing the mute icons
+ */
+Sequencer.prototype.setMuteClickHandler = function (muteDiv) {
+
+    // Ref. to self
+    var self = this;
+
+    // Click handler
+    muteDiv.on('click', function (event) {
+
+        // Mute the source
+        self.source.mute == true ? self.source.mute = false : self.source.mute = true;
+
+        // Toggle the colour class to know its active
+        muteDiv.toggleClass('secondary-colour');
 
     });
 
@@ -36887,6 +36930,9 @@ var MasterControls = function (arrangement) {
     // Local instance of window updater
     this.windowUpdater = false;
 
+    // Play back bool
+    this.playing = false;
+
     // Reference to self
     var self = this;
 
@@ -36916,29 +36962,36 @@ var MasterControls = function (arrangement) {
     /**
      * Event listener for starting the playback
      */
-    $('#start').on('click', function() {
+    $('#start-stop').on('click', function() {
 
-        // Loop all the tracks
-        self.tracks.forEach(function(track) {
+        // Set the playing toggle
+        self.playing == true ? self.playing = false : self.playing = true;
 
-            // Start the track
-            track.start();
+        // Toggle the stop class on
+        $(this).toggleClass('fa-play-circle fa-stop-circle');
 
-        });
-    });
+        // Check if playing
+        if (self.playing == true) {
 
-    /**
-     * Event listener for stopping the playback
-     */
-    $('#stop').on('click', function() {
+            // Loop all the tracks
+            self.tracks.forEach(function(track) {
 
-        // Loop all the tracks
-        self.tracks.forEach(function(track) {
+                // Start the track
+                track.start();
 
-            // Stop the track
-            track.stop();
+            });
 
-        });
+        } else {
+
+            // Loop all the tracks
+            self.tracks.forEach(function(track) {
+
+                // Start the track
+                track.stop();
+
+            });
+
+        }
 
     });
 
@@ -37330,7 +37383,9 @@ var WindowUpdater = function (MasterControls) {
             // Check if the ids are the same
             if (currTrackId == deletedTrackId) {
                 // Delete the track
-                $(this).remove();
+
+                // Fade out and remove
+                $(this).fadeOut(7000);
                 return false;
             }
         });

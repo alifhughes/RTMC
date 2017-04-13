@@ -35428,7 +35428,7 @@ var windowUpdater = new WindowUpdater(masterControls);
 var sync = new Sync(windowUpdater, socket, arrangementId);
 
 
-},{"./helpers/nxloader":27,"./helpers/sync":29,"./mastercontrols":31,"./model/arrangement":32,"./windowupdater":33}],22:[function(require,module,exports){
+},{"./helpers/nxloader":27,"./helpers/sync":30,"./mastercontrols":32,"./model/arrangement":33,"./windowupdater":34}],22:[function(require,module,exports){
 /**
  * Utility function for deep object cloning
  *
@@ -35488,9 +35488,10 @@ instrumentFactory.prototype.createInstrument = function (instrument, id) {
                 generateSequencerElement.generate(id, function (elements) {
 
                     // Get the elements
-                    var matrix  = elements.matrix;
-                    var volume  = elements.volume;
-                    var trackId = elements.id;
+                    var matrix      = elements.matrix;
+                    var volume      = elements.volume;
+                    var settings    = elements.settings;
+                    var trackId     = elements.id;
 
                     // Init new sequencer object with id
                     var seq = new Sequencer(trackId);
@@ -35498,6 +35499,7 @@ instrumentFactory.prototype.createInstrument = function (instrument, id) {
                     // Set the sequencer objects
                     seq.setMatrix(matrix);
                     seq.setVolume(volume);
+                    seq.setSettingsClickHandler(settings);
 
                     // Create a return object containing sequencer instance
                     var instrumentContainer  = {};
@@ -35524,6 +35526,7 @@ module.exports = instrumentFactory;
 },{"./sequencer/GenerateSequencerElement":25,"./sequencer/sequencer":26}],25:[function(require,module,exports){
 var $ = require('jquery');
 var guid = require('../../../helpers/idgenerator');
+var samplesObject = require('../../../helpers/samplelist');
 
 /**
  * Constructor
@@ -35557,11 +35560,62 @@ generateSequencerElement.generate = function (id, callback) {
 
         // Create volume range for sequencer
         var volume = document.createElement("input");
+        volume.className = 'volume-slider';
         volume.setAttribute('type', 'range');
         volume.setAttribute('value', 0);
         volume.setAttribute('name', 'volume');
         volume.setAttribute('min', -12);
         volume.setAttribute('max', 12);
+
+        // Create settings button icon
+        var settingsIcon = document.createElement("i");
+        settingsIcon.className = "track-settings fa fa-cog fa-2x";
+        settingsIcon.setAttribute('aria-hidden', 'true');
+
+        // Create settings popup
+        var settingsPopup = document.createElement("div");
+        settingsPopup.className = "track-settings-popup light-grey-background-colour";
+        $(settingsPopup).hide();
+
+        // Create contents of popup
+        var settingsPopupContainerDiv = document.createElement("div");
+
+        // Create Title of popup
+        var settingsPopupTitle = document.createElement("h3");
+        settingsPopupTitle.innerHTML = "Sequencer Settings";
+        settingsPopupTitle.className = "settings-popup-title centre-text";
+
+        // Content of popup
+        var settingsPopupRow = document.createElement("div");
+        settingsPopupRow.className = "settings-popup-row";
+
+        var settingsPopupLableSamples = document.createElement("h4");
+        settingsPopupLableSamples.innerHTML = "Samples:";
+
+        //Create and append select list
+        var samplesList = document.createElement("select");
+
+        //Create and append the options
+        for (var sample in samplesObject) {
+
+            // Check if property is available
+            if(samplesObject.hasOwnProperty(sample)) {
+
+                // Create the option
+                var option = document.createElement("option");
+                option.value = samplesObject[sample];
+                option.text  = sample;
+
+                // Append it to the list
+                samplesList.appendChild(option);
+            }
+        };
+
+        // Create popup confirm and exit buttons
+        var settingsPopupConfirmBtn = document.createElement("button");
+        settingsPopupConfirmBtn.innerHTML = "Confirm";
+        var settingsPopupCancelBtn = document.createElement("button");
+        settingsPopupCancelBtn.innerHTML = "Cancel";
 
         // Create a container div removing/clearing track actions
         var trackRemoveActionsContainer = document.createElement("div");
@@ -35576,8 +35630,24 @@ generateSequencerElement.generate = function (id, callback) {
         instrumentContainer.appendChild(sampleContainer);
         instrumentContainer.appendChild(stepsContainer);
         instrumentContainer.appendChild(trackRemoveActionsContainer);
+        instrumentContainer.appendChild(settingsPopup);
+
+        settingsPopup.appendChild(settingsPopupContainerDiv);
+        settingsPopupContainerDiv.appendChild(settingsPopupTitle);
+        settingsPopupContainerDiv.appendChild(settingsPopupRow);
+        settingsPopupRow.appendChild(settingsPopupLableSamples);
+        settingsPopupRow.appendChild(samplesList);
+        var secondRow = settingsPopupRow.cloneNode(true);
+        secondRow.innerHTML = "";
+        secondRow.appendChild(settingsPopupConfirmBtn);
+        secondRow.appendChild(settingsPopupCancelBtn);
+        settingsPopupContainerDiv.appendChild(secondRow);
+
         trackRemoveActionsContainer.appendChild(removeTrackIcon);
+
         sampleContainer.appendChild(volume);
+        sampleContainer.appendChild(settingsIcon);
+
         $('#instrumentTracks').append(instrumentContainer);
 
         // Add the matrix
@@ -35598,11 +35668,21 @@ generateSequencerElement.generate = function (id, callback) {
         // Create the raw html of the instrument container and its children
         var html = instrumentContainer.outerHTML;
 
+        // Create the settings popup object
+        var settingsPopupElements = {};
+        settingsPopupElements.confirmBtn = $(settingsPopupConfirmBtn);
+        settingsPopupElements.cancelBtn = $(settingsPopupCancelBtn);
+        settingsPopupElements.icon  = $(settingsIcon);
+        settingsPopupElements.popup = $(settingsPopup);
+        settingsPopupElements.samplesList = $(samplesList);
+
+
         // Set the element
-        elements.matrix = matrix;
-        elements.volume = $(volume);
-        elements.html = html;
-        elements.id   = id;
+        elements.matrix   = matrix;
+        elements.volume   = $(volume);
+        elements.html     = html;
+        elements.id       = id;
+        elements.settings = settingsPopupElements;
 
         // Send the elements back
         callback(elements);
@@ -35611,7 +35691,7 @@ generateSequencerElement.generate = function (id, callback) {
 
 module.exports = generateSequencerElement;
 
-},{"../../../helpers/idgenerator":23,"jquery":1}],26:[function(require,module,exports){
+},{"../../../helpers/idgenerator":23,"../../../helpers/samplelist":29,"jquery":1}],26:[function(require,module,exports){
 var Tone = require('tone');
 var trigger = require('../../../helpers/trigger');
 var proxify = require('../../../helpers/proxify');
@@ -35636,8 +35716,11 @@ function Sequencer (id) {
     // Init local guid
     this.id = id;
 
-    //create a synth and connect it to the master output (your speakers)
-    this.synth = new Tone.AMSynth().toMaster();
+    // Init base url string
+    this.baseURL = '../../audio/';
+
+    // Create a player and connect it to the master output (your speakers)
+    this.source = new Tone.Player("../../audio/727-HM-CONGA.WAV").toMaster();
 
     // Set initialised flag
     this.isInitialised = false;
@@ -35660,7 +35743,8 @@ function Sequencer (id) {
         // If cell has value, play the note
         if (1 === column[0]) {
             // Trigger synth to play note at the time passed in to the callback
-            trigger(self.synth, "C4", '32n');
+            //trigger(self.synth, "C4", '32n');
+            self.source.start();
         }
 
     }, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], '16n');
@@ -35680,8 +35764,9 @@ function Sequencer (id) {
         var track = {
             id: this.id,
             type: 'step-sequencer',
-            volume: self.synth.volume.value,
-            pattern: []
+            volume: self.source.volume.value,
+            pattern: [],
+            sampleURL: '../../audio/727-HM-CONGA.WAV'
         };
 
         return track;
@@ -35795,13 +35880,83 @@ Sequencer.prototype.setVolume = function (volume) {
         var db = parseInt(event.target.value);
 
         // Set the volume
-        self.synth.volume.value = db;
+        self.source.volume.value = db;
 
         // Set the track volume
         self.track.volume = db;
 
         // Push changes of the track to the arrangement
         self.pushChanges();
+
+    });
+
+};
+
+/**
+ * Set the settings click handler
+ *
+ * @param {object} settings  An object that contains the Jquey objects of
+ *                           elements in the settings popup
+ */
+Sequencer.prototype.setSettingsClickHandler = function (settings) {
+
+    // Reference to self
+    var self = this;
+
+    // Add the spinning animation to the settings icon on hover
+    settings.icon.hover(
+        function() {
+            settings.icon.addClass('fa-spin');
+        }, function() {
+            settings.icon.removeClass('fa-spin');
+        }
+    );
+
+    // On click handler for the settings icon
+    settings.icon.on('click', function (event) {
+        // Toggle the popup
+        settings.popup.toggle(400);
+    });
+
+    // On click handler for the settings icon
+    settings.cancelBtn.on('click', function (event) {
+        // Load the sample original sample
+        self.source.load(self.track.sampleURL);
+
+        // Toggle popup
+        settings.popup.toggle(400);
+    });
+
+    // On click handler for the settings icon
+    settings.confirmBtn.on('click', function (event) {
+        // Confirm choice of sample and push to other clients
+        // Get the new sample selected
+        var sample = settings.samplesList.val();
+
+        // Append the base url
+        var sampleURL = self.baseURL + sample;
+
+        // Set it to the track
+        self.track.sampleURL = sampleURL;
+
+        // Push changes
+        self.pushChanges();
+
+        // Close the popup
+        settings.popup.toggle(400);
+    });
+
+    // Select list handler for on change
+    settings.samplesList.change(function (event) {
+
+        // Get the new sample selected
+        var sample = settings.samplesList.val();
+
+        // Append the base url
+        var sampleURL = self.baseURL + sample;
+
+        // Load the sample
+        self.source.load(sampleURL);
 
     });
 
@@ -35823,7 +35978,17 @@ Sequencer.prototype.setTrackJSON = function (track) {
         this.volumeDOM.val(track.volume);
 
         // Set the volume
-        this.synth.volume.value = parseInt(track.volume);
+        this.source.volume.value = parseInt(track.volume);
+    }
+
+    // Check if sample has been changed
+    if (track.sampleURL != undefined && this.track.sampleURL != track.sampleURL) {
+        // The sample has been changed
+
+        // Load the sample
+        this.source.load(track.sampleURL);
+        console.log(this.track.sampleURL, track.sampleURL);
+
     }
 
     // Set the track json
@@ -35883,7 +36048,7 @@ Sequencer.prototype.getId = function () {
 
 module.exports = Sequencer;
 
-},{"../../../helpers/deepclone":22,"../../../helpers/proxify":28,"../../../helpers/trigger":30,"../../../model/arrangement":32,"tone":19}],27:[function(require,module,exports){
+},{"../../../helpers/deepclone":22,"../../../helpers/proxify":28,"../../../helpers/trigger":31,"../../../model/arrangement":33,"tone":19}],27:[function(require,module,exports){
 var nxloader = function () {
 };
 
@@ -35934,6 +36099,12 @@ function proxify(object, change, deepProxy) {
 module.exports = proxify;
 
 },{}],29:[function(require,module,exports){
+module.exports = {
+    "727 HM CONGA":"727-HM-CONGA.WAV",
+    "727 HO CONGA":"727-HO-CONGA.WAV"
+};
+
+},{}],30:[function(require,module,exports){
 var arrangement = require('../model/arrangement');
 var jsondiffpatch = require('jsondiffpatch');
 var WindowUpdater = require('../windowupdater');
@@ -36276,7 +36447,7 @@ sync.prototype.addChange = function (arrangement) {
 
 module.exports = sync;
 
-},{"../helpers/deepclone":22,"../model/arrangement":32,"../windowupdater":33,"jsondiffpatch":16,"underscore":20}],30:[function(require,module,exports){
+},{"../helpers/deepclone":22,"../model/arrangement":33,"../windowupdater":34,"jsondiffpatch":16,"underscore":20}],31:[function(require,module,exports){
 // Require tone
 var Tone = require('tone');
 
@@ -36294,7 +36465,7 @@ var trigger = function(instrument, note, duration) {
 
 module.exports = trigger;
 
-},{"tone":19}],31:[function(require,module,exports){
+},{"tone":19}],32:[function(require,module,exports){
 var $ = require('jquery');
 var Tone = require('tone');
 var InstrumentFactory = require('./helpers/instruments/InstrumentFactory');
@@ -36404,10 +36575,8 @@ var MasterControls = function (arrangement) {
      */
     $(document).on('click', 'i.delete-track', function () {
 
-
         // Get the track id to be deleted
         var trackId = $(this).attr('track-id');
-        console.log('trackId', trackId);
 
         // Delete track from list of tracks
         self.deleteTrackById(trackId);
@@ -36533,7 +36702,7 @@ MasterControls.prototype.updateBpm = function (bpm) {
 
 module.exports = MasterControls;
 
-},{"./helpers/instruments/InstrumentFactory":24,"jquery":1,"tone":19}],32:[function(require,module,exports){
+},{"./helpers/instruments/InstrumentFactory":24,"jquery":1,"tone":19}],33:[function(require,module,exports){
 var deepClone = require('../helpers/deepclone');
 
 /**
@@ -36646,7 +36815,7 @@ module.exports = {
     }
 };
 
-},{"../helpers/deepclone":22}],33:[function(require,module,exports){
+},{"../helpers/deepclone":22}],34:[function(require,module,exports){
 var $ = require('jquery');
 var deepClone = require('./helpers/deepclone');
 var _ = require('underscore')._;
@@ -36818,7 +36987,6 @@ var WindowUpdater = function (MasterControls) {
                 });
             });
 
-            console.log('tracksToDelete', tracksToDelete);
             // Delete the tracks remaining tracks found in the class's
             // working copy of the tracks from the window
             tracksToDelete.map(this.deleteTrack);

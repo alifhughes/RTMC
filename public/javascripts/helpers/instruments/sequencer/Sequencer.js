@@ -22,8 +22,11 @@ function Sequencer (id) {
     // Init local guid
     this.id = id;
 
-    //create a synth and connect it to the master output (your speakers)
-    this.synth = new Tone.AMSynth().toMaster();
+    // Init base url string
+    this.baseURL = '../../audio/';
+
+    // Create a player and connect it to the master output (your speakers)
+    this.source = new Tone.Player("../../audio/727-HM-CONGA.WAV").toMaster();
 
     // Set initialised flag
     this.isInitialised = false;
@@ -46,7 +49,8 @@ function Sequencer (id) {
         // If cell has value, play the note
         if (1 === column[0]) {
             // Trigger synth to play note at the time passed in to the callback
-            trigger(self.synth, "C4", '32n');
+            //trigger(self.synth, "C4", '32n');
+            self.source.start();
         }
 
     }, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], '16n');
@@ -66,8 +70,9 @@ function Sequencer (id) {
         var track = {
             id: this.id,
             type: 'step-sequencer',
-            volume: self.synth.volume.value,
-            pattern: []
+            volume: self.source.volume.value,
+            pattern: [],
+            sampleURL: '../../audio/727-HM-CONGA.WAV'
         };
 
         return track;
@@ -181,13 +186,83 @@ Sequencer.prototype.setVolume = function (volume) {
         var db = parseInt(event.target.value);
 
         // Set the volume
-        self.synth.volume.value = db;
+        self.source.volume.value = db;
 
         // Set the track volume
         self.track.volume = db;
 
         // Push changes of the track to the arrangement
         self.pushChanges();
+
+    });
+
+};
+
+/**
+ * Set the settings click handler
+ *
+ * @param {object} settings  An object that contains the Jquey objects of
+ *                           elements in the settings popup
+ */
+Sequencer.prototype.setSettingsClickHandler = function (settings) {
+
+    // Reference to self
+    var self = this;
+
+    // Add the spinning animation to the settings icon on hover
+    settings.icon.hover(
+        function() {
+            settings.icon.addClass('fa-spin');
+        }, function() {
+            settings.icon.removeClass('fa-spin');
+        }
+    );
+
+    // On click handler for the settings icon
+    settings.icon.on('click', function (event) {
+        // Toggle the popup
+        settings.popup.toggle(400);
+    });
+
+    // On click handler for the settings icon
+    settings.cancelBtn.on('click', function (event) {
+        // Load the sample original sample
+        self.source.load(self.track.sampleURL);
+
+        // Toggle popup
+        settings.popup.toggle(400);
+    });
+
+    // On click handler for the settings icon
+    settings.confirmBtn.on('click', function (event) {
+        // Confirm choice of sample and push to other clients
+        // Get the new sample selected
+        var sample = settings.samplesList.val();
+
+        // Append the base url
+        var sampleURL = self.baseURL + sample;
+
+        // Set it to the track
+        self.track.sampleURL = sampleURL;
+
+        // Push changes
+        self.pushChanges();
+
+        // Close the popup
+        settings.popup.toggle(400);
+    });
+
+    // Select list handler for on change
+    settings.samplesList.change(function (event) {
+
+        // Get the new sample selected
+        var sample = settings.samplesList.val();
+
+        // Append the base url
+        var sampleURL = self.baseURL + sample;
+
+        // Load the sample
+        self.source.load(sampleURL);
 
     });
 
@@ -209,7 +284,17 @@ Sequencer.prototype.setTrackJSON = function (track) {
         this.volumeDOM.val(track.volume);
 
         // Set the volume
-        this.synth.volume.value = parseInt(track.volume);
+        this.source.volume.value = parseInt(track.volume);
+    }
+
+    // Check if sample has been changed
+    if (track.sampleURL != undefined
+        && this.track.sampleURL != track.sampleURL) {
+        // The sample has been changed
+
+        // Load the sample
+        this.source.load(track.sampleURL);
+
     }
 
     // Set the track json

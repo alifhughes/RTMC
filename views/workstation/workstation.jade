@@ -12,8 +12,9 @@ block content
   div#gutter.container-fluid
     div.row
       div.col-md-offset-5
-        select#instruments.instrument-selector
-          option(value="step-sequencer") Step Sequencer
-        i#addInstrument(class='fa fa-plus-circle fa-3x secondary-colour', aria-hidden='true')
+        div.add-instrument-container
+          select#instruments.instrument-selector.dark-grey-background-colour.white-colour
+            option(value="step-sequencer") Step Sequencer
+          i#addInstrument(class='fa fa-plus-circle fa-3x secondary-colour', aria-hidden='true')
 
     script(src='/bundle.js')

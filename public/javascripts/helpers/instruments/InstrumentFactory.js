@@ -30,9 +30,10 @@ instrumentFactory.prototype.createInstrument = function (instrument, id) {
                 generateSequencerElement.generate(id, function (elements) {
 
                     // Get the elements
-                    var matrix  = elements.matrix;
-                    var volume  = elements.volume;
-                    var trackId = elements.id;
+                    var matrix      = elements.matrix;
+                    var volume      = elements.volume;
+                    var settings    = elements.settings;
+                    var trackId     = elements.id;
 
                     // Init new sequencer object with id
                     var seq = new Sequencer(trackId);
@@ -40,6 +41,7 @@ instrumentFactory.prototype.createInstrument = function (instrument, id) {
                     // Set the sequencer objects
                     seq.setMatrix(matrix);
                     seq.setVolume(volume);
+                    seq.setSettingsClickHandler(settings);
 
                     // Create a return object containing sequencer instance
                     var instrumentContainer  = {};

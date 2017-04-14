@@ -1,16 +1,16 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 /*!
- * jQuery JavaScript Library v3.1.1
+ * jQuery JavaScript Library v3.2.1
  * https://jquery.com/
  *
  * Includes Sizzle.js
  * https://sizzlejs.com/
  *
- * Copyright jQuery Foundation and other contributors
+ * Copyright JS Foundation and other contributors
  * Released under the MIT license
  * https://jquery.org/license
  *
- * Date: 2016-09-22T22:30Z
+ * Date: 2017-03-20T18:59Z
  */
 ( function( global, factory ) {
 
@@ -89,7 +89,7 @@ var support = {};
 
 
 var
-	version = "3.1.1",
+	version = "3.2.1",
 
 	// Define a local copy of jQuery
 	jQuery = function( selector, context ) {
@@ -237,11 +237,11 @@ jQuery.extend = jQuery.fn.extend = function() {
 
 				// Recurse if we're merging plain objects or arrays
 				if ( deep && copy && ( jQuery.isPlainObject( copy ) ||
-					( copyIsArray = jQuery.isArray( copy ) ) ) ) {
+					( copyIsArray = Array.isArray( copy ) ) ) ) {
 
 					if ( copyIsArray ) {
 						copyIsArray = false;
-						clone = src && jQuery.isArray( src ) ? src : [];
+						clone = src && Array.isArray( src ) ? src : [];
 
 					} else {
 						clone = src && jQuery.isPlainObject( src ) ? src : {};
@@ -279,8 +279,6 @@ jQuery.extend( {
 	isFunction: function( obj ) {
 		return jQuery.type( obj ) === "function";
 	},
-
-	isArray: Array.isArray,
 
 	isWindow: function( obj ) {
 		return obj != null && obj === obj.window;
@@ -354,10 +352,6 @@ jQuery.extend( {
 	// Microsoft forgot to hump their vendor prefix (#9572)
 	camelCase: function( string ) {
 		return string.replace( rmsPrefix, "ms-" ).replace( rdashAlpha, fcamelCase );
-	},
-
-	nodeName: function( elem, name ) {
-		return elem.nodeName && elem.nodeName.toLowerCase() === name.toLowerCase();
 	},
 
 	each: function( obj, callback ) {
@@ -2844,6 +2838,13 @@ var siblings = function( n, elem ) {
 
 var rneedsContext = jQuery.expr.match.needsContext;
 
+
+
+function nodeName( elem, name ) {
+
+  return elem.nodeName && elem.nodeName.toLowerCase() === name.toLowerCase();
+
+};
 var rsingleTag = ( /^<([a-z][^\/\0>:\x20\t\r\n\f]*)[\x20\t\r\n\f]*\/?>(?:<\/\1>|)$/i );
 
 
@@ -3195,7 +3196,18 @@ jQuery.each( {
 		return siblings( elem.firstChild );
 	},
 	contents: function( elem ) {
-		return elem.contentDocument || jQuery.merge( [], elem.childNodes );
+        if ( nodeName( elem, "iframe" ) ) {
+            return elem.contentDocument;
+        }
+
+        // Support: IE 9 - 11 only, iOS 7 only, Android Browser <=4.3 only
+        // Treat the template element as a regular one in browsers that
+        // don't support it.
+        if ( nodeName( elem, "template" ) ) {
+            elem = elem.content || elem;
+        }
+
+        return jQuery.merge( [], elem.childNodes );
 	}
 }, function( name, fn ) {
 	jQuery.fn[ name ] = function( until, selector ) {
@@ -3293,7 +3305,7 @@ jQuery.Callbacks = function( options ) {
 		fire = function() {
 
 			// Enforce single-firing
-			locked = options.once;
+			locked = locked || options.once;
 
 			// Execute callbacks for all pending executions,
 			// respecting firingIndex overrides and runtime changes
@@ -3462,7 +3474,7 @@ function Thrower( ex ) {
 	throw ex;
 }
 
-function adoptValue( value, resolve, reject ) {
+function adoptValue( value, resolve, reject, noValue ) {
 	var method;
 
 	try {
@@ -3478,9 +3490,10 @@ function adoptValue( value, resolve, reject ) {
 		// Other non-thenables
 		} else {
 
-			// Support: Android 4.0 only
-			// Strict mode functions invoked without .call/.apply get global-object context
-			resolve.call( undefined, value );
+			// Control `resolve` arguments by letting Array#slice cast boolean `noValue` to integer:
+			// * false: [ value ].slice( 0 ) => resolve( value )
+			// * true: [ value ].slice( 1 ) => resolve()
+			resolve.apply( undefined, [ value ].slice( noValue ) );
 		}
 
 	// For Promises/A+, convert exceptions into rejections
@@ -3490,7 +3503,7 @@ function adoptValue( value, resolve, reject ) {
 
 		// Support: Android 4.0 only
 		// Strict mode functions invoked without .call/.apply get global-object context
-		reject.call( undefined, value );
+		reject.apply( undefined, [ value ] );
 	}
 }
 
@@ -3815,7 +3828,8 @@ jQuery.extend( {
 
 		// Single- and empty arguments are adopted like Promise.resolve
 		if ( remaining <= 1 ) {
-			adoptValue( singleValue, master.done( updateFunc( i ) ).resolve, master.reject );
+			adoptValue( singleValue, master.done( updateFunc( i ) ).resolve, master.reject,
+				!remaining );
 
 			// Use .then() to unwrap secondary thenables (cf. gh-3000)
 			if ( master.state() === "pending" ||
@@ -3886,15 +3900,6 @@ jQuery.extend( {
 	// A counter to track how many items to wait for before
 	// the ready event fires. See #6781
 	readyWait: 1,
-
-	// Hold (or release) the ready event
-	holdReady: function( hold ) {
-		if ( hold ) {
-			jQuery.readyWait++;
-		} else {
-			jQuery.ready( true );
-		}
-	},
 
 	// Handle when the DOM is ready
 	ready: function( wait ) {
@@ -4131,7 +4136,7 @@ Data.prototype = {
 		if ( key !== undefined ) {
 
 			// Support array or space separated string of keys
-			if ( jQuery.isArray( key ) ) {
+			if ( Array.isArray( key ) ) {
 
 				// If key is an array of keys...
 				// We always set camelCase keys, so remove that.
@@ -4357,7 +4362,7 @@ jQuery.extend( {
 
 			// Speed up dequeue by getting out quickly if this is just a lookup
 			if ( data ) {
-				if ( !queue || jQuery.isArray( data ) ) {
+				if ( !queue || Array.isArray( data ) ) {
 					queue = dataPriv.access( elem, type, jQuery.makeArray( data ) );
 				} else {
 					queue.push( data );
@@ -4734,7 +4739,7 @@ function getAll( context, tag ) {
 		ret = [];
 	}
 
-	if ( tag === undefined || tag && jQuery.nodeName( context, tag ) ) {
+	if ( tag === undefined || tag && nodeName( context, tag ) ) {
 		return jQuery.merge( [ context ], ret );
 	}
 
@@ -5341,7 +5346,7 @@ jQuery.event = {
 
 			// For checkbox, fire native event so checked state will be right
 			trigger: function() {
-				if ( this.type === "checkbox" && this.click && jQuery.nodeName( this, "input" ) ) {
+				if ( this.type === "checkbox" && this.click && nodeName( this, "input" ) ) {
 					this.click();
 					return false;
 				}
@@ -5349,7 +5354,7 @@ jQuery.event = {
 
 			// For cross-browser consistency, don't fire native .click() on links
 			_default: function( event ) {
-				return jQuery.nodeName( event.target, "a" );
+				return nodeName( event.target, "a" );
 			}
 		},
 
@@ -5626,11 +5631,12 @@ var
 	rscriptTypeMasked = /^true\/(.*)/,
 	rcleanScript = /^\s*<!(?:\[CDATA\[|--)|(?:\]\]|--)>\s*$/g;
 
+// Prefer a tbody over its parent table for containing new rows
 function manipulationTarget( elem, content ) {
-	if ( jQuery.nodeName( elem, "table" ) &&
-		jQuery.nodeName( content.nodeType !== 11 ? content : content.firstChild, "tr" ) ) {
+	if ( nodeName( elem, "table" ) &&
+		nodeName( content.nodeType !== 11 ? content : content.firstChild, "tr" ) ) {
 
-		return elem.getElementsByTagName( "tbody" )[ 0 ] || elem;
+		return jQuery( ">tbody", elem )[ 0 ] || elem;
 	}
 
 	return elem;
@@ -6160,12 +6166,18 @@ var getStyles = function( elem ) {
 
 function curCSS( elem, name, computed ) {
 	var width, minWidth, maxWidth, ret,
+
+		// Support: Firefox 51+
+		// Retrieving style before computed somehow
+		// fixes an issue with getting wrong values
+		// on detached elements
 		style = elem.style;
 
 	computed = computed || getStyles( elem );
 
-	// Support: IE <=9 only
-	// getPropertyValue is only needed for .css('filter') (#12537)
+	// getPropertyValue is needed for:
+	//   .css('filter') (IE 9 only, #12537)
+	//   .css('--customProperty) (#3144)
 	if ( computed ) {
 		ret = computed.getPropertyValue( name ) || computed[ name ];
 
@@ -6231,6 +6243,7 @@ var
 	// except "table", "table-cell", or "table-caption"
 	// See here for display values: https://developer.mozilla.org/en-US/docs/CSS/display
 	rdisplayswap = /^(none|table(?!-c[ea]).+)/,
+	rcustomProp = /^--/,
 	cssShow = { position: "absolute", visibility: "hidden", display: "block" },
 	cssNormalTransform = {
 		letterSpacing: "0",
@@ -6258,6 +6271,16 @@ function vendorPropName( name ) {
 			return name;
 		}
 	}
+}
+
+// Return a property mapped along what jQuery.cssProps suggests or to
+// a vendor prefixed property.
+function finalPropName( name ) {
+	var ret = jQuery.cssProps[ name ];
+	if ( !ret ) {
+		ret = jQuery.cssProps[ name ] = vendorPropName( name ) || name;
+	}
+	return ret;
 }
 
 function setPositiveNumber( elem, value, subtract ) {
@@ -6320,43 +6343,30 @@ function augmentWidthOrHeight( elem, name, extra, isBorderBox, styles ) {
 
 function getWidthOrHeight( elem, name, extra ) {
 
-	// Start with offset property, which is equivalent to the border-box value
-	var val,
-		valueIsBorderBox = true,
+	// Start with computed style
+	var valueIsBorderBox,
 		styles = getStyles( elem ),
+		val = curCSS( elem, name, styles ),
 		isBorderBox = jQuery.css( elem, "boxSizing", false, styles ) === "border-box";
 
-	// Support: IE <=11 only
-	// Running getBoundingClientRect on a disconnected node
-	// in IE throws an error.
-	if ( elem.getClientRects().length ) {
-		val = elem.getBoundingClientRect()[ name ];
+	// Computed unit is not pixels. Stop here and return.
+	if ( rnumnonpx.test( val ) ) {
+		return val;
 	}
 
-	// Some non-html elements return undefined for offsetWidth, so check for null/undefined
-	// svg - https://bugzilla.mozilla.org/show_bug.cgi?id=649285
-	// MathML - https://bugzilla.mozilla.org/show_bug.cgi?id=491668
-	if ( val <= 0 || val == null ) {
+	// Check for style in case a browser which returns unreliable values
+	// for getComputedStyle silently falls back to the reliable elem.style
+	valueIsBorderBox = isBorderBox &&
+		( support.boxSizingReliable() || val === elem.style[ name ] );
 
-		// Fall back to computed then uncomputed css if necessary
-		val = curCSS( elem, name, styles );
-		if ( val < 0 || val == null ) {
-			val = elem.style[ name ];
-		}
-
-		// Computed unit is not pixels. Stop here and return.
-		if ( rnumnonpx.test( val ) ) {
-			return val;
-		}
-
-		// Check for style in case a browser which returns unreliable values
-		// for getComputedStyle silently falls back to the reliable elem.style
-		valueIsBorderBox = isBorderBox &&
-			( support.boxSizingReliable() || val === elem.style[ name ] );
-
-		// Normalize "", auto, and prepare for extra
-		val = parseFloat( val ) || 0;
+	// Fall back to offsetWidth/Height when value is "auto"
+	// This happens for inline elements with no explicit setting (gh-3571)
+	if ( val === "auto" ) {
+		val = elem[ "offset" + name[ 0 ].toUpperCase() + name.slice( 1 ) ];
 	}
+
+	// Normalize "", auto, and prepare for extra
+	val = parseFloat( val ) || 0;
 
 	// Use the active box-sizing model to add/subtract irrelevant styles
 	return ( val +
@@ -6421,10 +6431,15 @@ jQuery.extend( {
 		// Make sure that we're working with the right name
 		var ret, type, hooks,
 			origName = jQuery.camelCase( name ),
+			isCustomProp = rcustomProp.test( name ),
 			style = elem.style;
 
-		name = jQuery.cssProps[ origName ] ||
-			( jQuery.cssProps[ origName ] = vendorPropName( origName ) || origName );
+		// Make sure that we're working with the right name. We don't
+		// want to query the value if it is a CSS custom property
+		// since they are user-defined.
+		if ( !isCustomProp ) {
+			name = finalPropName( origName );
+		}
 
 		// Gets hook for the prefixed version, then unprefixed version
 		hooks = jQuery.cssHooks[ name ] || jQuery.cssHooks[ origName ];
@@ -6460,7 +6475,11 @@ jQuery.extend( {
 			if ( !hooks || !( "set" in hooks ) ||
 				( value = hooks.set( elem, value, extra ) ) !== undefined ) {
 
-				style[ name ] = value;
+				if ( isCustomProp ) {
+					style.setProperty( name, value );
+				} else {
+					style[ name ] = value;
+				}
 			}
 
 		} else {
@@ -6479,11 +6498,15 @@ jQuery.extend( {
 
 	css: function( elem, name, extra, styles ) {
 		var val, num, hooks,
-			origName = jQuery.camelCase( name );
+			origName = jQuery.camelCase( name ),
+			isCustomProp = rcustomProp.test( name );
 
-		// Make sure that we're working with the right name
-		name = jQuery.cssProps[ origName ] ||
-			( jQuery.cssProps[ origName ] = vendorPropName( origName ) || origName );
+		// Make sure that we're working with the right name. We don't
+		// want to modify the value if it is a CSS custom property
+		// since they are user-defined.
+		if ( !isCustomProp ) {
+			name = finalPropName( origName );
+		}
 
 		// Try prefixed name followed by the unprefixed name
 		hooks = jQuery.cssHooks[ name ] || jQuery.cssHooks[ origName ];
@@ -6508,6 +6531,7 @@ jQuery.extend( {
 			num = parseFloat( val );
 			return extra === true || isFinite( num ) ? num || 0 : val;
 		}
+
 		return val;
 	}
 } );
@@ -6607,7 +6631,7 @@ jQuery.fn.extend( {
 				map = {},
 				i = 0;
 
-			if ( jQuery.isArray( name ) ) {
+			if ( Array.isArray( name ) ) {
 				styles = getStyles( elem );
 				len = name.length;
 
@@ -6745,13 +6769,18 @@ jQuery.fx.step = {};
 
 
 var
-	fxNow, timerId,
+	fxNow, inProgress,
 	rfxtypes = /^(?:toggle|show|hide)$/,
 	rrun = /queueHooks$/;
 
-function raf() {
-	if ( timerId ) {
-		window.requestAnimationFrame( raf );
+function schedule() {
+	if ( inProgress ) {
+		if ( document.hidden === false && window.requestAnimationFrame ) {
+			window.requestAnimationFrame( schedule );
+		} else {
+			window.setTimeout( schedule, jQuery.fx.interval );
+		}
+
 		jQuery.fx.tick();
 	}
 }
@@ -6978,7 +7007,7 @@ function propFilter( props, specialEasing ) {
 		name = jQuery.camelCase( index );
 		easing = specialEasing[ name ];
 		value = props[ index ];
-		if ( jQuery.isArray( value ) ) {
+		if ( Array.isArray( value ) ) {
 			easing = value[ 1 ];
 			value = props[ index ] = value[ 0 ];
 		}
@@ -7037,12 +7066,19 @@ function Animation( elem, properties, options ) {
 
 			deferred.notifyWith( elem, [ animation, percent, remaining ] );
 
+			// If there's more to do, yield
 			if ( percent < 1 && length ) {
 				return remaining;
-			} else {
-				deferred.resolveWith( elem, [ animation ] );
-				return false;
 			}
+
+			// If this was an empty animation, synthesize a final progress notification
+			if ( !length ) {
+				deferred.notifyWith( elem, [ animation, 1, 0 ] );
+			}
+
+			// Resolve the animation and report its conclusion
+			deferred.resolveWith( elem, [ animation ] );
+			return false;
 		},
 		animation = deferred.promise( {
 			elem: elem,
@@ -7107,6 +7143,13 @@ function Animation( elem, properties, options ) {
 		animation.opts.start.call( elem, animation );
 	}
 
+	// Attach callbacks from options
+	animation
+		.progress( animation.opts.progress )
+		.done( animation.opts.done, animation.opts.complete )
+		.fail( animation.opts.fail )
+		.always( animation.opts.always );
+
 	jQuery.fx.timer(
 		jQuery.extend( tick, {
 			elem: elem,
@@ -7115,11 +7158,7 @@ function Animation( elem, properties, options ) {
 		} )
 	);
 
-	// attach callbacks from options
-	return animation.progress( animation.opts.progress )
-		.done( animation.opts.done, animation.opts.complete )
-		.fail( animation.opts.fail )
-		.always( animation.opts.always );
+	return animation;
 }
 
 jQuery.Animation = jQuery.extend( Animation, {
@@ -7170,8 +7209,8 @@ jQuery.speed = function( speed, easing, fn ) {
 		easing: fn && easing || easing && !jQuery.isFunction( easing ) && easing
 	};
 
-	// Go to the end state if fx are off or if document is hidden
-	if ( jQuery.fx.off || document.hidden ) {
+	// Go to the end state if fx are off
+	if ( jQuery.fx.off ) {
 		opt.duration = 0;
 
 	} else {
@@ -7363,7 +7402,7 @@ jQuery.fx.tick = function() {
 	for ( ; i < timers.length; i++ ) {
 		timer = timers[ i ];
 
-		// Checks the timer has not already been removed
+		// Run the timer and safely remove it when done (allowing for external removal)
 		if ( !timer() && timers[ i ] === timer ) {
 			timers.splice( i--, 1 );
 		}
@@ -7377,30 +7416,21 @@ jQuery.fx.tick = function() {
 
 jQuery.fx.timer = function( timer ) {
 	jQuery.timers.push( timer );
-	if ( timer() ) {
-		jQuery.fx.start();
-	} else {
-		jQuery.timers.pop();
-	}
+	jQuery.fx.start();
 };
 
 jQuery.fx.interval = 13;
 jQuery.fx.start = function() {
-	if ( !timerId ) {
-		timerId = window.requestAnimationFrame ?
-			window.requestAnimationFrame( raf ) :
-			window.setInterval( jQuery.fx.tick, jQuery.fx.interval );
+	if ( inProgress ) {
+		return;
 	}
+
+	inProgress = true;
+	schedule();
 };
 
 jQuery.fx.stop = function() {
-	if ( window.cancelAnimationFrame ) {
-		window.cancelAnimationFrame( timerId );
-	} else {
-		window.clearInterval( timerId );
-	}
-
-	timerId = null;
+	inProgress = null;
 };
 
 jQuery.fx.speeds = {
@@ -7517,7 +7547,7 @@ jQuery.extend( {
 		type: {
 			set: function( elem, value ) {
 				if ( !support.radioValue && value === "radio" &&
-					jQuery.nodeName( elem, "input" ) ) {
+					nodeName( elem, "input" ) ) {
 					var val = elem.value;
 					elem.setAttribute( "type", value );
 					if ( val ) {
@@ -7948,7 +7978,7 @@ jQuery.fn.extend( {
 			} else if ( typeof val === "number" ) {
 				val += "";
 
-			} else if ( jQuery.isArray( val ) ) {
+			} else if ( Array.isArray( val ) ) {
 				val = jQuery.map( val, function( value ) {
 					return value == null ? "" : value + "";
 				} );
@@ -8007,7 +8037,7 @@ jQuery.extend( {
 							// Don't return options that are disabled or in a disabled optgroup
 							!option.disabled &&
 							( !option.parentNode.disabled ||
-								!jQuery.nodeName( option.parentNode, "optgroup" ) ) ) {
+								!nodeName( option.parentNode, "optgroup" ) ) ) {
 
 						// Get the specific value for the option
 						value = jQuery( option ).val();
@@ -8059,7 +8089,7 @@ jQuery.extend( {
 jQuery.each( [ "radio", "checkbox" ], function() {
 	jQuery.valHooks[ this ] = {
 		set: function( elem, value ) {
-			if ( jQuery.isArray( value ) ) {
+			if ( Array.isArray( value ) ) {
 				return ( elem.checked = jQuery.inArray( jQuery( elem ).val(), value ) > -1 );
 			}
 		}
@@ -8354,7 +8384,7 @@ var
 function buildParams( prefix, obj, traditional, add ) {
 	var name;
 
-	if ( jQuery.isArray( obj ) ) {
+	if ( Array.isArray( obj ) ) {
 
 		// Serialize array item.
 		jQuery.each( obj, function( i, v ) {
@@ -8406,7 +8436,7 @@ jQuery.param = function( a, traditional ) {
 		};
 
 	// If an array was passed in, assume that it is an array of form elements.
-	if ( jQuery.isArray( a ) || ( a.jquery && !jQuery.isPlainObject( a ) ) ) {
+	if ( Array.isArray( a ) || ( a.jquery && !jQuery.isPlainObject( a ) ) ) {
 
 		// Serialize the form elements
 		jQuery.each( a, function() {
@@ -8452,7 +8482,7 @@ jQuery.fn.extend( {
 				return null;
 			}
 
-			if ( jQuery.isArray( val ) ) {
+			if ( Array.isArray( val ) ) {
 				return jQuery.map( val, function( val ) {
 					return { name: elem.name, value: val.replace( rCRLF, "\r\n" ) };
 				} );
@@ -9877,13 +9907,6 @@ jQuery.expr.pseudos.animated = function( elem ) {
 
 
 
-/**
- * Gets a window from an element
- */
-function getWindow( elem ) {
-	return jQuery.isWindow( elem ) ? elem : elem.nodeType === 9 && elem.defaultView;
-}
-
 jQuery.offset = {
 	setOffset: function( elem, options, i ) {
 		var curPosition, curLeft, curCSSTop, curTop, curOffset, curCSSLeft, calculatePosition,
@@ -9948,13 +9971,14 @@ jQuery.fn.extend( {
 				} );
 		}
 
-		var docElem, win, rect, doc,
+		var doc, docElem, rect, win,
 			elem = this[ 0 ];
 
 		if ( !elem ) {
 			return;
 		}
 
+		// Return zeros for disconnected and hidden (display: none) elements (gh-2310)
 		// Support: IE <=11 only
 		// Running getBoundingClientRect on a
 		// disconnected node in IE throws an error
@@ -9964,20 +9988,14 @@ jQuery.fn.extend( {
 
 		rect = elem.getBoundingClientRect();
 
-		// Make sure element is not hidden (display: none)
-		if ( rect.width || rect.height ) {
-			doc = elem.ownerDocument;
-			win = getWindow( doc );
-			docElem = doc.documentElement;
+		doc = elem.ownerDocument;
+		docElem = doc.documentElement;
+		win = doc.defaultView;
 
-			return {
-				top: rect.top + win.pageYOffset - docElem.clientTop,
-				left: rect.left + win.pageXOffset - docElem.clientLeft
-			};
-		}
-
-		// Return zeros for disconnected and hidden elements (gh-2310)
-		return rect;
+		return {
+			top: rect.top + win.pageYOffset - docElem.clientTop,
+			left: rect.left + win.pageXOffset - docElem.clientLeft
+		};
 	},
 
 	position: function() {
@@ -10003,7 +10021,7 @@ jQuery.fn.extend( {
 
 			// Get correct offsets
 			offset = this.offset();
-			if ( !jQuery.nodeName( offsetParent[ 0 ], "html" ) ) {
+			if ( !nodeName( offsetParent[ 0 ], "html" ) ) {
 				parentOffset = offsetParent.offset();
 			}
 
@@ -10050,7 +10068,14 @@ jQuery.each( { scrollLeft: "pageXOffset", scrollTop: "pageYOffset" }, function( 
 
 	jQuery.fn[ method ] = function( val ) {
 		return access( this, function( elem, method, val ) {
-			var win = getWindow( elem );
+
+			// Coalesce documents and windows
+			var win;
+			if ( jQuery.isWindow( elem ) ) {
+				win = elem;
+			} else if ( elem.nodeType === 9 ) {
+				win = elem.defaultView;
+			}
 
 			if ( val === undefined ) {
 				return win ? win[ prop ] : elem[ method ];
@@ -10159,7 +10184,16 @@ jQuery.fn.extend( {
 	}
 } );
 
+jQuery.holdReady = function( hold ) {
+	if ( hold ) {
+		jQuery.readyWait++;
+	} else {
+		jQuery.ready( true );
+	}
+};
+jQuery.isArray = Array.isArray;
 jQuery.parseJSON = JSON.parse;
+jQuery.nodeName = nodeName;
 
 
 
@@ -10212,7 +10246,6 @@ jQuery.noConflict = function( deep ) {
 if ( !noGlobal ) {
 	window.jQuery = window.$ = jQuery;
 }
-
 
 
 
@@ -11634,6 +11667,3695 @@ Processor.prototype.process = function(input, pipe) {
 exports.Processor = Processor;
 
 },{}],19:[function(require,module,exports){
+//     Underscore.js 1.8.3
+//     http://underscorejs.org
+//     (c) 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
+//     Underscore may be freely distributed under the MIT license.
+
+(function() {
+
+  // Baseline setup
+  // --------------
+
+  // Establish the root object, `window` in the browser, or `exports` on the server.
+  var root = this;
+
+  // Save the previous value of the `_` variable.
+  var previousUnderscore = root._;
+
+  // Save bytes in the minified (but not gzipped) version:
+  var ArrayProto = Array.prototype, ObjProto = Object.prototype, FuncProto = Function.prototype;
+
+  // Create quick reference variables for speed access to core prototypes.
+  var
+    push             = ArrayProto.push,
+    slice            = ArrayProto.slice,
+    toString         = ObjProto.toString,
+    hasOwnProperty   = ObjProto.hasOwnProperty;
+
+  // All **ECMAScript 5** native function implementations that we hope to use
+  // are declared here.
+  var
+    nativeIsArray      = Array.isArray,
+    nativeKeys         = Object.keys,
+    nativeBind         = FuncProto.bind,
+    nativeCreate       = Object.create;
+
+  // Naked function reference for surrogate-prototype-swapping.
+  var Ctor = function(){};
+
+  // Create a safe reference to the Underscore object for use below.
+  var _ = function(obj) {
+    if (obj instanceof _) return obj;
+    if (!(this instanceof _)) return new _(obj);
+    this._wrapped = obj;
+  };
+
+  // Export the Underscore object for **Node.js**, with
+  // backwards-compatibility for the old `require()` API. If we're in
+  // the browser, add `_` as a global object.
+  if (typeof exports !== 'undefined') {
+    if (typeof module !== 'undefined' && module.exports) {
+      exports = module.exports = _;
+    }
+    exports._ = _;
+  } else {
+    root._ = _;
+  }
+
+  // Current version.
+  _.VERSION = '1.8.3';
+
+  // Internal function that returns an efficient (for current engines) version
+  // of the passed-in callback, to be repeatedly applied in other Underscore
+  // functions.
+  var optimizeCb = function(func, context, argCount) {
+    if (context === void 0) return func;
+    switch (argCount == null ? 3 : argCount) {
+      case 1: return function(value) {
+        return func.call(context, value);
+      };
+      case 2: return function(value, other) {
+        return func.call(context, value, other);
+      };
+      case 3: return function(value, index, collection) {
+        return func.call(context, value, index, collection);
+      };
+      case 4: return function(accumulator, value, index, collection) {
+        return func.call(context, accumulator, value, index, collection);
+      };
+    }
+    return function() {
+      return func.apply(context, arguments);
+    };
+  };
+
+  // A mostly-internal function to generate callbacks that can be applied
+  // to each element in a collection, returning the desired result — either
+  // identity, an arbitrary callback, a property matcher, or a property accessor.
+  var cb = function(value, context, argCount) {
+    if (value == null) return _.identity;
+    if (_.isFunction(value)) return optimizeCb(value, context, argCount);
+    if (_.isObject(value)) return _.matcher(value);
+    return _.property(value);
+  };
+  _.iteratee = function(value, context) {
+    return cb(value, context, Infinity);
+  };
+
+  // An internal function for creating assigner functions.
+  var createAssigner = function(keysFunc, undefinedOnly) {
+    return function(obj) {
+      var length = arguments.length;
+      if (length < 2 || obj == null) return obj;
+      for (var index = 1; index < length; index++) {
+        var source = arguments[index],
+            keys = keysFunc(source),
+            l = keys.length;
+        for (var i = 0; i < l; i++) {
+          var key = keys[i];
+          if (!undefinedOnly || obj[key] === void 0) obj[key] = source[key];
+        }
+      }
+      return obj;
+    };
+  };
+
+  // An internal function for creating a new object that inherits from another.
+  var baseCreate = function(prototype) {
+    if (!_.isObject(prototype)) return {};
+    if (nativeCreate) return nativeCreate(prototype);
+    Ctor.prototype = prototype;
+    var result = new Ctor;
+    Ctor.prototype = null;
+    return result;
+  };
+
+  var property = function(key) {
+    return function(obj) {
+      return obj == null ? void 0 : obj[key];
+    };
+  };
+
+  // Helper for collection methods to determine whether a collection
+  // should be iterated as an array or as an object
+  // Related: http://people.mozilla.org/~jorendorff/es6-draft.html#sec-tolength
+  // Avoids a very nasty iOS 8 JIT bug on ARM-64. #2094
+  var MAX_ARRAY_INDEX = Math.pow(2, 53) - 1;
+  var getLength = property('length');
+  var isArrayLike = function(collection) {
+    var length = getLength(collection);
+    return typeof length == 'number' && length >= 0 && length <= MAX_ARRAY_INDEX;
+  };
+
+  // Collection Functions
+  // --------------------
+
+  // The cornerstone, an `each` implementation, aka `forEach`.
+  // Handles raw objects in addition to array-likes. Treats all
+  // sparse array-likes as if they were dense.
+  _.each = _.forEach = function(obj, iteratee, context) {
+    iteratee = optimizeCb(iteratee, context);
+    var i, length;
+    if (isArrayLike(obj)) {
+      for (i = 0, length = obj.length; i < length; i++) {
+        iteratee(obj[i], i, obj);
+      }
+    } else {
+      var keys = _.keys(obj);
+      for (i = 0, length = keys.length; i < length; i++) {
+        iteratee(obj[keys[i]], keys[i], obj);
+      }
+    }
+    return obj;
+  };
+
+  // Return the results of applying the iteratee to each element.
+  _.map = _.collect = function(obj, iteratee, context) {
+    iteratee = cb(iteratee, context);
+    var keys = !isArrayLike(obj) && _.keys(obj),
+        length = (keys || obj).length,
+        results = Array(length);
+    for (var index = 0; index < length; index++) {
+      var currentKey = keys ? keys[index] : index;
+      results[index] = iteratee(obj[currentKey], currentKey, obj);
+    }
+    return results;
+  };
+
+  // Create a reducing function iterating left or right.
+  function createReduce(dir) {
+    // Optimized iterator function as using arguments.length
+    // in the main function will deoptimize the, see #1991.
+    function iterator(obj, iteratee, memo, keys, index, length) {
+      for (; index >= 0 && index < length; index += dir) {
+        var currentKey = keys ? keys[index] : index;
+        memo = iteratee(memo, obj[currentKey], currentKey, obj);
+      }
+      return memo;
+    }
+
+    return function(obj, iteratee, memo, context) {
+      iteratee = optimizeCb(iteratee, context, 4);
+      var keys = !isArrayLike(obj) && _.keys(obj),
+          length = (keys || obj).length,
+          index = dir > 0 ? 0 : length - 1;
+      // Determine the initial value if none is provided.
+      if (arguments.length < 3) {
+        memo = obj[keys ? keys[index] : index];
+        index += dir;
+      }
+      return iterator(obj, iteratee, memo, keys, index, length);
+    };
+  }
+
+  // **Reduce** builds up a single result from a list of values, aka `inject`,
+  // or `foldl`.
+  _.reduce = _.foldl = _.inject = createReduce(1);
+
+  // The right-associative version of reduce, also known as `foldr`.
+  _.reduceRight = _.foldr = createReduce(-1);
+
+  // Return the first value which passes a truth test. Aliased as `detect`.
+  _.find = _.detect = function(obj, predicate, context) {
+    var key;
+    if (isArrayLike(obj)) {
+      key = _.findIndex(obj, predicate, context);
+    } else {
+      key = _.findKey(obj, predicate, context);
+    }
+    if (key !== void 0 && key !== -1) return obj[key];
+  };
+
+  // Return all the elements that pass a truth test.
+  // Aliased as `select`.
+  _.filter = _.select = function(obj, predicate, context) {
+    var results = [];
+    predicate = cb(predicate, context);
+    _.each(obj, function(value, index, list) {
+      if (predicate(value, index, list)) results.push(value);
+    });
+    return results;
+  };
+
+  // Return all the elements for which a truth test fails.
+  _.reject = function(obj, predicate, context) {
+    return _.filter(obj, _.negate(cb(predicate)), context);
+  };
+
+  // Determine whether all of the elements match a truth test.
+  // Aliased as `all`.
+  _.every = _.all = function(obj, predicate, context) {
+    predicate = cb(predicate, context);
+    var keys = !isArrayLike(obj) && _.keys(obj),
+        length = (keys || obj).length;
+    for (var index = 0; index < length; index++) {
+      var currentKey = keys ? keys[index] : index;
+      if (!predicate(obj[currentKey], currentKey, obj)) return false;
+    }
+    return true;
+  };
+
+  // Determine if at least one element in the object matches a truth test.
+  // Aliased as `any`.
+  _.some = _.any = function(obj, predicate, context) {
+    predicate = cb(predicate, context);
+    var keys = !isArrayLike(obj) && _.keys(obj),
+        length = (keys || obj).length;
+    for (var index = 0; index < length; index++) {
+      var currentKey = keys ? keys[index] : index;
+      if (predicate(obj[currentKey], currentKey, obj)) return true;
+    }
+    return false;
+  };
+
+  // Determine if the array or object contains a given item (using `===`).
+  // Aliased as `includes` and `include`.
+  _.contains = _.includes = _.include = function(obj, item, fromIndex, guard) {
+    if (!isArrayLike(obj)) obj = _.values(obj);
+    if (typeof fromIndex != 'number' || guard) fromIndex = 0;
+    return _.indexOf(obj, item, fromIndex) >= 0;
+  };
+
+  // Invoke a method (with arguments) on every item in a collection.
+  _.invoke = function(obj, method) {
+    var args = slice.call(arguments, 2);
+    var isFunc = _.isFunction(method);
+    return _.map(obj, function(value) {
+      var func = isFunc ? method : value[method];
+      return func == null ? func : func.apply(value, args);
+    });
+  };
+
+  // Convenience version of a common use case of `map`: fetching a property.
+  _.pluck = function(obj, key) {
+    return _.map(obj, _.property(key));
+  };
+
+  // Convenience version of a common use case of `filter`: selecting only objects
+  // containing specific `key:value` pairs.
+  _.where = function(obj, attrs) {
+    return _.filter(obj, _.matcher(attrs));
+  };
+
+  // Convenience version of a common use case of `find`: getting the first object
+  // containing specific `key:value` pairs.
+  _.findWhere = function(obj, attrs) {
+    return _.find(obj, _.matcher(attrs));
+  };
+
+  // Return the maximum element (or element-based computation).
+  _.max = function(obj, iteratee, context) {
+    var result = -Infinity, lastComputed = -Infinity,
+        value, computed;
+    if (iteratee == null && obj != null) {
+      obj = isArrayLike(obj) ? obj : _.values(obj);
+      for (var i = 0, length = obj.length; i < length; i++) {
+        value = obj[i];
+        if (value > result) {
+          result = value;
+        }
+      }
+    } else {
+      iteratee = cb(iteratee, context);
+      _.each(obj, function(value, index, list) {
+        computed = iteratee(value, index, list);
+        if (computed > lastComputed || computed === -Infinity && result === -Infinity) {
+          result = value;
+          lastComputed = computed;
+        }
+      });
+    }
+    return result;
+  };
+
+  // Return the minimum element (or element-based computation).
+  _.min = function(obj, iteratee, context) {
+    var result = Infinity, lastComputed = Infinity,
+        value, computed;
+    if (iteratee == null && obj != null) {
+      obj = isArrayLike(obj) ? obj : _.values(obj);
+      for (var i = 0, length = obj.length; i < length; i++) {
+        value = obj[i];
+        if (value < result) {
+          result = value;
+        }
+      }
+    } else {
+      iteratee = cb(iteratee, context);
+      _.each(obj, function(value, index, list) {
+        computed = iteratee(value, index, list);
+        if (computed < lastComputed || computed === Infinity && result === Infinity) {
+          result = value;
+          lastComputed = computed;
+        }
+      });
+    }
+    return result;
+  };
+
+  // Shuffle a collection, using the modern version of the
+  // [Fisher-Yates shuffle](http://en.wikipedia.org/wiki/Fisher–Yates_shuffle).
+  _.shuffle = function(obj) {
+    var set = isArrayLike(obj) ? obj : _.values(obj);
+    var length = set.length;
+    var shuffled = Array(length);
+    for (var index = 0, rand; index < length; index++) {
+      rand = _.random(0, index);
+      if (rand !== index) shuffled[index] = shuffled[rand];
+      shuffled[rand] = set[index];
+    }
+    return shuffled;
+  };
+
+  // Sample **n** random values from a collection.
+  // If **n** is not specified, returns a single random element.
+  // The internal `guard` argument allows it to work with `map`.
+  _.sample = function(obj, n, guard) {
+    if (n == null || guard) {
+      if (!isArrayLike(obj)) obj = _.values(obj);
+      return obj[_.random(obj.length - 1)];
+    }
+    return _.shuffle(obj).slice(0, Math.max(0, n));
+  };
+
+  // Sort the object's values by a criterion produced by an iteratee.
+  _.sortBy = function(obj, iteratee, context) {
+    iteratee = cb(iteratee, context);
+    return _.pluck(_.map(obj, function(value, index, list) {
+      return {
+        value: value,
+        index: index,
+        criteria: iteratee(value, index, list)
+      };
+    }).sort(function(left, right) {
+      var a = left.criteria;
+      var b = right.criteria;
+      if (a !== b) {
+        if (a > b || a === void 0) return 1;
+        if (a < b || b === void 0) return -1;
+      }
+      return left.index - right.index;
+    }), 'value');
+  };
+
+  // An internal function used for aggregate "group by" operations.
+  var group = function(behavior) {
+    return function(obj, iteratee, context) {
+      var result = {};
+      iteratee = cb(iteratee, context);
+      _.each(obj, function(value, index) {
+        var key = iteratee(value, index, obj);
+        behavior(result, value, key);
+      });
+      return result;
+    };
+  };
+
+  // Groups the object's values by a criterion. Pass either a string attribute
+  // to group by, or a function that returns the criterion.
+  _.groupBy = group(function(result, value, key) {
+    if (_.has(result, key)) result[key].push(value); else result[key] = [value];
+  });
+
+  // Indexes the object's values by a criterion, similar to `groupBy`, but for
+  // when you know that your index values will be unique.
+  _.indexBy = group(function(result, value, key) {
+    result[key] = value;
+  });
+
+  // Counts instances of an object that group by a certain criterion. Pass
+  // either a string attribute to count by, or a function that returns the
+  // criterion.
+  _.countBy = group(function(result, value, key) {
+    if (_.has(result, key)) result[key]++; else result[key] = 1;
+  });
+
+  // Safely create a real, live array from anything iterable.
+  _.toArray = function(obj) {
+    if (!obj) return [];
+    if (_.isArray(obj)) return slice.call(obj);
+    if (isArrayLike(obj)) return _.map(obj, _.identity);
+    return _.values(obj);
+  };
+
+  // Return the number of elements in an object.
+  _.size = function(obj) {
+    if (obj == null) return 0;
+    return isArrayLike(obj) ? obj.length : _.keys(obj).length;
+  };
+
+  // Split a collection into two arrays: one whose elements all satisfy the given
+  // predicate, and one whose elements all do not satisfy the predicate.
+  _.partition = function(obj, predicate, context) {
+    predicate = cb(predicate, context);
+    var pass = [], fail = [];
+    _.each(obj, function(value, key, obj) {
+      (predicate(value, key, obj) ? pass : fail).push(value);
+    });
+    return [pass, fail];
+  };
+
+  // Array Functions
+  // ---------------
+
+  // Get the first element of an array. Passing **n** will return the first N
+  // values in the array. Aliased as `head` and `take`. The **guard** check
+  // allows it to work with `_.map`.
+  _.first = _.head = _.take = function(array, n, guard) {
+    if (array == null) return void 0;
+    if (n == null || guard) return array[0];
+    return _.initial(array, array.length - n);
+  };
+
+  // Returns everything but the last entry of the array. Especially useful on
+  // the arguments object. Passing **n** will return all the values in
+  // the array, excluding the last N.
+  _.initial = function(array, n, guard) {
+    return slice.call(array, 0, Math.max(0, array.length - (n == null || guard ? 1 : n)));
+  };
+
+  // Get the last element of an array. Passing **n** will return the last N
+  // values in the array.
+  _.last = function(array, n, guard) {
+    if (array == null) return void 0;
+    if (n == null || guard) return array[array.length - 1];
+    return _.rest(array, Math.max(0, array.length - n));
+  };
+
+  // Returns everything but the first entry of the array. Aliased as `tail` and `drop`.
+  // Especially useful on the arguments object. Passing an **n** will return
+  // the rest N values in the array.
+  _.rest = _.tail = _.drop = function(array, n, guard) {
+    return slice.call(array, n == null || guard ? 1 : n);
+  };
+
+  // Trim out all falsy values from an array.
+  _.compact = function(array) {
+    return _.filter(array, _.identity);
+  };
+
+  // Internal implementation of a recursive `flatten` function.
+  var flatten = function(input, shallow, strict, startIndex) {
+    var output = [], idx = 0;
+    for (var i = startIndex || 0, length = getLength(input); i < length; i++) {
+      var value = input[i];
+      if (isArrayLike(value) && (_.isArray(value) || _.isArguments(value))) {
+        //flatten current level of array or arguments object
+        if (!shallow) value = flatten(value, shallow, strict);
+        var j = 0, len = value.length;
+        output.length += len;
+        while (j < len) {
+          output[idx++] = value[j++];
+        }
+      } else if (!strict) {
+        output[idx++] = value;
+      }
+    }
+    return output;
+  };
+
+  // Flatten out an array, either recursively (by default), or just one level.
+  _.flatten = function(array, shallow) {
+    return flatten(array, shallow, false);
+  };
+
+  // Return a version of the array that does not contain the specified value(s).
+  _.without = function(array) {
+    return _.difference(array, slice.call(arguments, 1));
+  };
+
+  // Produce a duplicate-free version of the array. If the array has already
+  // been sorted, you have the option of using a faster algorithm.
+  // Aliased as `unique`.
+  _.uniq = _.unique = function(array, isSorted, iteratee, context) {
+    if (!_.isBoolean(isSorted)) {
+      context = iteratee;
+      iteratee = isSorted;
+      isSorted = false;
+    }
+    if (iteratee != null) iteratee = cb(iteratee, context);
+    var result = [];
+    var seen = [];
+    for (var i = 0, length = getLength(array); i < length; i++) {
+      var value = array[i],
+          computed = iteratee ? iteratee(value, i, array) : value;
+      if (isSorted) {
+        if (!i || seen !== computed) result.push(value);
+        seen = computed;
+      } else if (iteratee) {
+        if (!_.contains(seen, computed)) {
+          seen.push(computed);
+          result.push(value);
+        }
+      } else if (!_.contains(result, value)) {
+        result.push(value);
+      }
+    }
+    return result;
+  };
+
+  // Produce an array that contains the union: each distinct element from all of
+  // the passed-in arrays.
+  _.union = function() {
+    return _.uniq(flatten(arguments, true, true));
+  };
+
+  // Produce an array that contains every item shared between all the
+  // passed-in arrays.
+  _.intersection = function(array) {
+    var result = [];
+    var argsLength = arguments.length;
+    for (var i = 0, length = getLength(array); i < length; i++) {
+      var item = array[i];
+      if (_.contains(result, item)) continue;
+      for (var j = 1; j < argsLength; j++) {
+        if (!_.contains(arguments[j], item)) break;
+      }
+      if (j === argsLength) result.push(item);
+    }
+    return result;
+  };
+
+  // Take the difference between one array and a number of other arrays.
+  // Only the elements present in just the first array will remain.
+  _.difference = function(array) {
+    var rest = flatten(arguments, true, true, 1);
+    return _.filter(array, function(value){
+      return !_.contains(rest, value);
+    });
+  };
+
+  // Zip together multiple lists into a single array -- elements that share
+  // an index go together.
+  _.zip = function() {
+    return _.unzip(arguments);
+  };
+
+  // Complement of _.zip. Unzip accepts an array of arrays and groups
+  // each array's elements on shared indices
+  _.unzip = function(array) {
+    var length = array && _.max(array, getLength).length || 0;
+    var result = Array(length);
+
+    for (var index = 0; index < length; index++) {
+      result[index] = _.pluck(array, index);
+    }
+    return result;
+  };
+
+  // Converts lists into objects. Pass either a single array of `[key, value]`
+  // pairs, or two parallel arrays of the same length -- one of keys, and one of
+  // the corresponding values.
+  _.object = function(list, values) {
+    var result = {};
+    for (var i = 0, length = getLength(list); i < length; i++) {
+      if (values) {
+        result[list[i]] = values[i];
+      } else {
+        result[list[i][0]] = list[i][1];
+      }
+    }
+    return result;
+  };
+
+  // Generator function to create the findIndex and findLastIndex functions
+  function createPredicateIndexFinder(dir) {
+    return function(array, predicate, context) {
+      predicate = cb(predicate, context);
+      var length = getLength(array);
+      var index = dir > 0 ? 0 : length - 1;
+      for (; index >= 0 && index < length; index += dir) {
+        if (predicate(array[index], index, array)) return index;
+      }
+      return -1;
+    };
+  }
+
+  // Returns the first index on an array-like that passes a predicate test
+  _.findIndex = createPredicateIndexFinder(1);
+  _.findLastIndex = createPredicateIndexFinder(-1);
+
+  // Use a comparator function to figure out the smallest index at which
+  // an object should be inserted so as to maintain order. Uses binary search.
+  _.sortedIndex = function(array, obj, iteratee, context) {
+    iteratee = cb(iteratee, context, 1);
+    var value = iteratee(obj);
+    var low = 0, high = getLength(array);
+    while (low < high) {
+      var mid = Math.floor((low + high) / 2);
+      if (iteratee(array[mid]) < value) low = mid + 1; else high = mid;
+    }
+    return low;
+  };
+
+  // Generator function to create the indexOf and lastIndexOf functions
+  function createIndexFinder(dir, predicateFind, sortedIndex) {
+    return function(array, item, idx) {
+      var i = 0, length = getLength(array);
+      if (typeof idx == 'number') {
+        if (dir > 0) {
+            i = idx >= 0 ? idx : Math.max(idx + length, i);
+        } else {
+            length = idx >= 0 ? Math.min(idx + 1, length) : idx + length + 1;
+        }
+      } else if (sortedIndex && idx && length) {
+        idx = sortedIndex(array, item);
+        return array[idx] === item ? idx : -1;
+      }
+      if (item !== item) {
+        idx = predicateFind(slice.call(array, i, length), _.isNaN);
+        return idx >= 0 ? idx + i : -1;
+      }
+      for (idx = dir > 0 ? i : length - 1; idx >= 0 && idx < length; idx += dir) {
+        if (array[idx] === item) return idx;
+      }
+      return -1;
+    };
+  }
+
+  // Return the position of the first occurrence of an item in an array,
+  // or -1 if the item is not included in the array.
+  // If the array is large and already in sort order, pass `true`
+  // for **isSorted** to use binary search.
+  _.indexOf = createIndexFinder(1, _.findIndex, _.sortedIndex);
+  _.lastIndexOf = createIndexFinder(-1, _.findLastIndex);
+
+  // Generate an integer Array containing an arithmetic progression. A port of
+  // the native Python `range()` function. See
+  // [the Python documentation](http://docs.python.org/library/functions.html#range).
+  _.range = function(start, stop, step) {
+    if (stop == null) {
+      stop = start || 0;
+      start = 0;
+    }
+    step = step || 1;
+
+    var length = Math.max(Math.ceil((stop - start) / step), 0);
+    var range = Array(length);
+
+    for (var idx = 0; idx < length; idx++, start += step) {
+      range[idx] = start;
+    }
+
+    return range;
+  };
+
+  // Function (ahem) Functions
+  // ------------------
+
+  // Determines whether to execute a function as a constructor
+  // or a normal function with the provided arguments
+  var executeBound = function(sourceFunc, boundFunc, context, callingContext, args) {
+    if (!(callingContext instanceof boundFunc)) return sourceFunc.apply(context, args);
+    var self = baseCreate(sourceFunc.prototype);
+    var result = sourceFunc.apply(self, args);
+    if (_.isObject(result)) return result;
+    return self;
+  };
+
+  // Create a function bound to a given object (assigning `this`, and arguments,
+  // optionally). Delegates to **ECMAScript 5**'s native `Function.bind` if
+  // available.
+  _.bind = function(func, context) {
+    if (nativeBind && func.bind === nativeBind) return nativeBind.apply(func, slice.call(arguments, 1));
+    if (!_.isFunction(func)) throw new TypeError('Bind must be called on a function');
+    var args = slice.call(arguments, 2);
+    var bound = function() {
+      return executeBound(func, bound, context, this, args.concat(slice.call(arguments)));
+    };
+    return bound;
+  };
+
+  // Partially apply a function by creating a version that has had some of its
+  // arguments pre-filled, without changing its dynamic `this` context. _ acts
+  // as a placeholder, allowing any combination of arguments to be pre-filled.
+  _.partial = function(func) {
+    var boundArgs = slice.call(arguments, 1);
+    var bound = function() {
+      var position = 0, length = boundArgs.length;
+      var args = Array(length);
+      for (var i = 0; i < length; i++) {
+        args[i] = boundArgs[i] === _ ? arguments[position++] : boundArgs[i];
+      }
+      while (position < arguments.length) args.push(arguments[position++]);
+      return executeBound(func, bound, this, this, args);
+    };
+    return bound;
+  };
+
+  // Bind a number of an object's methods to that object. Remaining arguments
+  // are the method names to be bound. Useful for ensuring that all callbacks
+  // defined on an object belong to it.
+  _.bindAll = function(obj) {
+    var i, length = arguments.length, key;
+    if (length <= 1) throw new Error('bindAll must be passed function names');
+    for (i = 1; i < length; i++) {
+      key = arguments[i];
+      obj[key] = _.bind(obj[key], obj);
+    }
+    return obj;
+  };
+
+  // Memoize an expensive function by storing its results.
+  _.memoize = function(func, hasher) {
+    var memoize = function(key) {
+      var cache = memoize.cache;
+      var address = '' + (hasher ? hasher.apply(this, arguments) : key);
+      if (!_.has(cache, address)) cache[address] = func.apply(this, arguments);
+      return cache[address];
+    };
+    memoize.cache = {};
+    return memoize;
+  };
+
+  // Delays a function for the given number of milliseconds, and then calls
+  // it with the arguments supplied.
+  _.delay = function(func, wait) {
+    var args = slice.call(arguments, 2);
+    return setTimeout(function(){
+      return func.apply(null, args);
+    }, wait);
+  };
+
+  // Defers a function, scheduling it to run after the current call stack has
+  // cleared.
+  _.defer = _.partial(_.delay, _, 1);
+
+  // Returns a function, that, when invoked, will only be triggered at most once
+  // during a given window of time. Normally, the throttled function will run
+  // as much as it can, without ever going more than once per `wait` duration;
+  // but if you'd like to disable the execution on the leading edge, pass
+  // `{leading: false}`. To disable execution on the trailing edge, ditto.
+  _.throttle = function(func, wait, options) {
+    var context, args, result;
+    var timeout = null;
+    var previous = 0;
+    if (!options) options = {};
+    var later = function() {
+      previous = options.leading === false ? 0 : _.now();
+      timeout = null;
+      result = func.apply(context, args);
+      if (!timeout) context = args = null;
+    };
+    return function() {
+      var now = _.now();
+      if (!previous && options.leading === false) previous = now;
+      var remaining = wait - (now - previous);
+      context = this;
+      args = arguments;
+      if (remaining <= 0 || remaining > wait) {
+        if (timeout) {
+          clearTimeout(timeout);
+          timeout = null;
+        }
+        previous = now;
+        result = func.apply(context, args);
+        if (!timeout) context = args = null;
+      } else if (!timeout && options.trailing !== false) {
+        timeout = setTimeout(later, remaining);
+      }
+      return result;
+    };
+  };
+
+  // Returns a function, that, as long as it continues to be invoked, will not
+  // be triggered. The function will be called after it stops being called for
+  // N milliseconds. If `immediate` is passed, trigger the function on the
+  // leading edge, instead of the trailing.
+  _.debounce = function(func, wait, immediate) {
+    var timeout, args, context, timestamp, result;
+
+    var later = function() {
+      var last = _.now() - timestamp;
+
+      if (last < wait && last >= 0) {
+        timeout = setTimeout(later, wait - last);
+      } else {
+        timeout = null;
+        if (!immediate) {
+          result = func.apply(context, args);
+          if (!timeout) context = args = null;
+        }
+      }
+    };
+
+    return function() {
+      context = this;
+      args = arguments;
+      timestamp = _.now();
+      var callNow = immediate && !timeout;
+      if (!timeout) timeout = setTimeout(later, wait);
+      if (callNow) {
+        result = func.apply(context, args);
+        context = args = null;
+      }
+
+      return result;
+    };
+  };
+
+  // Returns the first function passed as an argument to the second,
+  // allowing you to adjust arguments, run code before and after, and
+  // conditionally execute the original function.
+  _.wrap = function(func, wrapper) {
+    return _.partial(wrapper, func);
+  };
+
+  // Returns a negated version of the passed-in predicate.
+  _.negate = function(predicate) {
+    return function() {
+      return !predicate.apply(this, arguments);
+    };
+  };
+
+  // Returns a function that is the composition of a list of functions, each
+  // consuming the return value of the function that follows.
+  _.compose = function() {
+    var args = arguments;
+    var start = args.length - 1;
+    return function() {
+      var i = start;
+      var result = args[start].apply(this, arguments);
+      while (i--) result = args[i].call(this, result);
+      return result;
+    };
+  };
+
+  // Returns a function that will only be executed on and after the Nth call.
+  _.after = function(times, func) {
+    return function() {
+      if (--times < 1) {
+        return func.apply(this, arguments);
+      }
+    };
+  };
+
+  // Returns a function that will only be executed up to (but not including) the Nth call.
+  _.before = function(times, func) {
+    var memo;
+    return function() {
+      if (--times > 0) {
+        memo = func.apply(this, arguments);
+      }
+      if (times <= 1) func = null;
+      return memo;
+    };
+  };
+
+  // Returns a function that will be executed at most one time, no matter how
+  // often you call it. Useful for lazy initialization.
+  _.once = _.partial(_.before, 2);
+
+  // Object Functions
+  // ----------------
+
+  // Keys in IE < 9 that won't be iterated by `for key in ...` and thus missed.
+  var hasEnumBug = !{toString: null}.propertyIsEnumerable('toString');
+  var nonEnumerableProps = ['valueOf', 'isPrototypeOf', 'toString',
+                      'propertyIsEnumerable', 'hasOwnProperty', 'toLocaleString'];
+
+  function collectNonEnumProps(obj, keys) {
+    var nonEnumIdx = nonEnumerableProps.length;
+    var constructor = obj.constructor;
+    var proto = (_.isFunction(constructor) && constructor.prototype) || ObjProto;
+
+    // Constructor is a special case.
+    var prop = 'constructor';
+    if (_.has(obj, prop) && !_.contains(keys, prop)) keys.push(prop);
+
+    while (nonEnumIdx--) {
+      prop = nonEnumerableProps[nonEnumIdx];
+      if (prop in obj && obj[prop] !== proto[prop] && !_.contains(keys, prop)) {
+        keys.push(prop);
+      }
+    }
+  }
+
+  // Retrieve the names of an object's own properties.
+  // Delegates to **ECMAScript 5**'s native `Object.keys`
+  _.keys = function(obj) {
+    if (!_.isObject(obj)) return [];
+    if (nativeKeys) return nativeKeys(obj);
+    var keys = [];
+    for (var key in obj) if (_.has(obj, key)) keys.push(key);
+    // Ahem, IE < 9.
+    if (hasEnumBug) collectNonEnumProps(obj, keys);
+    return keys;
+  };
+
+  // Retrieve all the property names of an object.
+  _.allKeys = function(obj) {
+    if (!_.isObject(obj)) return [];
+    var keys = [];
+    for (var key in obj) keys.push(key);
+    // Ahem, IE < 9.
+    if (hasEnumBug) collectNonEnumProps(obj, keys);
+    return keys;
+  };
+
+  // Retrieve the values of an object's properties.
+  _.values = function(obj) {
+    var keys = _.keys(obj);
+    var length = keys.length;
+    var values = Array(length);
+    for (var i = 0; i < length; i++) {
+      values[i] = obj[keys[i]];
+    }
+    return values;
+  };
+
+  // Returns the results of applying the iteratee to each element of the object
+  // In contrast to _.map it returns an object
+  _.mapObject = function(obj, iteratee, context) {
+    iteratee = cb(iteratee, context);
+    var keys =  _.keys(obj),
+          length = keys.length,
+          results = {},
+          currentKey;
+      for (var index = 0; index < length; index++) {
+        currentKey = keys[index];
+        results[currentKey] = iteratee(obj[currentKey], currentKey, obj);
+      }
+      return results;
+  };
+
+  // Convert an object into a list of `[key, value]` pairs.
+  _.pairs = function(obj) {
+    var keys = _.keys(obj);
+    var length = keys.length;
+    var pairs = Array(length);
+    for (var i = 0; i < length; i++) {
+      pairs[i] = [keys[i], obj[keys[i]]];
+    }
+    return pairs;
+  };
+
+  // Invert the keys and values of an object. The values must be serializable.
+  _.invert = function(obj) {
+    var result = {};
+    var keys = _.keys(obj);
+    for (var i = 0, length = keys.length; i < length; i++) {
+      result[obj[keys[i]]] = keys[i];
+    }
+    return result;
+  };
+
+  // Return a sorted list of the function names available on the object.
+  // Aliased as `methods`
+  _.functions = _.methods = function(obj) {
+    var names = [];
+    for (var key in obj) {
+      if (_.isFunction(obj[key])) names.push(key);
+    }
+    return names.sort();
+  };
+
+  // Extend a given object with all the properties in passed-in object(s).
+  _.extend = createAssigner(_.allKeys);
+
+  // Assigns a given object with all the own properties in the passed-in object(s)
+  // (https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object/assign)
+  _.extendOwn = _.assign = createAssigner(_.keys);
+
+  // Returns the first key on an object that passes a predicate test
+  _.findKey = function(obj, predicate, context) {
+    predicate = cb(predicate, context);
+    var keys = _.keys(obj), key;
+    for (var i = 0, length = keys.length; i < length; i++) {
+      key = keys[i];
+      if (predicate(obj[key], key, obj)) return key;
+    }
+  };
+
+  // Return a copy of the object only containing the whitelisted properties.
+  _.pick = function(object, oiteratee, context) {
+    var result = {}, obj = object, iteratee, keys;
+    if (obj == null) return result;
+    if (_.isFunction(oiteratee)) {
+      keys = _.allKeys(obj);
+      iteratee = optimizeCb(oiteratee, context);
+    } else {
+      keys = flatten(arguments, false, false, 1);
+      iteratee = function(value, key, obj) { return key in obj; };
+      obj = Object(obj);
+    }
+    for (var i = 0, length = keys.length; i < length; i++) {
+      var key = keys[i];
+      var value = obj[key];
+      if (iteratee(value, key, obj)) result[key] = value;
+    }
+    return result;
+  };
+
+   // Return a copy of the object without the blacklisted properties.
+  _.omit = function(obj, iteratee, context) {
+    if (_.isFunction(iteratee)) {
+      iteratee = _.negate(iteratee);
+    } else {
+      var keys = _.map(flatten(arguments, false, false, 1), String);
+      iteratee = function(value, key) {
+        return !_.contains(keys, key);
+      };
+    }
+    return _.pick(obj, iteratee, context);
+  };
+
+  // Fill in a given object with default properties.
+  _.defaults = createAssigner(_.allKeys, true);
+
+  // Creates an object that inherits from the given prototype object.
+  // If additional properties are provided then they will be added to the
+  // created object.
+  _.create = function(prototype, props) {
+    var result = baseCreate(prototype);
+    if (props) _.extendOwn(result, props);
+    return result;
+  };
+
+  // Create a (shallow-cloned) duplicate of an object.
+  _.clone = function(obj) {
+    if (!_.isObject(obj)) return obj;
+    return _.isArray(obj) ? obj.slice() : _.extend({}, obj);
+  };
+
+  // Invokes interceptor with the obj, and then returns obj.
+  // The primary purpose of this method is to "tap into" a method chain, in
+  // order to perform operations on intermediate results within the chain.
+  _.tap = function(obj, interceptor) {
+    interceptor(obj);
+    return obj;
+  };
+
+  // Returns whether an object has a given set of `key:value` pairs.
+  _.isMatch = function(object, attrs) {
+    var keys = _.keys(attrs), length = keys.length;
+    if (object == null) return !length;
+    var obj = Object(object);
+    for (var i = 0; i < length; i++) {
+      var key = keys[i];
+      if (attrs[key] !== obj[key] || !(key in obj)) return false;
+    }
+    return true;
+  };
+
+
+  // Internal recursive comparison function for `isEqual`.
+  var eq = function(a, b, aStack, bStack) {
+    // Identical objects are equal. `0 === -0`, but they aren't identical.
+    // See the [Harmony `egal` proposal](http://wiki.ecmascript.org/doku.php?id=harmony:egal).
+    if (a === b) return a !== 0 || 1 / a === 1 / b;
+    // A strict comparison is necessary because `null == undefined`.
+    if (a == null || b == null) return a === b;
+    // Unwrap any wrapped objects.
+    if (a instanceof _) a = a._wrapped;
+    if (b instanceof _) b = b._wrapped;
+    // Compare `[[Class]]` names.
+    var className = toString.call(a);
+    if (className !== toString.call(b)) return false;
+    switch (className) {
+      // Strings, numbers, regular expressions, dates, and booleans are compared by value.
+      case '[object RegExp]':
+      // RegExps are coerced to strings for comparison (Note: '' + /a/i === '/a/i')
+      case '[object String]':
+        // Primitives and their corresponding object wrappers are equivalent; thus, `"5"` is
+        // equivalent to `new String("5")`.
+        return '' + a === '' + b;
+      case '[object Number]':
+        // `NaN`s are equivalent, but non-reflexive.
+        // Object(NaN) is equivalent to NaN
+        if (+a !== +a) return +b !== +b;
+        // An `egal` comparison is performed for other numeric values.
+        return +a === 0 ? 1 / +a === 1 / b : +a === +b;
+      case '[object Date]':
+      case '[object Boolean]':
+        // Coerce dates and booleans to numeric primitive values. Dates are compared by their
+        // millisecond representations. Note that invalid dates with millisecond representations
+        // of `NaN` are not equivalent.
+        return +a === +b;
+    }
+
+    var areArrays = className === '[object Array]';
+    if (!areArrays) {
+      if (typeof a != 'object' || typeof b != 'object') return false;
+
+      // Objects with different constructors are not equivalent, but `Object`s or `Array`s
+      // from different frames are.
+      var aCtor = a.constructor, bCtor = b.constructor;
+      if (aCtor !== bCtor && !(_.isFunction(aCtor) && aCtor instanceof aCtor &&
+                               _.isFunction(bCtor) && bCtor instanceof bCtor)
+                          && ('constructor' in a && 'constructor' in b)) {
+        return false;
+      }
+    }
+    // Assume equality for cyclic structures. The algorithm for detecting cyclic
+    // structures is adapted from ES 5.1 section 15.12.3, abstract operation `JO`.
+
+    // Initializing stack of traversed objects.
+    // It's done here since we only need them for objects and arrays comparison.
+    aStack = aStack || [];
+    bStack = bStack || [];
+    var length = aStack.length;
+    while (length--) {
+      // Linear search. Performance is inversely proportional to the number of
+      // unique nested structures.
+      if (aStack[length] === a) return bStack[length] === b;
+    }
+
+    // Add the first object to the stack of traversed objects.
+    aStack.push(a);
+    bStack.push(b);
+
+    // Recursively compare objects and arrays.
+    if (areArrays) {
+      // Compare array lengths to determine if a deep comparison is necessary.
+      length = a.length;
+      if (length !== b.length) return false;
+      // Deep compare the contents, ignoring non-numeric properties.
+      while (length--) {
+        if (!eq(a[length], b[length], aStack, bStack)) return false;
+      }
+    } else {
+      // Deep compare objects.
+      var keys = _.keys(a), key;
+      length = keys.length;
+      // Ensure that both objects contain the same number of properties before comparing deep equality.
+      if (_.keys(b).length !== length) return false;
+      while (length--) {
+        // Deep compare each member
+        key = keys[length];
+        if (!(_.has(b, key) && eq(a[key], b[key], aStack, bStack))) return false;
+      }
+    }
+    // Remove the first object from the stack of traversed objects.
+    aStack.pop();
+    bStack.pop();
+    return true;
+  };
+
+  // Perform a deep comparison to check if two objects are equal.
+  _.isEqual = function(a, b) {
+    return eq(a, b);
+  };
+
+  // Is a given array, string, or object empty?
+  // An "empty" object has no enumerable own-properties.
+  _.isEmpty = function(obj) {
+    if (obj == null) return true;
+    if (isArrayLike(obj) && (_.isArray(obj) || _.isString(obj) || _.isArguments(obj))) return obj.length === 0;
+    return _.keys(obj).length === 0;
+  };
+
+  // Is a given value a DOM element?
+  _.isElement = function(obj) {
+    return !!(obj && obj.nodeType === 1);
+  };
+
+  // Is a given value an array?
+  // Delegates to ECMA5's native Array.isArray
+  _.isArray = nativeIsArray || function(obj) {
+    return toString.call(obj) === '[object Array]';
+  };
+
+  // Is a given variable an object?
+  _.isObject = function(obj) {
+    var type = typeof obj;
+    return type === 'function' || type === 'object' && !!obj;
+  };
+
+  // Add some isType methods: isArguments, isFunction, isString, isNumber, isDate, isRegExp, isError.
+  _.each(['Arguments', 'Function', 'String', 'Number', 'Date', 'RegExp', 'Error'], function(name) {
+    _['is' + name] = function(obj) {
+      return toString.call(obj) === '[object ' + name + ']';
+    };
+  });
+
+  // Define a fallback version of the method in browsers (ahem, IE < 9), where
+  // there isn't any inspectable "Arguments" type.
+  if (!_.isArguments(arguments)) {
+    _.isArguments = function(obj) {
+      return _.has(obj, 'callee');
+    };
+  }
+
+  // Optimize `isFunction` if appropriate. Work around some typeof bugs in old v8,
+  // IE 11 (#1621), and in Safari 8 (#1929).
+  if (typeof /./ != 'function' && typeof Int8Array != 'object') {
+    _.isFunction = function(obj) {
+      return typeof obj == 'function' || false;
+    };
+  }
+
+  // Is a given object a finite number?
+  _.isFinite = function(obj) {
+    return isFinite(obj) && !isNaN(parseFloat(obj));
+  };
+
+  // Is the given value `NaN`? (NaN is the only number which does not equal itself).
+  _.isNaN = function(obj) {
+    return _.isNumber(obj) && obj !== +obj;
+  };
+
+  // Is a given value a boolean?
+  _.isBoolean = function(obj) {
+    return obj === true || obj === false || toString.call(obj) === '[object Boolean]';
+  };
+
+  // Is a given value equal to null?
+  _.isNull = function(obj) {
+    return obj === null;
+  };
+
+  // Is a given variable undefined?
+  _.isUndefined = function(obj) {
+    return obj === void 0;
+  };
+
+  // Shortcut function for checking if an object has a given property directly
+  // on itself (in other words, not on a prototype).
+  _.has = function(obj, key) {
+    return obj != null && hasOwnProperty.call(obj, key);
+  };
+
+  // Utility Functions
+  // -----------------
+
+  // Run Underscore.js in *noConflict* mode, returning the `_` variable to its
+  // previous owner. Returns a reference to the Underscore object.
+  _.noConflict = function() {
+    root._ = previousUnderscore;
+    return this;
+  };
+
+  // Keep the identity function around for default iteratees.
+  _.identity = function(value) {
+    return value;
+  };
+
+  // Predicate-generating functions. Often useful outside of Underscore.
+  _.constant = function(value) {
+    return function() {
+      return value;
+    };
+  };
+
+  _.noop = function(){};
+
+  _.property = property;
+
+  // Generates a function for a given object that returns a given property.
+  _.propertyOf = function(obj) {
+    return obj == null ? function(){} : function(key) {
+      return obj[key];
+    };
+  };
+
+  // Returns a predicate for checking whether an object has a given set of
+  // `key:value` pairs.
+  _.matcher = _.matches = function(attrs) {
+    attrs = _.extendOwn({}, attrs);
+    return function(obj) {
+      return _.isMatch(obj, attrs);
+    };
+  };
+
+  // Run a function **n** times.
+  _.times = function(n, iteratee, context) {
+    var accum = Array(Math.max(0, n));
+    iteratee = optimizeCb(iteratee, context, 1);
+    for (var i = 0; i < n; i++) accum[i] = iteratee(i);
+    return accum;
+  };
+
+  // Return a random integer between min and max (inclusive).
+  _.random = function(min, max) {
+    if (max == null) {
+      max = min;
+      min = 0;
+    }
+    return min + Math.floor(Math.random() * (max - min + 1));
+  };
+
+  // A (possibly faster) way to get the current timestamp as an integer.
+  _.now = Date.now || function() {
+    return new Date().getTime();
+  };
+
+   // List of HTML entities for escaping.
+  var escapeMap = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#x27;',
+    '`': '&#x60;'
+  };
+  var unescapeMap = _.invert(escapeMap);
+
+  // Functions for escaping and unescaping strings to/from HTML interpolation.
+  var createEscaper = function(map) {
+    var escaper = function(match) {
+      return map[match];
+    };
+    // Regexes for identifying a key that needs to be escaped
+    var source = '(?:' + _.keys(map).join('|') + ')';
+    var testRegexp = RegExp(source);
+    var replaceRegexp = RegExp(source, 'g');
+    return function(string) {
+      string = string == null ? '' : '' + string;
+      return testRegexp.test(string) ? string.replace(replaceRegexp, escaper) : string;
+    };
+  };
+  _.escape = createEscaper(escapeMap);
+  _.unescape = createEscaper(unescapeMap);
+
+  // If the value of the named `property` is a function then invoke it with the
+  // `object` as context; otherwise, return it.
+  _.result = function(object, property, fallback) {
+    var value = object == null ? void 0 : object[property];
+    if (value === void 0) {
+      value = fallback;
+    }
+    return _.isFunction(value) ? value.call(object) : value;
+  };
+
+  // Generate a unique integer id (unique within the entire client session).
+  // Useful for temporary DOM ids.
+  var idCounter = 0;
+  _.uniqueId = function(prefix) {
+    var id = ++idCounter + '';
+    return prefix ? prefix + id : id;
+  };
+
+  // By default, Underscore uses ERB-style template delimiters, change the
+  // following template settings to use alternative delimiters.
+  _.templateSettings = {
+    evaluate    : /<%([\s\S]+?)%>/g,
+    interpolate : /<%=([\s\S]+?)%>/g,
+    escape      : /<%-([\s\S]+?)%>/g
+  };
+
+  // When customizing `templateSettings`, if you don't want to define an
+  // interpolation, evaluation or escaping regex, we need one that is
+  // guaranteed not to match.
+  var noMatch = /(.)^/;
+
+  // Certain characters need to be escaped so that they can be put into a
+  // string literal.
+  var escapes = {
+    "'":      "'",
+    '\\':     '\\',
+    '\r':     'r',
+    '\n':     'n',
+    '\u2028': 'u2028',
+    '\u2029': 'u2029'
+  };
+
+  var escaper = /\\|'|\r|\n|\u2028|\u2029/g;
+
+  var escapeChar = function(match) {
+    return '\\' + escapes[match];
+  };
+
+  // JavaScript micro-templating, similar to John Resig's implementation.
+  // Underscore templating handles arbitrary delimiters, preserves whitespace,
+  // and correctly escapes quotes within interpolated code.
+  // NB: `oldSettings` only exists for backwards compatibility.
+  _.template = function(text, settings, oldSettings) {
+    if (!settings && oldSettings) settings = oldSettings;
+    settings = _.defaults({}, settings, _.templateSettings);
+
+    // Combine delimiters into one regular expression via alternation.
+    var matcher = RegExp([
+      (settings.escape || noMatch).source,
+      (settings.interpolate || noMatch).source,
+      (settings.evaluate || noMatch).source
+    ].join('|') + '|$', 'g');
+
+    // Compile the template source, escaping string literals appropriately.
+    var index = 0;
+    var source = "__p+='";
+    text.replace(matcher, function(match, escape, interpolate, evaluate, offset) {
+      source += text.slice(index, offset).replace(escaper, escapeChar);
+      index = offset + match.length;
+
+      if (escape) {
+        source += "'+\n((__t=(" + escape + "))==null?'':_.escape(__t))+\n'";
+      } else if (interpolate) {
+        source += "'+\n((__t=(" + interpolate + "))==null?'':__t)+\n'";
+      } else if (evaluate) {
+        source += "';\n" + evaluate + "\n__p+='";
+      }
+
+      // Adobe VMs need the match returned to produce the correct offest.
+      return match;
+    });
+    source += "';\n";
+
+    // If a variable is not specified, place data values in local scope.
+    if (!settings.variable) source = 'with(obj||{}){\n' + source + '}\n';
+
+    source = "var __t,__p='',__j=Array.prototype.join," +
+      "print=function(){__p+=__j.call(arguments,'');};\n" +
+      source + 'return __p;\n';
+
+    try {
+      var render = new Function(settings.variable || 'obj', '_', source);
+    } catch (e) {
+      e.source = source;
+      throw e;
+    }
+
+    var template = function(data) {
+      return render.call(this, data, _);
+    };
+
+    // Provide the compiled source as a convenience for precompilation.
+    var argument = settings.variable || 'obj';
+    template.source = 'function(' + argument + '){\n' + source + '}';
+
+    return template;
+  };
+
+  // Add a "chain" function. Start chaining a wrapped Underscore object.
+  _.chain = function(obj) {
+    var instance = _(obj);
+    instance._chain = true;
+    return instance;
+  };
+
+  // OOP
+  // ---------------
+  // If Underscore is called as a function, it returns a wrapped object that
+  // can be used OO-style. This wrapper holds altered versions of all the
+  // underscore functions. Wrapped objects may be chained.
+
+  // Helper function to continue chaining intermediate results.
+  var result = function(instance, obj) {
+    return instance._chain ? _(obj).chain() : obj;
+  };
+
+  // Add your own custom functions to the Underscore object.
+  _.mixin = function(obj) {
+    _.each(_.functions(obj), function(name) {
+      var func = _[name] = obj[name];
+      _.prototype[name] = function() {
+        var args = [this._wrapped];
+        push.apply(args, arguments);
+        return result(this, func.apply(_, args));
+      };
+    });
+  };
+
+  // Add all of the Underscore functions to the wrapper object.
+  _.mixin(_);
+
+  // Add all mutator Array functions to the wrapper.
+  _.each(['pop', 'push', 'reverse', 'shift', 'sort', 'splice', 'unshift'], function(name) {
+    var method = ArrayProto[name];
+    _.prototype[name] = function() {
+      var obj = this._wrapped;
+      method.apply(obj, arguments);
+      if ((name === 'shift' || name === 'splice') && obj.length === 0) delete obj[0];
+      return result(this, obj);
+    };
+  });
+
+  // Add all accessor Array functions to the wrapper.
+  _.each(['concat', 'join', 'slice'], function(name) {
+    var method = ArrayProto[name];
+    _.prototype[name] = function() {
+      return result(this, method.apply(this._wrapped, arguments));
+    };
+  });
+
+  // Extracts the result from a wrapped and chained object.
+  _.prototype.value = function() {
+    return this._wrapped;
+  };
+
+  // Provide unwrapping proxy for some methods used in engine operations
+  // such as arithmetic and JSON stringification.
+  _.prototype.valueOf = _.prototype.toJSON = _.prototype.value;
+
+  _.prototype.toString = function() {
+    return '' + this._wrapped;
+  };
+
+  // AMD registration happens at the end for compatibility with AMD loaders
+  // that may not enforce next-turn semantics on modules. Even though general
+  // practice for AMD registration is to be anonymous, underscore registers
+  // as a named module because, like jQuery, it is a base library that is
+  // popular enough to be bundled in a third party lib, but not be part of
+  // an AMD load request. Those cases could generate an error when an
+  // anonymous define() is called outside of a loader request.
+  if (typeof define === 'function' && define.amd) {
+    define('underscore', [], function() {
+      return _;
+    });
+  }
+}.call(this));
+
+},{}],20:[function(require,module,exports){
+var Sync = require('./helpers/sync');
+var NXLoader = require('./helpers/nxloader');
+var arrangement = require('./model/arrangement');
+var MasterControls = require('./mastercontrols');
+var WindowUpdater = require('./windowupdater');
+
+// Load the nexus ui
+nxloader = new NXLoader();
+nxloader.load();
+// Get the arrangement Id from the URL
+var url = window.location.pathname;
+var arrangementId = url.split('/')[3];
+
+// Set the arrangement id
+arrangement.setId(arrangementId);
+
+// Connect to socket
+var socket = io.connect('http://localhost:3000');
+
+// Init the master controls
+var masterControls = new MasterControls(arrangement);
+
+// Init window updater
+var windowUpdater = new WindowUpdater(masterControls);
+
+// Create new instance of sync
+var sync = new Sync(windowUpdater, socket, arrangementId);
+
+
+},{"./helpers/nxloader":26,"./helpers/sync":29,"./mastercontrols":31,"./model/arrangement":32,"./windowupdater":33}],21:[function(require,module,exports){
+/**
+ * Utility function for deep object cloning
+ *
+ * @param   {object} obj  Object to be cloned
+ * @returns {object}      The deep-cloned object
+ */
+function deepClone (object) {
+    return JSON.parse(JSON.stringify(object));
+};
+
+module.exports = deepClone;
+
+},{}],22:[function(require,module,exports){
+function guid() {
+  return s4() + s4() + '-' + s4() + '-' + s4() + '-' +
+    s4() + '-' + s4() + s4() + s4();
+}
+
+function s4() {
+  return Math.floor((1 + Math.random()) * 0x10000)
+    .toString(16)
+    .substring(1);
+}
+
+module.exports = guid;
+
+},{}],23:[function(require,module,exports){
+var generateSequencerElement = require('./sequencer/GenerateSequencerElement');
+var Sequencer = require('./sequencer/sequencer');
+
+/**
+ * Constructor
+ *
+ * returns {instrumentFactory}   Instance of itself
+ */
+var instrumentFactory = function () {
+    return this;
+};
+
+/**
+ * Factory for creating instrument's HTML and initialise the instrument object
+ *
+ * @param {string}      instrument       The name of the instrument to be created
+ * @param {string|bool} id               The guid of the instrument if it is already created
+ * @returns {HTML}      instrumentTrack  The html of the instrument
+ */
+instrumentFactory.prototype.createInstrument = function (instrument, id) {
+
+    // Switch on the instrument passed in
+    switch (instrument) {
+
+        // Create step sequencer
+        case 'step-sequencer':
+
+            // Create the html
+            return new Promise(function(resolve, reject) {
+                generateSequencerElement.generate(id, function (elements) {
+
+                    // Get the elements
+                    var matrix      = elements.matrix;
+                    var volume      = elements.volume;
+                    var mute        = elements.mute;
+                    var settings    = elements.settings;
+                    var trackId     = elements.id;
+
+                    // Init new sequencer object with id
+                    var seq = new Sequencer(trackId);
+
+                    // Set the sequencer objects
+                    seq.setMatrix(matrix);
+                    seq.setVolume(volume);
+                    seq.setSettingsClickHandler(settings);
+                    seq.setMuteClickHandler(mute);
+
+                    // Create a return object containing sequencer instance
+                    var instrumentContainer  = {};
+                    instrumentContainer.seq  = seq;
+                    instrumentContainer.id   = trackId;
+                    instrumentContainer.html = elements.html;
+                    resolve(instrumentContainer);
+
+                });
+            });
+            break;
+
+        default:
+
+            // Throw error
+            return new Error('No instrument passed into factory');
+            break;
+
+    };
+};
+
+module.exports = instrumentFactory;
+
+},{"./sequencer/GenerateSequencerElement":24,"./sequencer/sequencer":25}],24:[function(require,module,exports){
+var $ = require('jquery');
+var guid = require('../../../helpers/idgenerator');
+var samplesObject = require('../../../helpers/samplelist');
+
+/**
+ * Constructor
+ *
+ * @returns {generateSequencerElement} instance of itself
+ */
+var generateSequencerElement = function () {
+    return this;
+};
+
+generateSequencerElement.generate = function (id, callback) {
+
+        // Check if guid has been set
+        if (id == false) {
+            // Guid hasn't been set, create one
+            id = guid();
+        }
+
+        // Create the instrument container row div
+        var instrumentContainer = document.createElement("div");
+        instrumentContainer.className = 'row instrument-container';
+        instrumentContainer.setAttribute('id', id);
+
+        // Create the sample container column div
+        var sampleContainer = document.createElement("div");
+        sampleContainer.className = 'col-md-2 light-grey-background-colour sample-container';
+
+        // Create the steps container column div
+        var stepsContainer = document.createElement("div");
+        stepsContainer.className = 'col-md-9 step-sequencer-container';
+
+        // Create volume range for sequencer
+        var volume = document.createElement("input");
+        volume.className = 'volume-slider';
+        volume.setAttribute('type', 'range');
+        volume.setAttribute('value', 0);
+        volume.setAttribute('name', 'volume');
+        volume.setAttribute('min', -12);
+        volume.setAttribute('max', 12);
+
+        // Create settings button icon
+        var settingsIcon = document.createElement("i");
+        settingsIcon.className = "track-settings fa fa-cog fa-2x";
+        settingsIcon.setAttribute('aria-hidden', 'true');
+
+        // Create mute icons
+        var muteIcon = document.createElement("i");
+        muteIcon.className = "track-mute fa fa-volume-off fa-2x";
+        muteIcon.setAttribute('aria-hidden', 'true');
+
+        var muteIconCross = document.createElement("i");
+        muteIconCross.className = "track-mute-cross fa fa-times fa-1x";
+        muteIconCross.setAttribute('aria-hidden', 'true');
+
+        var muteIconsDiv = document.createElement("div");
+        muteIconsDiv.className = "track-mute-container";
+
+        // Create settings popup
+        var settingsPopup = document.createElement("div");
+        settingsPopup.className = "track-settings-popup light-grey-background-colour";
+        $(settingsPopup).hide();
+
+        // Create contents of popup
+        var settingsPopupContainerDiv = document.createElement("div");
+
+        // Create Title of popup
+        var settingsPopupTitle = document.createElement("h3");
+        settingsPopupTitle.innerHTML = "Sequencer Settings";
+        settingsPopupTitle.className = "settings-popup-title centre-text";
+
+        // Content of popup
+        var settingsPopupRow = document.createElement("div");
+        settingsPopupRow.className = "settings-popup-row";
+
+        var settingsPopupLableSamples = document.createElement("h4");
+        settingsPopupLableSamples.innerHTML = "Samples:";
+
+        //Create and append select list
+        var samplesList = document.createElement("select");
+
+        //Create and append the options
+        for (var sample in samplesObject) {
+
+            // Check if property is available
+            if(samplesObject.hasOwnProperty(sample)) {
+
+                // Create the option
+                var option = document.createElement("option");
+                option.value = samplesObject[sample];
+                option.text  = sample;
+
+                // Append it to the list
+                samplesList.appendChild(option);
+            }
+        };
+
+        // Create popup confirm and exit buttons
+        var settingsPopupConfirmBtn = document.createElement("button");
+        settingsPopupConfirmBtn.innerHTML = "Confirm";
+        var settingsPopupCancelBtn = document.createElement("button");
+        settingsPopupCancelBtn.innerHTML = "Cancel";
+
+        // Create a container div removing/clearing track actions
+        var trackRemoveActionsContainer = document.createElement("div");
+        trackRemoveActionsContainer.className = 'col-md-1 track-remove-actions-container';
+
+        // Create the remove track icon
+        var removeTrackIcon = document.createElement("i");
+        removeTrackIcon.className = 'delete-track fa fa-trash fa-3x';
+        removeTrackIcon.setAttribute('track-id', id);
+
+        // Build the entire rack
+        instrumentContainer.appendChild(sampleContainer);
+        instrumentContainer.appendChild(stepsContainer);
+        instrumentContainer.appendChild(trackRemoveActionsContainer);
+        instrumentContainer.appendChild(settingsPopup);
+
+        settingsPopup.appendChild(settingsPopupContainerDiv);
+        settingsPopupContainerDiv.appendChild(settingsPopupTitle);
+        settingsPopupContainerDiv.appendChild(settingsPopupRow);
+        settingsPopupRow.appendChild(settingsPopupLableSamples);
+        settingsPopupRow.appendChild(samplesList);
+        var secondRow = settingsPopupRow.cloneNode(true);
+        secondRow.innerHTML = "";
+        secondRow.appendChild(settingsPopupConfirmBtn);
+        secondRow.appendChild(settingsPopupCancelBtn);
+        settingsPopupContainerDiv.appendChild(secondRow);
+
+        trackRemoveActionsContainer.appendChild(removeTrackIcon);
+
+        sampleContainer.appendChild(volume);
+        sampleContainer.appendChild(settingsIcon);
+
+        muteIconsDiv.appendChild(muteIcon);
+        muteIconsDiv.appendChild(muteIconCross);
+
+        sampleContainer.appendChild(muteIconsDiv);
+
+        $('#instrumentTracks').append(instrumentContainer);
+
+        // Add the matrix
+        nx.add("matrix", {w: $('.step-sequencer-container').width(), h:  $('.step-sequencer-container').height(), parent: stepsContainer});
+
+        // Get the latest element added on
+        // BE WEARY OF THIS FUNCTIONALITY
+        var matrix = nx.widgets[Object.keys(nx.widgets)[Object.keys(nx.widgets).length - 1]];
+
+        // Set the properties of the matrix
+        matrix.col = 16;
+        matrix.row = 1;
+        matrix.init();
+
+        // Init empty elements object
+        var elements = {};
+
+        // Create the raw html of the instrument container and its children
+        var html = instrumentContainer.outerHTML;
+
+        // Create the settings popup object
+        var settingsPopupElements = {};
+        settingsPopupElements.confirmBtn = $(settingsPopupConfirmBtn);
+        settingsPopupElements.cancelBtn = $(settingsPopupCancelBtn);
+        settingsPopupElements.icon  = $(settingsIcon);
+        settingsPopupElements.popup = $(settingsPopup);
+        settingsPopupElements.samplesList = $(samplesList);
+
+
+        // Set the element
+        elements.matrix   = matrix;
+        elements.volume   = $(volume);
+        elements.mute     = $(muteIconsDiv);
+        elements.html     = html;
+        elements.id       = id;
+        elements.settings = settingsPopupElements;
+
+        // Send the elements back
+        callback(elements);
+
+};
+
+module.exports = generateSequencerElement;
+
+},{"../../../helpers/idgenerator":22,"../../../helpers/samplelist":28,"jquery":1}],25:[function(require,module,exports){
+var Tone = require('tone');
+var trigger = require('../../../helpers/trigger');
+var proxify = require('../../../helpers/proxify');
+var deepClone = require('../../../helpers/deepclone');
+var arrangement = require('../../../model/arrangement');
+
+// Start the tone timer
+Tone.Transport.start();
+
+/**
+ * Constructor
+ *
+ * @param {string|bool} id  If track already exists from client or initalise
+ *                          use the id to create it
+ * @returns{Sequencer}      Instance of itself
+ */
+function Sequencer (id) {
+
+    // Initialise empty matrix
+    this.steps;
+
+    // Init local guid
+    this.id = id;
+
+    // Init base url string
+    this.baseURL = '../../audio/';
+
+    // Create a player and connect it to the master output (your speakers)
+    this.source = new Tone.Player("../../audio/727-HM-CONGA.WAV").toMaster();
+
+    // Set initialised flag
+    this.isInitialised = false;
+
+    // Initialse volume DOM element as false
+    this.volumeDOM = false;
+
+    // Reference to self
+    var self = this;
+
+    // Sequence notes
+    this.seq = new Tone.Sequence(function(time, col) {
+
+        // Get the array of columns from the matrix
+        var column = self.steps.matrix[col];
+
+        // Jump to the current cell to highlight the block
+        self.steps.jumpToCol(col);
+
+        // If cell has value, play the note
+        if (1 === column[0]) {
+            // Trigger synth to play note at the time passed in to the callback
+            //trigger(self.synth, "C4", '32n');
+            try {
+                self.source.start();
+            }
+            catch (e) {
+                // Siliently fail in the hopes it would have loaded next time it plays
+            }
+        }
+
+    }, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], '16n');
+
+    /**
+     * Track struct
+     * {
+     *    id: 'id',
+     *    type: 'step-sequencer',
+     *    volume: 60,
+     *    pattern: this.steps.matrix
+     * }
+     */
+    this.createTrackJSON = function () {
+
+        // JSON object container meta data of track
+        var track = {
+            id: this.id,
+            type: 'step-sequencer',
+            volume: self.source.volume.value,
+            pattern: [],
+            sampleURL: '../../audio/727-HM-CONGA.WAV'
+        };
+
+        return track;
+    };
+
+    // Init JSON struct of the track
+    this.track = this.createTrackJSON();
+
+    // Add the track to the arrangement
+    arrangement.addTrack(deepClone(this.track));
+
+    /**
+     * Proxy that picks up the changes when a step is pressed and sets the track
+     * pattern to the steps
+     */
+    this.setStepsObserver = function () {
+
+        // Proxify the steps
+        proxify(this.track, function(object, property, oldValue, newValue) {
+
+            // If it hasn't been initialised, stop it setting the track and triggering
+            // a change
+            if (self.isInitialised == false) {
+                return;
+            }
+
+            // Set the track pattern
+            self.track.pattern = self.steps.matrix;
+
+            // Push the changes of the track to the arrangement
+            self.pushChanges();
+        });
+
+    };
+
+    /**
+     * Push track changes to the arrangement
+     */
+    this.pushChanges = function () {
+
+        // replace the track in the arrangement with updated track
+        arrangement.replaceTrack(deepClone(this.track));
+
+    };
+
+    return this;
+};
+
+/**
+ * Start the loop sequence
+ */
+Sequencer.prototype.start = function () {
+    // Start the Transport timer
+    this.seq.start();
+};
+
+/**
+ * Stop the loop sequence
+ */
+Sequencer.prototype.stop = function () {
+    // Stop the transport timer
+    this.seq.stop();
+
+    // Reset and stop the matrix animation
+    this.steps.jumpToCol(0);
+    this.steps.stop();
+};
+
+/**
+ * Set the matrix for the steps Sequencer
+ *
+* @param {DOM} matrix  The matrix DOM that is the steps of the sequencer
+ */
+Sequencer.prototype.setMatrix = function (matrix) {
+
+    // Set the steps
+    this.steps = matrix;
+
+    // Set the track pattern
+    this.track.pattern = matrix.matrix;
+
+    // Set the steps observer
+    this.setStepsObserver();
+
+};
+
+/**
+ * Get the matrix for the steps sequencer
+ *
+ * @returns {matrix} steps  The steps for the sequencer
+ */
+Sequencer.prototype.getMatrix = function () {
+    return this.steps;
+};
+
+/**
+ * Set the volume of the track
+ *
+ * @param {JQuery object} volume  The volume slider jquery object
+ */
+Sequencer.prototype.setVolume = function (volume) {
+
+    var self = this;
+
+    // Set the class volumeDOM variable
+    this.volumeDOM = volume;
+
+    this.volumeDOM.on('input', function(event) {
+
+        // Get the volume value in decibles
+        var db = parseInt(event.target.value);
+
+        // Set the volume
+        self.source.volume.value = db;
+
+        // Set the track volume
+        self.track.volume = db;
+
+        // Push changes of the track to the arrangement
+        self.pushChanges();
+
+    });
+
+};
+
+/**
+ * Set the settings click handler
+ *
+ * @param {object} settings  An object that contains the Jquey objects of
+ *                           elements in the settings popup
+ */
+Sequencer.prototype.setSettingsClickHandler = function (settings) {
+
+    // Reference to self
+    var self = this;
+
+    // Add the spinning animation to the settings icon on hover
+    settings.icon.hover(
+        function() {
+            settings.icon.addClass('fa-spin');
+        }, function() {
+            settings.icon.removeClass('fa-spin');
+        }
+    );
+
+    // On click handler for the settings icon
+    settings.icon.on('click', function (event) {
+        // Toggle the popup
+        settings.popup.toggle(400);
+    });
+
+    // On click handler for the settings icon
+    settings.cancelBtn.on('click', function (event) {
+        // Load the sample original sample
+        self.source.load(self.track.sampleURL);
+
+        // Toggle popup
+        settings.popup.toggle(400);
+    });
+
+    // On click handler for the settings icon
+    settings.confirmBtn.on('click', function (event) {
+        // Confirm choice of sample and push to other clients
+        // Get the new sample selected
+        var sample = settings.samplesList.val();
+
+        // Append the base url
+        var sampleURL = self.baseURL + sample;
+
+        // Set it to the track
+        self.track.sampleURL = sampleURL;
+
+        // Push changes
+        self.pushChanges();
+
+        // Close the popup
+        settings.popup.toggle(400);
+    });
+
+    // Select list handler for on change
+    settings.samplesList.change(function (event) {
+
+        // Get the new sample selected
+        var sample = settings.samplesList.val();
+
+        // Append the base url
+        var sampleURL = self.baseURL + sample;
+
+        // Load the sample
+        self.source.load(sampleURL);
+
+    });
+
+};
+
+/**
+ * Mute the track click handler
+ *
+ * @param {JQuery} muteDiv  The div containing the mute icons
+ */
+Sequencer.prototype.setMuteClickHandler = function (muteDiv) {
+
+    // Ref. to self
+    var self = this;
+
+    // Click handler
+    muteDiv.on('click', function (event) {
+
+        // Mute the source
+        self.source.mute == true ? self.source.mute = false : self.source.mute = true;
+
+        // Toggle the colour class to know its active
+        muteDiv.toggleClass('secondary-colour');
+
+    });
+
+};
+
+/**
+ * Set the track JSON object, used for the syncing/updating of tracks from
+ * other clients.
+ *
+ * @param {object} track  JSON object of the track
+ */
+Sequencer.prototype.setTrackJSON = function (track) {
+
+    // Check if volume has been changed
+    if (this.track.volume != track.volume) {
+        // Volume has been changed, update it
+
+        // Set the slider value
+        this.volumeDOM.val(track.volume);
+
+        // Set the volume
+        this.source.volume.value = parseInt(track.volume);
+    }
+
+    // Check if sample has been changed
+    if (track.sampleURL != undefined
+        && this.track.sampleURL != track.sampleURL) {
+        // The sample has been changed
+
+        // Load the sample
+        this.source.load(track.sampleURL);
+
+    }
+
+    // Set the track json
+    this.track = deepClone(track);
+
+    // Set all the cells and their values
+    this.track.pattern.map(this.setStep.bind(this));
+
+    // Track has been initialised
+    this.isInitialised = true;
+
+};
+
+/**
+ * Get the track JSON
+ *
+ * @return {object} this.track  The track JSON object
+ */
+Sequencer.prototype.getTrackJSON = function () {
+    return this.track;
+};
+
+
+/**
+ * Set the initialised flag, used when instrument is initalised
+ * fresh, without exisiting track JSON data
+ */
+Sequencer.prototype.setInitialised = function () {
+    // Track has been initialised
+    this.isInitialised = true;
+};
+
+/**
+ * Set an individual step value either on or off and reflect the change
+ *
+ * @param {array} step  The steps value
+ */
+Sequencer.prototype.setStep = function (step, index) {
+
+    // Get if it is on or off
+    var on = step[0] > 0 ? true : false;
+
+    // Set the cell value
+    this.steps.setCell(index, 0, on);
+
+};
+
+/**
+ * Get the sequencer ID
+ *
+ * @returns {string} id  The track id of this sequencer
+ */
+Sequencer.prototype.getId = function () {
+    return this.track.id;
+};
+
+
+module.exports = Sequencer;
+
+},{"../../../helpers/deepclone":21,"../../../helpers/proxify":27,"../../../helpers/trigger":30,"../../../model/arrangement":32,"tone":34}],26:[function(require,module,exports){
+var nxloader = function () {
+};
+
+nxloader.prototype.load = function () {
+
+    nx.onload = function () {
+
+        // Colours
+        nx.colorize("accent", "#ffbb4c");
+        nx.colorize("fill", "#1D2632");
+
+    }
+};
+
+module.exports = nxloader;
+
+},{}],27:[function(require,module,exports){
+/**
+ * Create proxy object for as an observer
+ *
+ * @param {object}   object The object to be observered
+ * @param {function} change The handler for the change
+ * @param {bool}     deep   A flag setter to say if all children of the object should be proxied as well
+ * @returns {Proxy}  proxy  The proxy object observing the object passed in
+ */
+function proxify(object, change, deepProxy) {
+    var proxy = new Proxy(object, {
+        set: function(object, name, value) {
+            var old = object[name];
+            if (value && typeof value == 'object') {
+                // new object need to be proxify as well
+                value = proxify(value, change);
+            }
+            object[name] = value;
+            change(object, name, old, value);
+        }
+    });
+    for (var prop in object) {
+        if (object.hasOwnProperty(prop) && object[prop] &&
+            typeof object[prop] == 'object') {
+                // proxify all child objects
+                object[prop] = proxify(object[prop], change);
+        }
+    }
+    return proxy;
+}
+
+module.exports = proxify;
+
+},{}],28:[function(require,module,exports){
+module.exports = {
+    "727-CABASA":"727-CABASA.WAV",
+    "727-HI-BONGO":"727-HI-BONGO.WAV",
+    "727-HI-TIMBA":"727-HI-TIMBA.WAV",
+    "727-HM-CONGA":"727-HM-CONGA.WAV",
+    "727-HO-CONGA":"727-HO-CONGA.WAV",
+    "727-L":"727-L.WHISTL.WAV",
+    "727-LO-BONGO":"727-LO-BONGO.WAV",
+    "727-LO-CONGA":"727-LO-CONGA.WAV",
+    "727-LO-TIMBA":"727-LO-TIMBA.WAV",
+    "727-MARACAS":"727-MARACAS.WAV",
+    "727-QUIJADA":"727-QUIJADA.WAV",
+    "727-S":"727-S.WHISTL.WAV",
+    "727-STARCHIM":"727-STARCHIM.WAV",
+    "Acoustic-Crash-01":"Acoustic-Crash-01.wav",
+    "Acoustic-Crash-02":"Acoustic-Crash-02.wav",
+    "Acoustic-Hat-Closed-01":"Acoustic-Hat-Closed-01.wav",
+    "Acoustic-Hat-Closed-02":"Acoustic-Hat-Closed-02.4.wav",
+    "Acoustic-Hat-Closed-02":"Acoustic-Hat-Closed-02.5.wav",
+    "Acoustic-Hat-Closed-02":"Acoustic-Hat-Closed-02.6.wav",
+    "Acoustic-Hat-Closed-02":"Acoustic-Hat-Closed-02.7.wav",
+    "Acoustic-Hat-Closed-02":"Acoustic-Hat-Closed-02.wav",
+    "Acoustic-Hat-Open":"Acoustic-Hat-Open.wav",
+    "Acoustic-Hat-Trash":"Acoustic-Hat-Trash.wav",
+    "Acoustic-Kick-01":"Acoustic-Kick-01.wav",
+    "Acoustic-Kick-02":"Acoustic-Kick-02.wav",
+    "Acoustic-Kick-n-Crash":"Acoustic-Kick-n-Crash.wav",
+    "Acoustic-Snare-01":"Acoustic-Snare-01.wav",
+    "Acoustic-Snare-02":"Acoustic-Snare-02.wav",
+    "Acoustic-Snare-03":"Acoustic-Snare-03.wav",
+    "Acoustic-Snare-04":"Acoustic-Snare-04.wav",
+    "Acoustic-Tom-Hi":"Acoustic-Tom-Hi.wav",
+    "Acoustic-Tom-Lo":"Acoustic-Tom-Lo.wav",
+    "Acoustic-Tom-Mid":"Acoustic-Tom-Mid.wav",
+    "Axxe-HC1":"Axxe-HC1.wav",
+    "Axxe-HC2":"Axxe-HC2.wav",
+    "Axxe-HC3":"Axxe-HC3.wav",
+    "Axxe-HHC1":"Axxe-HHC1.wav",
+    "Axxe-HHC2":"Axxe-HHC2.wav",
+    "Axxe-HHO1":"Axxe-HHO1.wav",
+    "Axxe-HHO2":"Axxe-HHO2.wav",
+    "Axxe-Kick1":"Axxe-Kick1.wav",
+    "Axxe-Kick2":"Axxe-Kick2.wav",
+    "Axxe-Kick3":"Axxe-Kick3.wav",
+    "Axxe-Kick4":"Axxe-Kick4.wav",
+    "Axxe-SN1":"Axxe-SN1.wav",
+    "Axxe-SN2":"Axxe-SN2.wav",
+    "Axxe-SN3":"Axxe-SN3.wav",
+    "BD-Roll":"BD-Roll.wav",
+    "BOSS-HC-2-Clap1":"BOSS-HC-2-Clap1.wav",
+    "BOSS-HC-2-Clap10":"BOSS-HC-2-Clap10.wav",
+    "BOSS-HC-2-Clap11":"BOSS-HC-2-Clap11.wav",
+    "BOSS-HC-2-Clap12":"BOSS-HC-2-Clap12.wav",
+    "BOSS-HC-2-Clap13":"BOSS-HC-2-Clap13.wav",
+    "BOSS-HC-2-Clap14":"BOSS-HC-2-Clap14.wav",
+    "BOSS-HC-2-Clap2":"BOSS-HC-2-Clap2.wav",
+    "BOSS-HC-2-Clap3":"BOSS-HC-2-Clap3.wav",
+    "BOSS-HC-2-Clap4":"BOSS-HC-2-Clap4.wav",
+    "BOSS-HC-2-Clap5":"BOSS-HC-2-Clap5.wav",
+    "BOSS-HC-2-Clap6":"BOSS-HC-2-Clap6.wav",
+    "BOSS-HC-2-Clap7":"BOSS-HC-2-Clap7.wav",
+    "BOSS-HC-2-Clap8":"BOSS-HC-2-Clap8.wav",
+    "BOSS-HC-2-Clap9":"BOSS-HC-2-Clap9.wav",
+    "C-Cymbal01":"C-Cymbal01.wav",
+    "C-Cymbal02":"C-Cymbal02.wav",
+    "C-Cymbal03":"C-Cymbal03.wav",
+    "C-Cymbal04":"C-Cymbal04.wav",
+    "C-Hat01":"C-Hat01.wav",
+    "C-Hat02":"C-Hat02.wav",
+    "C-Hat03":"C-Hat03.wav",
+    "C-Hat04":"C-Hat04.wav",
+    "C-Kick":"C-Kick.wav",
+    "C-Snare01":"C-Snare01.wav",
+    "C-Snare02":"C-Snare02.wav",
+    "C-Snare03":"C-Snare03.wav",
+    "C-Snare04":"C-Snare04.wav",
+    "C-Tom01":"C-Tom01.wav",
+    "C-Tom02":"C-Tom02.wav",
+    "Castanets-1":"Castanets-1.wav",
+    "Castanets-2":"Castanets-2.wav",
+    "Church-Bells":"Church-Bells.wav",
+    "Concert-BD-1":"Concert-BD-1.wav",
+    "Concert-BD-2":"Concert-BD-2.wav",
+    "Concert-BD-3":"Concert-BD-3.wav",
+    "Concert-SNR1":"Concert-SNR1.wav",
+    "Concert-SNR2":"Concert-SNR2.wav",
+    "Concert-SNR3":"Concert-SNR3.wav",
+    "Crash-Cym-Lp":"Crash-Cym-Lp.wav",
+    "Crash-Cymbal":"Crash-Cymbal.wav",
+    "Cymbal-Hit":"Cymbal-Hit.wav",
+    "Elec-B-Cymbal01":"Elec-B-Cymbal01.wav",
+    "Elec-B-Cymbal02":"Elec-B-Cymbal02.wav",
+    "Elec-B-Cymbal03":"Elec-B-Cymbal03.wav",
+    "Elec-B-Cymbal04":"Elec-B-Cymbal04.wav",
+    "Elec-B-Hat01":"Elec-B-Hat01.wav",
+    "Elec-B-Hat02":"Elec-B-Hat02.wav",
+    "Elec-B-Hat03":"Elec-B-Hat03.wav",
+    "Elec-B-Hat04":"Elec-B-Hat04.wav",
+    "Elec-B-Kick":"Elec-B-Kick.wav",
+    "Elec-B-Snare01":"Elec-B-Snare01.wav",
+    "Elec-B-Snare02":"Elec-B-Snare02.wav",
+    "Elec-B-Snare03":"Elec-B-Snare03.wav",
+    "Elec-B-Snare04":"Elec-B-Snare04.wav",
+    "Elec-B-Tom01":"Elec-B-Tom01.wav",
+    "Elec-B-Tom02":"Elec-B-Tom02.wav",
+    "Elec-Cymbal01":"Elec-Cymbal01.wav",
+    "Elec-Cymbal02":"Elec-Cymbal02.wav",
+    "Elec-Cymbal03":"Elec-Cymbal03.wav",
+    "Elec-Cymbal04":"Elec-Cymbal04.wav",
+    "Elec-Hat01":"Elec-Hat01.wav",
+    "Elec-Hat02":"Elec-Hat02.wav",
+    "Elec-Hat03":"Elec-Hat03.wav",
+    "Elec-Hat04":"Elec-Hat04.wav",
+    "Elec-Kick":"Elec-Kick.wav",
+    "Elec-Snare01":"Elec-Snare01.wav",
+    "Elec-Snare02":"Elec-Snare02.wav",
+    "Elec-Snare03":"Elec-Snare03.wav",
+    "Elec-Snare04":"Elec-Snare04.wav",
+    "Elec-Tom01":"Elec-Tom01.wav",
+    "Elec-Tom02":"Elec-Tom02.wav",
+    "Gong":"Gong.wav",
+    "JV-2080-Int-B-060-Orch":"JV-2080-Int-B-060-Orch.-Hit.wav",
+    "JV-2080-Int-B-061-Tekno-Hit":"JV-2080-Int-B-061-Tekno-Hit.wav",
+    "JV-2080-Int-B-062-Back-Hit":"JV-2080-Int-B-062-Back-Hit.wav",
+    "JV-2080-Int-B-063-Philly-Hit":"JV-2080-Int-B-063-Philly-Hit.wav",
+    "JV-2080-Int-B-064-Scratch-1":"JV-2080-Int-B-064-Scratch-1.wav",
+    "JV-2080-Int-B-065-Scratch-2":"JV-2080-Int-B-065-Scratch-2.wav",
+    "JV-2080-Int-B-066-Scratch-3":"JV-2080-Int-B-066-Scratch-3.wav",
+    "JV-2080-Int-B-067-Natural-SN1":"JV-2080-Int-B-067-Natural-SN1.wav",
+    "JV-2080-Int-B-068-Natural-SN2":"JV-2080-Int-B-068-Natural-SN2.wav",
+    "JV-2080-Int-B-069-Piccolo-SN":"JV-2080-Int-B-069-Piccolo-SN.wav",
+    "JV-2080-Int-B-070-Ballad-SN":"JV-2080-Int-B-070-Ballad-SN.wav",
+    "JV-2080-Int-B-071-SN-Roll":"JV-2080-Int-B-071-SN-Roll.wav",
+    "JV-2080-Int-B-072-808-SN":"JV-2080-Int-B-072-808-SN.wav",
+    "JV-2080-Int-B-073-Brush-Slap":"JV-2080-Int-B-073-Brush-Slap.wav",
+    "JV-2080-Int-B-074-Brush-Swish":"JV-2080-Int-B-074-Brush-Swish.wav",
+    "JV-2080-Int-B-075-Brush-Roll":"JV-2080-Int-B-075-Brush-Roll.wav",
+    "JV-2080-Int-B-076-Dry-Stick":"JV-2080-Int-B-076-Dry-Stick.wav",
+    "JV-2080-Int-B-077-Side-Stick":"JV-2080-Int-B-077-Side-Stick.wav",
+    "JV-2080-Int-B-078-Lite-Kick":"JV-2080-Int-B-078-Lite-Kick.wav",
+    "JV-2080-Int-B-079-Hybrid-Kick1":"JV-2080-Int-B-079-Hybrid-Kick1.wav",
+    "JV-2080-Int-B-080-Hybrid-Kick2":"JV-2080-Int-B-080-Hybrid-Kick2.wav",
+    "JV-2080-Int-B-081-Old-Kick":"JV-2080-Int-B-081-Old-Kick.wav",
+    "JV-2080-Int-B-082-Verb-Kick":"JV-2080-Int-B-082-Verb-Kick.wav",
+    "JV-2080-Int-B-083-Round-Kick":"JV-2080-Int-B-083-Round-Kick.wav",
+    "JV-2080-Int-B-084-808-Kick":"JV-2080-Int-B-084-808-Kick.wav",
+    "JV-2080-Int-B-085-Verb-Tom-Hi":"JV-2080-Int-B-085-Verb-Tom-Hi.wav",
+    "JV-2080-Int-B-086-Verb-Tom-Lo":"JV-2080-Int-B-086-Verb-Tom-Lo.wav",
+    "JV-2080-Int-B-087-Dry-Tom-Hi":"JV-2080-Int-B-087-Dry-Tom-Hi.wav",
+    "JV-2080-Int-B-088-Dry-Tom-Lo":"JV-2080-Int-B-088-Dry-Tom-Lo.wav",
+    "JV-2080-Int-B-089-Cl-HiHat-1":"JV-2080-Int-B-089-Cl-HiHat-1.wav",
+    "JV-2080-Int-B-090-Cl-HiHat-2":"JV-2080-Int-B-090-Cl-HiHat-2.wav",
+    "JV-2080-Int-B-091-Op-HiHat":"JV-2080-Int-B-091-Op-HiHat.wav",
+    "JV-2080-Int-B-092-Pedal-HiHat":"JV-2080-Int-B-092-Pedal-HiHat.wav",
+    "JV-2080-Int-B-093-606-HiHat-Cl":"JV-2080-Int-B-093-606-HiHat-Cl.wav",
+    "JV-2080-Int-B-094-606-HiHat-Op":"JV-2080-Int-B-094-606-HiHat-Op.wav",
+    "JV-2080-Int-B-095-808-Claps":"JV-2080-Int-B-095-808-Claps.wav",
+    "JV-2080-Int-B-096-Hand-Claps":"JV-2080-Int-B-096-Hand-Claps.wav",
+    "JV-2080-Int-B-097-Finger-Snaps":"JV-2080-Int-B-097-Finger-Snaps.wav",
+    "JV-2080-Int-B-098-Ride-1":"JV-2080-Int-B-098-Ride-1.wav",
+    "JV-2080-Int-B-099-Ride-2":"JV-2080-Int-B-099-Ride-2.wav",
+    "JV-2080-Int-B-100-Ride-Bell-1":"JV-2080-Int-B-100-Ride-Bell-1.wav",
+    "JV-2080-Int-B-101-Crash-1":"JV-2080-Int-B-101-Crash-1.wav",
+    "JV-2080-Int-B-102-China-Cym":"JV-2080-Int-B-102-China-Cym.wav",
+    "JV-2080-Int-B-103-Cowbell-1":"JV-2080-Int-B-103-Cowbell-1.wav",
+    "JV-2080-Int-B-104-Wood-Block":"JV-2080-Int-B-104-Wood-Block.wav",
+    "JV-2080-Int-B-105-Claves":"JV-2080-Int-B-105-Claves.wav",
+    "JV-2080-Int-B-106-Bongo-Hi":"JV-2080-Int-B-106-Bongo-Hi.wav",
+    "JV-2080-Int-B-107-Bongo-Lo":"JV-2080-Int-B-107-Bongo-Lo.wav",
+    "JV-2080-Int-B-108-Cga-Open-Hi":"JV-2080-Int-B-108-Cga-Open-Hi.wav",
+    "JV-2080-Int-B-109-Cga-Open-Lo":"JV-2080-Int-B-109-Cga-Open-Lo.wav",
+    "JV-2080-Int-B-110-Cga-Mute-Hi":"JV-2080-Int-B-110-Cga-Mute-Hi.wav",
+    "JV-2080-Int-B-111-Cga-Mute-Lo":"JV-2080-Int-B-111-Cga-Mute-Lo.wav",
+    "JV-2080-Int-B-112-Cga-Slap":"JV-2080-Int-B-112-Cga-Slap.wav",
+    "JV-2080-Int-B-113-Timbale":"JV-2080-Int-B-113-Timbale.wav",
+    "JV-2080-Int-B-114-Cabasa-Up":"JV-2080-Int-B-114-Cabasa-Up.wav",
+    "JV-2080-Int-B-115-Cabasa-Down":"JV-2080-Int-B-115-Cabasa-Down.wav",
+    "JV-2080-Int-B-116-Cabasa-Cut":"JV-2080-Int-B-116-Cabasa-Cut.wav",
+    "JV-2080-Int-B-117-Maracas":"JV-2080-Int-B-117-Maracas.wav",
+    "JV-2080-Int-B-118-Long-Guiro":"JV-2080-Int-B-118-Long-Guiro.wav",
+    "JV-2080-Int-B-119-Tambourine":"JV-2080-Int-B-119-Tambourine.wav",
+    "JV-2080-Int-B-121-Cuica":"JV-2080-Int-B-121-Cuica.wav",
+    "JV-2080-Int-B-123-Timpani":"JV-2080-Int-B-123-Timpani.wav",
+    "JV-2080-Int-B-125-REV-Orch":"JV-2080-Int-B-125-REV-Orch.Hit.wav",
+    "JV-2080-Int-B-126-REV-TeknoHit":"JV-2080-Int-B-126-REV-TeknoHit.wav",
+    "JV-2080-Int-B-127-REV-Back-Hit":"JV-2080-Int-B-127-REV-Back-Hit.wav",
+    "JV-2080-Int-B-128-REV-PhillHit":"JV-2080-Int-B-128-REV-PhillHit.wav",
+    "JV-2080-Int-B-129-REV-Steel-DR":"JV-2080-Int-B-129-REV-Steel-DR.wav",
+    "JV-2080-Int-B-130-REV-Tin-Wave":"JV-2080-Int-B-130-REV-Tin-Wave.wav",
+    "JV-2080-Int-B-131-REV-NatrlSN1":"JV-2080-Int-B-131-REV-NatrlSN1.wav",
+    "JV-2080-Int-B-132-REV-NatrlSN2":"JV-2080-Int-B-132-REV-NatrlSN2.wav",
+    "JV-2080-Int-B-133-REV-PiccloSN":"JV-2080-Int-B-133-REV-PiccloSN.wav",
+    "JV-2080-Int-B-134-REV-BalladSN":"JV-2080-Int-B-134-REV-BalladSN.wav",
+    "JV-2080-Int-B-135-REV-Side-Stk":"JV-2080-Int-B-135-REV-Side-Stk.wav",
+    "JV-2080-Int-B-136-REV-SN-Roll":"JV-2080-Int-B-136-REV-SN-Roll.wav",
+    "JV-2080-Int-B-137-REV-Brush-1":"JV-2080-Int-B-137-REV-Brush-1.wav",
+    "JV-2080-Int-B-138-REV-Brush-2":"JV-2080-Int-B-138-REV-Brush-2.wav",
+    "JV-2080-Int-B-139-REV-Brush-3":"JV-2080-Int-B-139-REV-Brush-3.wav",
+    "JV-2080-Int-B-140-REV-LiteKick":"JV-2080-Int-B-140-REV-LiteKick.wav",
+    "JV-2080-Int-B-141-REV-HybridK1":"JV-2080-Int-B-141-REV-HybridK1.wav",
+    "JV-2080-Int-B-142-REV-HybridK2":"JV-2080-Int-B-142-REV-HybridK2.wav",
+    "JV-2080-Int-B-143-REV-Old-Kick":"JV-2080-Int-B-143-REV-Old-Kick.wav",
+    "JV-2080-Int-B-144-REV-Timpani":"JV-2080-Int-B-144-REV-Timpani.wav",
+    "JV-2080-Int-B-145-REV-VerbTomH":"JV-2080-Int-B-145-REV-VerbTomH.wav",
+    "JV-2080-Int-B-146-REV-VerbTomL":"JV-2080-Int-B-146-REV-VerbTomL.wav",
+    "JV-2080-Int-B-147-REV-Dry-Tom-H":"JV-2080-Int-B-147-REV-Dry-Tom-H.wav",
+    "JV-2080-Int-B-148-REV-Dry-Tom-M":"JV-2080-Int-B-148-REV-Dry-Tom-M.wav",
+    "JV-2080-Int-B-149-REV-ClHiHat1":"JV-2080-Int-B-149-REV-ClHiHat1.wav",
+    "JV-2080-Int-B-150-REV-ClHiHat2":"JV-2080-Int-B-150-REV-ClHiHat2.wav",
+    "JV-2080-Int-B-151-REV-Op-HiHat":"JV-2080-Int-B-151-REV-Op-HiHat.wav",
+    "JV-2080-Int-B-152-REV-Pedal-HH":"JV-2080-Int-B-152-REV-Pedal-HH.wav",
+    "JV-2080-Int-B-153-REV-606HH-Cl":"JV-2080-Int-B-153-REV-606HH-Cl.wav",
+    "JV-2080-Int-B-154-REV-606HH-Op":"JV-2080-Int-B-154-REV-606HH-Op.wav",
+    "JV-2080-Int-B-155-REV-Ride":"JV-2080-Int-B-155-REV-Ride.wav",
+    "JV-2080-Int-B-156-REV-Cup":"JV-2080-Int-B-156-REV-Cup.wav",
+    "JV-2080-Int-B-157-REV-Crash-1":"JV-2080-Int-B-157-REV-Crash-1.wav",
+    "JV-2080-Int-B-158-REV-China":"JV-2080-Int-B-158-REV-China.wav",
+    "JV-2080-Int-B-159-REV-DrySick":"JV-2080-Int-B-159-REV-DrySick.wav",
+    "JV-2080-Int-B-160-REV-RealCLP":"JV-2080-Int-B-160-REV-RealCLP.wav",
+    "JV-2080-Int-B-161-REV-FingSnap":"JV-2080-Int-B-161-REV-FingSnap.wav",
+    "JV-2080-Int-B-162-REV-Cowbell":"JV-2080-Int-B-162-REV-Cowbell.wav",
+    "JV-2080-Int-B-163-REV-WoodBlck":"JV-2080-Int-B-163-REV-WoodBlck.wav",
+    "JV-2080-Int-B-164-REV-Clve":"JV-2080-Int-B-164-REV-Clve.wav",
+    "JV-2080-Int-B-165-REV-Conga":"JV-2080-Int-B-165-REV-Conga.wav",
+    "JV-2080-Int-B-166-REV-Tamb":"JV-2080-Int-B-166-REV-Tamb.wav",
+    "JV-2080-Int-B-167-REV-Maracas":"JV-2080-Int-B-167-REV-Maracas.wav",
+    "JV-2080-Int-B-168-REV-Guiro":"JV-2080-Int-B-168-REV-Guiro.wav",
+    "JV-2080-Int-B-169-REV-Cuica":"JV-2080-Int-B-169-REV-Cuica.wav",
+    "JV-2080-Int-B-170-REV-Metro":"JV-2080-Int-B-170-REV-Metro.wav",
+    "JV-2080-Int-B-180-Metronome-2":"JV-2080-Int-B-180-Metronome-2.wav",
+    "JV-2080-Int-B-181-MC500-Beep-1":"JV-2080-Int-B-181-MC500-Beep-1.wav",
+    "JV-2080-Int-B-182-MC500-Beep-2":"JV-2080-Int-B-182-MC500-Beep-2.wav",
+    "Kit-A-FX01":"Kit-A-FX01.wav",
+    "Kit-A-FX02":"Kit-A-FX02.wav",
+    "Kit-A-FX03":"Kit-A-FX03.wav",
+    "Kit-A-FX04":"Kit-A-FX04.wav",
+    "Kit-A-FX05":"Kit-A-FX05.wav",
+    "Kit-A-FX06":"Kit-A-FX06.wav",
+    "Kit-A-Hat01":"Kit-A-Hat01.wav",
+    "Kit-A-Hat02":"Kit-A-Hat02.wav",
+    "Kit-A-Hat03":"Kit-A-Hat03.wav",
+    "Kit-A-Kick":"Kit-A-Kick.wav",
+    "Kit-A-Snare-01":"Kit-A-Snare-01.wav",
+    "Kit-A-Snare-02":"Kit-A-Snare-02.wav",
+    "Kit-A01":"Kit-A01.wav",
+    "Kit-A02":"Kit-A02.wav",
+    "Kit-A03":"Kit-A03.wav",
+    "Kit-A04":"Kit-A04.wav",
+    "Kit-A05":"Kit-A05.wav",
+    "Kit-A06":"Kit-A06.wav",
+    "Kit-A07":"Kit-A07.wav",
+    "Kit-A08":"Kit-A08.wav",
+    "Kit-A09":"Kit-A09.wav",
+    "Kit-A10":"Kit-A10.wav",
+    "Kit-A11":"Kit-A11.wav",
+    "Kit-A12":"Kit-A12.wav",
+    "Kit-A13":"Kit-A13.wav",
+    "Kit-A14":"Kit-A14.wav",
+    "Kit-A15":"Kit-A15.wav",
+    "Kit-A16":"Kit-A16.wav",
+    "Kit-A17":"Kit-A17.wav",
+    "Kit-A18":"Kit-A18.wav",
+    "Kit-A19":"Kit-A19.wav",
+    "Kit-A20":"Kit-A20.wav",
+    "Kit-A21":"Kit-A21.wav",
+    "Kit-A22":"Kit-A22.wav",
+    "Kit-A23":"Kit-A23.wav",
+    "Kit-A24":"Kit-A24.wav",
+    "Kit-B01":"Kit-B01.wav",
+    "Kit-B02":"Kit-B02.wav",
+    "Kit-B03":"Kit-B03.wav",
+    "Kit-B04":"Kit-B04.wav",
+    "Kit-B05":"Kit-B05.wav",
+    "Kit-B06":"Kit-B06.wav",
+    "Kit-B07":"Kit-B07.wav",
+    "Kit-B08":"Kit-B08.wav",
+    "Kit-B09":"Kit-B09.wav",
+    "Kit-B10":"Kit-B10.wav",
+    "Kit-B11":"Kit-B11.wav",
+    "Kit-B12":"Kit-B12.wav",
+    "Kit-B13":"Kit-B13.wav",
+    "Kit-B14":"Kit-B14.wav",
+    "Kit-B15":"Kit-B15.wav",
+    "Kit-B16":"Kit-B16.wav",
+    "Kit-B17":"Kit-B17.wav",
+    "Kit-B18":"Kit-B18.wav",
+    "Kit-B19":"Kit-B19.wav",
+    "Kit-B20":"Kit-B20.wav",
+    "Kit-B21":"Kit-B21.wav",
+    "Kit-B22":"Kit-B22.wav",
+    "Kit-B23":"Kit-B23.wav",
+    "Kit-B24":"Kit-B24.wav",
+    "Kit-C-FX01":"Kit-C-FX01.wav",
+    "Kit-C-FX02":"Kit-C-FX02.wav",
+    "Kit-C-FX03":"Kit-C-FX03.wav",
+    "Kit-C-FX04":"Kit-C-FX04.wav",
+    "Kit-C-FX05":"Kit-C-FX05.wav",
+    "Kit-C-FX06":"Kit-C-FX06.wav",
+    "Kit-C-Hat01":"Kit-C-Hat01.wav",
+    "Kit-C-Hat02":"Kit-C-Hat02.wav",
+    "Kit-C-Hat03":"Kit-C-Hat03.wav",
+    "Kit-C-Kick":"Kit-C-Kick.wav",
+    "Kit-C-Snare01":"Kit-C-Snare01.wav",
+    "Kit-C-Snare02":"Kit-C-Snare02.wav",
+    "Orch-Hit-Dim":"Orch-Hit-Dim.wav",
+    "Orch-Hit-Maj":"Orch-Hit-Maj.wav",
+    "Orch-Hit-Min":"Orch-Hit-Min.wav",
+    "Perc-Hit-1":"Perc-Hit-1.wav",
+    "Perc-Hit-2":"Perc-Hit-2.wav",
+    "ROLAND-CR80-Ahh":"ROLAND-CR80-Ahh.wav",
+    "ROLAND-CR80-BD":"ROLAND-CR80-BD.wav",
+    "ROLAND-CR80-Chh":"ROLAND-CR80-Chh.wav",
+    "ROLAND-CR80-Crash":"ROLAND-CR80-Crash.wav",
+    "ROLAND-CR80-Ha":"ROLAND-CR80-Ha.wav",
+    "ROLAND-CR80-Hey":"ROLAND-CR80-Hey.wav",
+    "ROLAND-CR80-Ohh":"ROLAND-CR80-Ohh.wav",
+    "ROLAND-CR80-Ride":"ROLAND-CR80-Ride.wav",
+    "ROLAND-CR80-Scratch1":"ROLAND-CR80-Scratch1.wav",
+    "ROLAND-CR80-Scratch2":"ROLAND-CR80-Scratch2.wav",
+    "ROLAND-CR80-Snare":"ROLAND-CR80-Snare.wav",
+    "ROLAND-CR80-Tom":"ROLAND-CR80-Tom.wav",
+    "ROLAND-CR80-Uuh":"ROLAND-CR80-Uuh.wav",
+    "ROLAND-TR1-Conga-1":"ROLAND-TR1-Conga-1.wav",
+    "ROLAND-TR1-Conga-2":"ROLAND-TR1-Conga-2.wav",
+    "ROLAND-TR1-Cymbal":"ROLAND-TR1-Cymbal.wav",
+    "ROLAND-TR1-Kick-1":"ROLAND-TR1-Kick-1.wav",
+    "ROLAND-TR1-Kick-2":"ROLAND-TR1-Kick-2.wav",
+    "ROLAND-TR1-Kick-3":"ROLAND-TR1-Kick-3.wav",
+    "ROLAND-TR1-Kick-4":"ROLAND-TR1-Kick-4.wav",
+    "ROLAND-TR1-Perc":"ROLAND-TR1-Perc.wav",
+    "ROLAND-TR1-Scratch-1":"ROLAND-TR1-Scratch-1.wav",
+    "ROLAND-TR1-Scratch-2":"ROLAND-TR1-Scratch-2.wav",
+    "ROLAND-TR1-Shaker-1":"ROLAND-TR1-Shaker-1.wav",
+    "ROLAND-TR1-Shaker-2":"ROLAND-TR1-Shaker-2.wav",
+    "ROLAND-TR1-Snare-1":"ROLAND-TR1-Snare-1.wav",
+    "ROLAND-TR1-Snare-2":"ROLAND-TR1-Snare-2.wav",
+    "ROLAND-TR1-Snare-3":"ROLAND-TR1-Snare-3.wav",
+    "ROLAND-TR1-Snare-4":"ROLAND-TR1-Snare-4.wav",
+    "ROLAND-TR1-Snare-5":"ROLAND-TR1-Snare-5.wav",
+    "ROLAND-TR1-Tom-1":"ROLAND-TR1-Tom-1.wav",
+    "ROLAND-TR1-Tom-2":"ROLAND-TR1-Tom-2.wav",
+    "Ratchet":"Ratchet.wav",
+    "SNR-Roll":"SNR-Roll.wav",
+    "Slapstick":"Slapstick.wav",
+    "Sleigh-Bell":"Sleigh-Bell.wav",
+    "Tam-Tam":"Tam-Tam.wav",
+    "Tambourine":"Tambourine.wav",
+    "Timp-Roll-f":"Timp-Roll-f.wav",
+    "Timp-Roll-p":"Timp-Roll-p.wav",
+    "Timpani-f":"Timpani-f.wav",
+    "Timpani-p":"Timpani-p.wav",
+    "Triangle":"Triangle.wav",
+    "TubularBells":"TubularBells.wav",
+    "Wind-Chime-2":"Wind-Chime-2.wav",
+    "YAHAMA-AN200-00":"YAHAMA-AN200-00.wav",
+    "YAHAMA-AN200-01":"YAHAMA-AN200-01.wav",
+    "YAHAMA-AN200-02":"YAHAMA-AN200-02.wav",
+    "YAHAMA-AN200-03":"YAHAMA-AN200-03.wav",
+    "YAHAMA-AN200-04":"YAHAMA-AN200-04.wav",
+    "YAHAMA-AN200-05":"YAHAMA-AN200-05.wav",
+    "YAHAMA-AN200-06":"YAHAMA-AN200-06.wav",
+    "YAHAMA-AN200-07":"YAHAMA-AN200-07.wav",
+    "YAHAMA-AN200-08":"YAHAMA-AN200-08.wav",
+    "YAHAMA-AN200-09":"YAHAMA-AN200-09.wav",
+    "YAHAMA-AN200-10":"YAHAMA-AN200-10.wav",
+    "YAHAMA-AN200-11":"YAHAMA-AN200-11.wav",
+    "YAHAMA-AN200-12":"YAHAMA-AN200-12.wav",
+    "YAHAMA-AN200-13":"YAHAMA-AN200-13.wav",
+    "YAHAMA-AN200-14":"YAHAMA-AN200-14.wav",
+    "YAHAMA-AN200-15":"YAHAMA-AN200-15.wav",
+    "YAHAMA-AN200-16":"YAHAMA-AN200-16.wav",
+    "YAHAMA-AN200-17":"YAHAMA-AN200-17.wav",
+    "YAHAMA-AN200-18":"YAHAMA-AN200-18.wav",
+    "YAHAMA-AN200-19":"YAHAMA-AN200-19.wav",
+    "YAHAMA-AN200-20":"YAHAMA-AN200-20.wav",
+    "YAHAMA-AN200-21":"YAHAMA-AN200-21.wav",
+    "YAHAMA-AN200-22":"YAHAMA-AN200-22.wav",
+    "YAHAMA-AN200-23":"YAHAMA-AN200-23.wav",
+    "YAHAMA-AN200-24":"YAHAMA-AN200-24.wav",
+    "YAHAMA-AN200-25":"YAHAMA-AN200-25.wav",
+    "YAHAMA-AN200-26":"YAHAMA-AN200-26.wav",
+    "YAHAMA-AN200-27":"YAHAMA-AN200-27.wav",
+    "YAHAMA-AN200-28":"YAHAMA-AN200-28.wav",
+    "YAHAMA-AN200-29":"YAHAMA-AN200-29.wav",
+    "YAHAMA-AN200-30":"YAHAMA-AN200-30.wav",
+    "YAHAMA-AN200-31":"YAHAMA-AN200-31.wav",
+    "YAHAMA-AN200-32":"YAHAMA-AN200-32.wav",
+    "YAHAMA-AN200-33":"YAHAMA-AN200-33.wav",
+    "YAHAMA-AN200-34":"YAHAMA-AN200-34.wav",
+    "YAHAMA-AN200-35":"YAHAMA-AN200-35.wav",
+    "YAHAMA-AN200-36":"YAHAMA-AN200-36.wav",
+    "YAHAMA-AN200-37":"YAHAMA-AN200-37.wav",
+    "YAHAMA-AN200-38":"YAHAMA-AN200-38.wav",
+    "YAHAMA-AN200-39":"YAHAMA-AN200-39.wav",
+    "YAHAMA-AN200-40":"YAHAMA-AN200-40.wav"
+};
+
+},{}],29:[function(require,module,exports){
+var arrangement = require('../model/arrangement');
+var jsondiffpatch = require('jsondiffpatch');
+var WindowUpdater = require('../windowupdater');
+var deepClone = require('../helpers/deepclone');
+var _ = require('underscore')._;
+
+/**
+ * Constructor
+ *
+ * @param   {socket.io|socket} socket         The socket that the client is connected through
+ * @param   {string}           arrangementId  The ID of the arrangement that it is syncing with
+ * @returns {sync}                            Instance of self
+ */
+var sync = function (WindowUpdater, socket, arrangementId) {
+
+    // Init a document that gets passed between server and client
+    this.doc = {
+        localVersion: 0,
+        serverVersion: 0,
+        shadow: {},
+        localCopy: {},
+        edits: []
+    }
+
+    // Flag to ensure for single syncing at a time
+    this.syncing = false;
+
+    // Flag to check if arrangement has been initialised
+    this.initialised = false;
+
+    // Flag to check if a edits are to be scheduled
+    this.scheduled = false;
+
+    // Set the socket
+    this.socket = socket;
+
+    // Class's instance of window updater
+    this.windowUpdater = WindowUpdater;
+
+    // Set the arrangement Id
+    this.arrangementId = arrangementId;
+
+    // Set up object comparison
+    jsondiffpatch = jsondiffpatch.create({
+        objectHash: function(obj) {
+            return obj.id || JSON.stringify(obj);
+        }
+    });
+
+    // Set this sync variable in the arrangement class
+    arrangement.setSync(this);
+
+    /**
+     * When Initialising class, get the latest arrangement to init the client
+     *
+     * @returns {this}   Implement fluent interface
+     */
+    this.initArrangement = function () {
+
+        // Check if initialised
+        if (this.isInitialised()) {
+            return false;
+        }
+
+        // Get the latest document
+        this.getLatestDocument();
+
+        // Implement fluent interface
+        return this;
+    };
+
+    /**
+     * Send the client changes
+     */
+    this.sendEditMessage = function (editMessage) {
+        // Send the message to the other sockets and handle the incoming return message
+        this.socket.emit('send-edit', editMessage, function(serverEdits) {
+            this.applyServerEdits(serverEdits);
+        }.bind(this));
+    };
+
+    /**
+     * Gets the latest document from the server
+     */
+    this.getLatestDocument = function () {
+
+        // Check if already syncing
+        if (this.isSyncing()) {
+            return false;
+        }
+
+        // Start syncing with server
+        this.syncing = true;
+
+        // Request the latest document
+        this.socket.emit('get-latest-document', arrangementId, this.initLocalVersion.bind(this));
+
+    };
+
+    /**
+     * Initialise the local version of the document
+     *
+     * @params {object} latestVersion  The latest version of the document from the server
+     */
+    this.initLocalVersion = function (latestVersion) {
+
+        // Not syncing any more
+        this.syncing = false;
+
+        // Init the client side document
+        this.doc.localCopy = deepClone(latestVersion.doc);
+        this.doc.shadow = deepClone(latestVersion.doc);
+        this.doc.serverVersion = latestVersion.version;
+
+        // Initialised this client
+        this.initialised = true;
+
+        // Set the local arrangement
+        arrangement.setArrangement(this.doc.localCopy);
+
+        // Set the local arrangement to window updater
+        this.windowUpdater.initialise(this.doc.localCopy);
+
+        // listen to incoming updates from the server
+        this.socket.on('updated-document', this.syncWithServer.bind(this));
+
+        // listen to errors and reload
+        this.socket.on('error', function(message){
+            window.location.reload();
+        });
+    };
+
+    /**
+     * Apply all edits from the server
+     */
+    this.applyServerEdits = function(serverEdits){
+
+        // Check if any edits to apply
+        if (serverEdits.edits.length == 0) {
+            // No edits, don't sync
+            this.syncing = false;
+            this.scheduled = false;
+
+            return this;
+        }
+
+        // Check if versions match and there is edits to apply
+        if (serverEdits && serverEdits.localVersion == this.doc.localVersion){
+
+            // Delete all previous edits
+            this.doc.edits = [];
+
+            // Iterate over all edits
+            serverEdits.edits.forEach(this.applyServerEdit.bind(this));
+
+        } else {
+            console.log('rejected patch because localVersions don\'t match');
+        }
+
+        // Not syncing anymore
+        this.syncing = false;
+        this.scheduled = false;
+    };
+
+    /**
+     * Apply the individual edit from the server to the client doc
+     */
+    this.applyServerEdit = function(edit) {
+
+        // Check the version numbers
+        if (edit.localVersion == this.doc.localVersion &&
+            edit.serverVersion == this.doc.serverVersion) {
+            // Versions match
+
+            // Patch the shadow
+            jsondiffpatch.patch(this.doc.shadow, edit.diff);
+
+            // Check if there is a diff
+            if (!_.isEmpty(edit.diff)) {
+                // Is an edit increase the version number for the
+                // shadow
+                this.doc.serverVersion++;
+            }
+
+            // Apply the patch to the local document
+            jsondiffpatch.patch(this.doc.localCopy, deepClone(edit.diff));
+
+            // Set the arrangement
+            arrangement.setArrangement(this.doc.localCopy);
+
+            // Update the window
+            this.windowUpdater.update(this.doc.localCopy);
+
+        } else {
+            console.log('patch from server rejected, due to not matching version numbers');
+        }
+    };
+
+    /**
+     * Creates the send edit message
+     */
+    this.createSendEditMessage = function (localBaseVersion) {
+        return {
+            id: this.doc.localCopy._id,
+            edits: this.doc.edits,
+            localVersion: localBaseVersion,
+            serverVersion: this.doc.serverVersion
+        };
+    }
+
+    /**
+     * Add the edit to the list of edits in the doc
+     */
+    this.addEdit = function(diff, baseVersion){
+
+      this.doc.edits.push({
+        serverVersion: this.doc.serverVersion,
+        localVersion: baseVersion,
+        diff: diff
+      });
+
+      // Update the local version number
+      this.doc.localVersion++;
+    };
+
+    /**
+     * Checks whether the client is already syncing
+     *
+     * @returns {bool} syncing  The flag to check if it is syncing
+     */
+    this.isSyncing = function () {
+        return this.syncing;
+    };
+
+    /**
+     * Checks whether or not a sync has been scheduled
+     *
+     * @returns {bool} scheduled The flag to check if it has been scheduled
+     */
+    this.isScheduled = function () {
+        return this.isScheduled;
+    };
+
+    /**
+     * Checks whether document has been initialised already
+     *
+     * @returns {bool} initialised  The flag to check if it has been initialised
+     */
+    this.isInitialised = function () {
+        return this.initialised;
+    };
+
+    /**
+     * Sync document with server
+     *
+     * @returns {this}  Implements fluent interface
+     */
+    this.syncWithServer = function () {
+
+        // Check if syncing or if it isn't initialised
+        if (this.isSyncing() || !this.isInitialised()) {
+            // Don't sync
+            return false;
+        }
+
+        // Set syncing
+        this.syncing = true;
+
+        // Create a diff of the local copy and the shadow copy
+        var diff = jsondiffpatch.diff(deepClone(this.doc.shadow), deepClone(this.doc.localCopy));
+
+        // Create running copy of local version number
+        var localBaseVersion = this.doc.localVersion;
+
+        // Check if there is a diff
+        if (!_.isEmpty(diff)) {
+            // Diff made, add edit
+            this.addEdit(diff, localBaseVersion);
+        }
+
+        // Create the send edit message
+        var editMessage = this.createSendEditMessage(localBaseVersion);
+
+        // Apply the the diff to the shadow document
+        jsondiffpatch.patch(this.doc.shadow, diff);
+
+        // Send to the server
+        this.sendEditMessage(editMessage);
+
+        // Implement fluent interface
+        return this;
+
+    };
+
+    /**
+     * Schedules a server-sync
+     */
+    this.scheduleSync = function () {
+
+        // Check if already scheduled
+        if (this.isScheduled()) {
+            return;
+        }
+
+        // Schedule sync
+        this.scheduled = true;
+        this.syncWithServer();
+
+    };
+
+    // Initialise 
+    this.initArrangement();
+
+    // Allow 50 millisecond delay before execution to allow for data to arrive
+    this.syncWithServer = _.debounce(this.syncWithServer.bind(this), 50);
+
+    // Update client every 5 seconds
+    setInterval(this.scheduleSync.bind(this), 5000);
+
+    // Implement fluent interface
+    return this;
+};
+
+/**
+ * Add a change to be sync'd
+ *
+ * @param {object} arrangement  The updated client version of the arrangement
+ */
+sync.prototype.addChange = function (arrangement) {
+
+    // Change to arrangement made update the local copy
+    this.doc.localCopy = deepClone(arrangement);
+
+    // Sync with the server
+    this.syncWithServer();
+
+    // Implements fluent interface
+    return this;
+};
+
+module.exports = sync;
+
+},{"../helpers/deepclone":21,"../model/arrangement":32,"../windowupdater":33,"jsondiffpatch":16,"underscore":19}],30:[function(require,module,exports){
+// Require tone
+var Tone = require('tone');
+
+/**
+ * Triggers an instrument to be played using `triggerAttackRelease` function
+ * for the instrument, note and duration specified
+ *
+ * @param {Tone.instrument} intrument  The instrument to be triggered
+ * @param {string} note                The note value to be played
+ * @param {string} duration            The duration that is should be played for
+ */
+var trigger = function(instrument, note, duration) {
+    instrument.triggerAttackRelease(note, duration);
+};
+
+module.exports = trigger;
+
+},{"tone":34}],31:[function(require,module,exports){
+var $ = require('jquery');
+var Tone = require('tone');
+var InstrumentFactory = require('./helpers/instruments/InstrumentFactory');
+
+/**
+ * Constructor, it controls:
+ * - Getting/Setting bpm
+ * - Control of sequences, starting, stopping, etc
+ * - Adding an instrument
+ *
+ * @param  {object}         arrangement  The arrangement data structure
+ * @return {MasterControls}              Instance of self
+ */
+var MasterControls = function (arrangement) {
+
+    // Array to hold a the objects of the tracks
+    this.tracks = [];
+
+    // Int to hold bpm
+    this.bpm = $('#bpm').attr("value");
+
+    // Local instance of window updater
+    this.windowUpdater = false;
+
+    // Play back bool
+    this.playing = false;
+
+    // Reference to self
+    var self = this;
+
+    // Create instance of instrument factory
+    this.instrumentFactory = new InstrumentFactory();
+
+    /**
+     * Add event listener for the bpm slider
+     */
+    $('#bpm').on('input', function(event) {
+
+        // Check if bpm is set
+        if ('' !== event.target.value) {
+
+            // Get the bpm value
+            bpm = parseInt(event.target.value);
+
+            // Set the BPM value
+            Tone.Transport.bpm.value = bpm;
+
+            // Set the bpm of the arrangement
+            arrangement.setBpm(bpm);
+        }
+
+    });
+
+    /**
+     * Event listener for starting the playback
+     */
+    $('#start-stop').on('click', function() {
+
+        // Set the playing toggle
+        self.playing == true ? self.playing = false : self.playing = true;
+
+        // Toggle the stop class on
+        $(this).toggleClass('fa-play-circle fa-stop-circle');
+
+        // Check if playing
+        if (self.playing == true) {
+
+            // Loop all the tracks
+            self.tracks.forEach(function(track) {
+
+                // Start the track
+                track.start();
+
+            });
+
+        } else {
+
+            // Loop all the tracks
+            self.tracks.forEach(function(track) {
+
+                // Start the track
+                track.stop();
+
+            });
+
+        }
+
+    });
+
+    /**
+     * Event listener for adding an instrument
+     */
+    $('#addInstrument').on('click', function () {
+
+        // Get the selected instrument from the drop down
+        var instrument = $('#instruments').val();
+
+        // Create the instrument selected
+        self.instrumentFactory.createInstrument(instrument, false)
+            .then(function(instrumentContainer) {
+
+                // Push the track on to the tracks
+                self.tracks.push(instrumentContainer.seq);
+
+                // Initialise track locally
+                instrumentContainer.seq.setInitialised();
+
+                // Add it to the arrangement and reset the local copy of window's arrangment
+                arrangement.addTrack(instrumentContainer.seq.getTrackJSON());
+                self.windowUpdater.setArrangement(arrangement.getArrangement());
+
+            });
+    });
+
+    /**
+     * Event handler for the deleting of a track
+     */
+    $(document).on('click', 'i.delete-track', function () {
+
+        // Get the track id to be deleted
+        var trackId = $(this).attr('track-id');
+
+        // Delete track from list of tracks
+        self.deleteTrackById(trackId);
+
+        // Iterate all the instruments
+        $('#instrumentTracks > .instrument-container').each(function() {
+
+            // Get the current iteration's track id
+            var currTrackId = $(this).attr('id');
+
+            // Check if the ids are the same
+            if (currTrackId == trackId) {
+                // Delete the track
+                $(this).remove();
+                return false;
+            }
+        });
+
+        // Remove track from arrangement
+        arrangement.deleteTrack(trackId);
+
+        // delete the arrangement and reset the local copy of window's arrangment
+        self.windowUpdater.setArrangement(arrangement.getArrangement());
+
+    });
+
+    // Return instance of self
+    return this;
+};
+
+/**
+ * Add track to list of class tracks
+ *
+ * @param {Object}         track  Sequencer/score track
+ * @retun {MasterControls}        Instance of self
+ */
+MasterControls.prototype.addTrack = function (track) {
+    // Push track to list of tracks
+    this.tracks.push(track);
+
+    // Implement fluent interface
+    return this;
+};
+
+/**
+ * Remove track from list of class tracks by its id
+ *
+ * @param  {Object}        trackId  Sequencer/score track id
+ * @return {MasterControls}         Instance of self
+ */
+MasterControls.prototype.deleteTrackById = function (trackId) {
+
+    // Iterate all the tracks
+    for (var i = 0; i < this.tracks.length; i++) {
+
+        // Check if current track is the track to delete
+        if (this.tracks[i].id == trackId) {
+            // Delete the track and exit the loop
+            this.tracks.splice(i, 1);
+            break;
+        }
+    }
+
+    // Implement fluent interface
+    return this;
+};
+
+/**
+ * Setter for local copy of window updater
+ *
+ * @param {WindowUpdater} windowUpdater Instance of the class
+ */
+MasterControls.prototype.setWindowUpdater = function (windowUpdater) {
+    this.windowUpdater = windowUpdater;
+};
+
+/**
+ * Return track from list by id
+ *
+ * @param {String}       id     Track id
+ * @return {object|bool} track  The track or false if not found
+ */
+MasterControls.prototype.getTrackById = function (id) {
+
+    // Loop through tracks
+    for (var i = 0; i < this.tracks.length; i++) {
+
+        // Check if ids match
+        if (this.tracks[i].id == id) {
+
+            // ids match, return track
+            var track = this.tracks[i];
+        }
+    }
+
+    // Check if variable is set
+    if (typeof track === 'undefined' || !track) {
+        // Not set, return false
+        return false;
+    }
+
+    // Return the found track
+    return track;
+};
+
+/**
+ * Update the Tone bpm value when syncing with server
+ *
+ * @param  {int}            bpm  The newly updated bpm of track
+ * @return {MasterControls}      Implement fluent interface
+ */
+MasterControls.prototype.updateBpm = function (bpm) {
+
+    // Get the bpm value
+    bpm = parseInt(bpm);
+
+    // Set the BPM value
+    Tone.Transport.bpm.value = bpm;
+
+    // Implement fluent interface
+    return this;
+};
+
+module.exports = MasterControls;
+
+},{"./helpers/instruments/InstrumentFactory":23,"jquery":1,"tone":34}],32:[function(require,module,exports){
+var deepClone = require('../helpers/deepclone');
+
+/**
+ * Arrangement singleton class that holds all tracks and their information
+ */
+module.exports = {
+
+    /**
+     * Arrangement struct to hold all track
+     * {
+     *    id: 'id',
+     *    tracks: {objects},
+     *    bpm: 
+     * }
+     */
+    arrangement: {
+        id: null,
+        tracks: [],
+        bpm: 120
+    },
+    sync: null,
+    addTrack: function (track) {
+
+        // Set flag for track being found or not
+        var found = false;
+
+        // Iterate all tracks in the arrangement
+        for (var i = 0; i < this.arrangement.tracks.length; i++) {
+
+            // Check if the id of the track being passed in is same as current exisiting track
+            if (track.id == this.arrangement.tracks[i].id) {
+                // Track found
+                found = true;
+                break;
+            }
+        }
+
+        // Check if track was found
+        if (!found) {
+            // Wasn't found
+            // Add a track to the arrangements
+            this.arrangement.tracks.push(track);
+
+            // Sync with client
+            this.syncClientToServer();
+        }
+
+    },
+    deleteTrack: function (trackId) {
+
+        // Iterate all the tracks
+        for (var i = 0; i < this.arrangement.tracks.length; i++) {
+
+            // Check if current track is the track to delete
+            if (trackId == this.arrangement.tracks[i].id) {
+                // Delete the track and exit the loop
+                this.arrangement.tracks.splice(i, 1);
+
+                // Sync with client
+                this.syncClientToServer();
+
+                break;
+            }
+        }
+    },
+    setBpm: function (bpm) {
+
+        // Set the bpm of the arrangement
+        this.arrangement.bpm = bpm;
+
+        this.syncClientToServer();
+    },
+    getBpm: function () {
+        // Get the bpm of the arrangement
+        return this.arrangement.bpm;
+    },
+    replaceTrack: function (track) {
+
+        // Reference to self
+        var self = this;
+
+        // Loop through and replace the track
+        this.arrangement.tracks = this.arrangement.tracks.map(function (existingTrack) {
+            // If track ids match, replace the track with a deep clone
+            return track.id == existingTrack.id ? deepClone(track) : existingTrack;
+        });
+
+        // Sync with server
+        this.syncClientToServer();
+    },
+    setSync: function (sync) {
+        // Dependancy injection for the sync class
+        this.sync = sync;
+    },
+    syncClientToServer: function () {
+        // Sync the changes applied from the subsequent functions to the server
+        this.sync.addChange(deepClone(this.arrangement));
+    },
+    setId: function (arrangementId) {
+        this.arrangement.id = arrangementId;
+    },
+    getId: function () {
+        return this.arrangement.id;
+    },
+    setArrangement: function (arrangement) {
+        this.arrangement = arrangement;
+    },
+    getArrangement: function () {
+        return this.arrangement;
+    }
+};
+
+},{"../helpers/deepclone":21}],33:[function(require,module,exports){
+var $ = require('jquery');
+var deepClone = require('./helpers/deepclone');
+var _ = require('underscore')._;
+var InstrumentFactory = require('./helpers/instruments/InstrumentFactory');
+var jsondiffpatch = require('jsondiffpatch');
+
+/**
+ * Gets called from the sync class
+ * It needs to:
+ * - set the changes of the arrangement to all existing sequences
+ * - add more sequences
+ * - delete sequences
+ * - increase the volume of sequences
+ * - set the pattern within sequences
+ * - set bpm of the arrangement
+ *
+ * @param {MasterControls} MasterControls  Instance of Master controls to add
+ *                         new tracks
+ */
+var WindowUpdater = function (MasterControls) {
+
+    // Init arrangement object
+    this.arrangement = {
+        _id: "",
+        bpm: 120,
+        type: "arrangement",
+        name: "",
+        ownerId: "",
+        __v: 0,
+        tracks: [],
+        contributors: []
+    };
+
+    // Reference to this
+    var self = this;
+
+    // Initiliasation flag
+    this.isInitialised = false;
+
+    // Init instrument factory
+    this.instrumentFactory = new InstrumentFactory();
+
+    // Init class instance of master controls
+    this.masterControls = MasterControls;
+
+    // Set up object comparison
+    jsondiffpatch = jsondiffpatch.create({
+        objectHash: function(obj) {
+            return obj.id || JSON.stringify(obj);
+        }
+    });
+
+    /**
+     * Updates the bpm input field
+     *
+     * @param {int} bpm  The bpm of the arrangement
+     * @returns {WindowUpdater} this  Instance of self
+     */
+    this.updateBpm = function (bpm) {
+
+        // Get the DOM element
+        var bpmElement = $('#bpm');
+
+        // Reset the value of the bpm
+        bpmElement.attr("value", bpm);
+
+        // Set the text value of input field
+        bpmElement.text(bpm);
+
+        // Update the master controls
+        this.masterControls.updateBpm(bpm);
+
+        // Implement fluent interface
+        return this;
+    };
+
+    /**
+     * Initialise the tracks in the window
+     *
+     * @param {object} track  The track to initialise
+     */
+    this.addTrack = function (track) {
+
+        // Get the type
+        var type = track.type;
+        var id = track.id;
+
+        // Create the instrument selected
+        self.instrumentFactory.createInstrument(type, id).then(function(instrumentContainer) {
+
+            // Push the sequence on to the sequences
+            instrumentContainer.seq.setTrackJSON(track);
+            self.masterControls.addTrack(instrumentContainer.seq);
+
+        });
+
+    };
+
+    /**
+     * Delete the track from the window
+     *
+     * @param {object} track  The track to delete
+     */
+    this.deleteTrack = function (track) {
+
+        // Get the id
+        var deletedTrackId = track.id;
+
+        // Iterate all the instruments
+        $('#instrumentTracks > .instrument-container').each(function() {
+
+            // Get the current iteration's track id
+            var currTrackId = $(this).attr('id');
+
+            // Check if the ids are the same
+            if (currTrackId == deletedTrackId) {
+                // Delete the track
+
+                $(this).remove();
+                return false;
+            }
+        });
+
+        // Remove it from the list of sequeces in the master controls
+        self.masterControls.deleteTrackById(deletedTrackId);
+
+    };
+
+    /**
+     * Updates the tracks in the arrangement accordingly
+     */
+    this.updateTracks = function (tracks) {
+
+        // Check if initilised
+        if (this.isInitialised == false) {
+
+            // Not initalised, create all tracks
+            tracks.map(this.addTrack);
+
+        } else if (tracks.length > this.arrangement.tracks.length) {
+            // A track needs to be added
+
+            // Get how many tracks to add
+            var noOfTracksToAdd = tracks.length - this.arrangement.tracks.length;
+
+            // Get the tracks to add
+            var tracksToAdd = tracks.splice((tracks.length - 1), noOfTracksToAdd);
+
+            // Add the tracks
+            tracksToAdd.map(this.addTrack);
+
+        } else if (tracks.length < this.arrangement.tracks.length) {
+
+            // Make a working copy of the tracks
+            var tracksToDelete = deepClone(this.arrangement.tracks);
+
+            // Loop through each track checking if their equal to exisiting tracks
+            this.arrangement.tracks.forEach(function (existingTrack, index) {
+
+                // Loop through tracks passed in
+                tracks.forEach(function (newTrack) {
+
+                    // Check if tracks are the same
+                    if (existingTrack.id == newTrack.id) {
+                        // Tracks match, delete it from working copy
+                        tracksToDelete.splice(index, 1);
+                        return;
+                    }
+
+                });
+            });
+
+            // Delete the tracks remaining tracks found in the class's
+            // working copy of the tracks from the window
+            tracksToDelete.map(this.deleteTrack);
+
+
+        } else {
+            // No tracks added or deleted, an internal change to the tracks
+
+            // Loop through each track checking if their equal to exisiting tracks
+            this.arrangement.tracks.forEach(function (existingTrack) {
+
+                // Loop through tracks passed in
+                tracks.forEach(function (newTrack) {
+
+                    // Check if tracks are the same
+                    if (existingTrack.id != newTrack.id) {
+                        // Not the same, skip
+                        return;
+                    }
+
+                    // Tracks are the same, check if objects are equal
+                    if (!_.isEqual(existingTrack, newTrack)) {
+                        // Tracks are different
+                        // Get the track, object
+                        var trackToUpdate =
+                            self.masterControls.getTrackById(newTrack.id);
+
+                        // Set the new track json
+                        trackToUpdate.setTrackJSON(newTrack);
+                    }
+                });
+            });
+        }
+
+    };
+
+};
+
+/**
+ * Updates the window objects effected by the arrangement being changed
+ *
+ * @param {object} arrangement  The newly updated arrangement
+ */
+WindowUpdater.prototype.update = function (arrangement) {
+
+    // Check if bpm has changed
+    if (!_.isEqual(this.arrangement.bpm, arrangement.bpm)) {
+        // set the bpm of window
+        this.updateBpm(arrangement.bpm);
+    }
+
+    // Check tracks diff
+    if (!_.isEqual(this.arrangement.tracks, arrangement.tracks)) {
+        // Update tracks
+        this.updateTracks(arrangement.tracks);
+    }
+
+    // Reset the local copy of arrangement
+    this.arrangement = deepClone(arrangement);
+
+    // Implement fluent interface
+    return this;
+
+};
+
+/**
+ * Reset the arrangement, used when creating track locally
+ *
+ * @param {object} arrangement  The local updated arrangement
+ */
+WindowUpdater.prototype.setArrangement = function (arrangement) {
+    this.arrangement = arrangement
+};
+
+/**
+ * Inits the arrangement so diffs can made and sets up window
+ *
+ * @param {object} arrangement  The initialised arrangement
+ */
+WindowUpdater.prototype.initialise = function (arrangement) {
+
+    // Update the window
+    this.updateBpm(arrangement.bpm);
+    this.updateTracks(arrangement.tracks);
+
+    // Set is initialised
+    this.isInitialised = true;
+
+    // Set instance of self in master controls
+    this.masterControls.setWindowUpdater(this);
+
+    // Set the local copy of arrangement
+    this.arrangement = deepClone(arrangement);
+
+
+};
+
+module.exports = WindowUpdater;
+
+},{"./helpers/deepclone":21,"./helpers/instruments/InstrumentFactory":23,"jquery":1,"jsondiffpatch":16,"underscore":19}],34:[function(require,module,exports){
 (function(root, factory){
 
 	//UMD
@@ -33848,3693 +37570,4 @@ exports.Processor = Processor;
 	
 	return Tone;
 }));
-},{}],20:[function(require,module,exports){
-//     Underscore.js 1.8.3
-//     http://underscorejs.org
-//     (c) 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
-//     Underscore may be freely distributed under the MIT license.
-
-(function() {
-
-  // Baseline setup
-  // --------------
-
-  // Establish the root object, `window` in the browser, or `exports` on the server.
-  var root = this;
-
-  // Save the previous value of the `_` variable.
-  var previousUnderscore = root._;
-
-  // Save bytes in the minified (but not gzipped) version:
-  var ArrayProto = Array.prototype, ObjProto = Object.prototype, FuncProto = Function.prototype;
-
-  // Create quick reference variables for speed access to core prototypes.
-  var
-    push             = ArrayProto.push,
-    slice            = ArrayProto.slice,
-    toString         = ObjProto.toString,
-    hasOwnProperty   = ObjProto.hasOwnProperty;
-
-  // All **ECMAScript 5** native function implementations that we hope to use
-  // are declared here.
-  var
-    nativeIsArray      = Array.isArray,
-    nativeKeys         = Object.keys,
-    nativeBind         = FuncProto.bind,
-    nativeCreate       = Object.create;
-
-  // Naked function reference for surrogate-prototype-swapping.
-  var Ctor = function(){};
-
-  // Create a safe reference to the Underscore object for use below.
-  var _ = function(obj) {
-    if (obj instanceof _) return obj;
-    if (!(this instanceof _)) return new _(obj);
-    this._wrapped = obj;
-  };
-
-  // Export the Underscore object for **Node.js**, with
-  // backwards-compatibility for the old `require()` API. If we're in
-  // the browser, add `_` as a global object.
-  if (typeof exports !== 'undefined') {
-    if (typeof module !== 'undefined' && module.exports) {
-      exports = module.exports = _;
-    }
-    exports._ = _;
-  } else {
-    root._ = _;
-  }
-
-  // Current version.
-  _.VERSION = '1.8.3';
-
-  // Internal function that returns an efficient (for current engines) version
-  // of the passed-in callback, to be repeatedly applied in other Underscore
-  // functions.
-  var optimizeCb = function(func, context, argCount) {
-    if (context === void 0) return func;
-    switch (argCount == null ? 3 : argCount) {
-      case 1: return function(value) {
-        return func.call(context, value);
-      };
-      case 2: return function(value, other) {
-        return func.call(context, value, other);
-      };
-      case 3: return function(value, index, collection) {
-        return func.call(context, value, index, collection);
-      };
-      case 4: return function(accumulator, value, index, collection) {
-        return func.call(context, accumulator, value, index, collection);
-      };
-    }
-    return function() {
-      return func.apply(context, arguments);
-    };
-  };
-
-  // A mostly-internal function to generate callbacks that can be applied
-  // to each element in a collection, returning the desired result — either
-  // identity, an arbitrary callback, a property matcher, or a property accessor.
-  var cb = function(value, context, argCount) {
-    if (value == null) return _.identity;
-    if (_.isFunction(value)) return optimizeCb(value, context, argCount);
-    if (_.isObject(value)) return _.matcher(value);
-    return _.property(value);
-  };
-  _.iteratee = function(value, context) {
-    return cb(value, context, Infinity);
-  };
-
-  // An internal function for creating assigner functions.
-  var createAssigner = function(keysFunc, undefinedOnly) {
-    return function(obj) {
-      var length = arguments.length;
-      if (length < 2 || obj == null) return obj;
-      for (var index = 1; index < length; index++) {
-        var source = arguments[index],
-            keys = keysFunc(source),
-            l = keys.length;
-        for (var i = 0; i < l; i++) {
-          var key = keys[i];
-          if (!undefinedOnly || obj[key] === void 0) obj[key] = source[key];
-        }
-      }
-      return obj;
-    };
-  };
-
-  // An internal function for creating a new object that inherits from another.
-  var baseCreate = function(prototype) {
-    if (!_.isObject(prototype)) return {};
-    if (nativeCreate) return nativeCreate(prototype);
-    Ctor.prototype = prototype;
-    var result = new Ctor;
-    Ctor.prototype = null;
-    return result;
-  };
-
-  var property = function(key) {
-    return function(obj) {
-      return obj == null ? void 0 : obj[key];
-    };
-  };
-
-  // Helper for collection methods to determine whether a collection
-  // should be iterated as an array or as an object
-  // Related: http://people.mozilla.org/~jorendorff/es6-draft.html#sec-tolength
-  // Avoids a very nasty iOS 8 JIT bug on ARM-64. #2094
-  var MAX_ARRAY_INDEX = Math.pow(2, 53) - 1;
-  var getLength = property('length');
-  var isArrayLike = function(collection) {
-    var length = getLength(collection);
-    return typeof length == 'number' && length >= 0 && length <= MAX_ARRAY_INDEX;
-  };
-
-  // Collection Functions
-  // --------------------
-
-  // The cornerstone, an `each` implementation, aka `forEach`.
-  // Handles raw objects in addition to array-likes. Treats all
-  // sparse array-likes as if they were dense.
-  _.each = _.forEach = function(obj, iteratee, context) {
-    iteratee = optimizeCb(iteratee, context);
-    var i, length;
-    if (isArrayLike(obj)) {
-      for (i = 0, length = obj.length; i < length; i++) {
-        iteratee(obj[i], i, obj);
-      }
-    } else {
-      var keys = _.keys(obj);
-      for (i = 0, length = keys.length; i < length; i++) {
-        iteratee(obj[keys[i]], keys[i], obj);
-      }
-    }
-    return obj;
-  };
-
-  // Return the results of applying the iteratee to each element.
-  _.map = _.collect = function(obj, iteratee, context) {
-    iteratee = cb(iteratee, context);
-    var keys = !isArrayLike(obj) && _.keys(obj),
-        length = (keys || obj).length,
-        results = Array(length);
-    for (var index = 0; index < length; index++) {
-      var currentKey = keys ? keys[index] : index;
-      results[index] = iteratee(obj[currentKey], currentKey, obj);
-    }
-    return results;
-  };
-
-  // Create a reducing function iterating left or right.
-  function createReduce(dir) {
-    // Optimized iterator function as using arguments.length
-    // in the main function will deoptimize the, see #1991.
-    function iterator(obj, iteratee, memo, keys, index, length) {
-      for (; index >= 0 && index < length; index += dir) {
-        var currentKey = keys ? keys[index] : index;
-        memo = iteratee(memo, obj[currentKey], currentKey, obj);
-      }
-      return memo;
-    }
-
-    return function(obj, iteratee, memo, context) {
-      iteratee = optimizeCb(iteratee, context, 4);
-      var keys = !isArrayLike(obj) && _.keys(obj),
-          length = (keys || obj).length,
-          index = dir > 0 ? 0 : length - 1;
-      // Determine the initial value if none is provided.
-      if (arguments.length < 3) {
-        memo = obj[keys ? keys[index] : index];
-        index += dir;
-      }
-      return iterator(obj, iteratee, memo, keys, index, length);
-    };
-  }
-
-  // **Reduce** builds up a single result from a list of values, aka `inject`,
-  // or `foldl`.
-  _.reduce = _.foldl = _.inject = createReduce(1);
-
-  // The right-associative version of reduce, also known as `foldr`.
-  _.reduceRight = _.foldr = createReduce(-1);
-
-  // Return the first value which passes a truth test. Aliased as `detect`.
-  _.find = _.detect = function(obj, predicate, context) {
-    var key;
-    if (isArrayLike(obj)) {
-      key = _.findIndex(obj, predicate, context);
-    } else {
-      key = _.findKey(obj, predicate, context);
-    }
-    if (key !== void 0 && key !== -1) return obj[key];
-  };
-
-  // Return all the elements that pass a truth test.
-  // Aliased as `select`.
-  _.filter = _.select = function(obj, predicate, context) {
-    var results = [];
-    predicate = cb(predicate, context);
-    _.each(obj, function(value, index, list) {
-      if (predicate(value, index, list)) results.push(value);
-    });
-    return results;
-  };
-
-  // Return all the elements for which a truth test fails.
-  _.reject = function(obj, predicate, context) {
-    return _.filter(obj, _.negate(cb(predicate)), context);
-  };
-
-  // Determine whether all of the elements match a truth test.
-  // Aliased as `all`.
-  _.every = _.all = function(obj, predicate, context) {
-    predicate = cb(predicate, context);
-    var keys = !isArrayLike(obj) && _.keys(obj),
-        length = (keys || obj).length;
-    for (var index = 0; index < length; index++) {
-      var currentKey = keys ? keys[index] : index;
-      if (!predicate(obj[currentKey], currentKey, obj)) return false;
-    }
-    return true;
-  };
-
-  // Determine if at least one element in the object matches a truth test.
-  // Aliased as `any`.
-  _.some = _.any = function(obj, predicate, context) {
-    predicate = cb(predicate, context);
-    var keys = !isArrayLike(obj) && _.keys(obj),
-        length = (keys || obj).length;
-    for (var index = 0; index < length; index++) {
-      var currentKey = keys ? keys[index] : index;
-      if (predicate(obj[currentKey], currentKey, obj)) return true;
-    }
-    return false;
-  };
-
-  // Determine if the array or object contains a given item (using `===`).
-  // Aliased as `includes` and `include`.
-  _.contains = _.includes = _.include = function(obj, item, fromIndex, guard) {
-    if (!isArrayLike(obj)) obj = _.values(obj);
-    if (typeof fromIndex != 'number' || guard) fromIndex = 0;
-    return _.indexOf(obj, item, fromIndex) >= 0;
-  };
-
-  // Invoke a method (with arguments) on every item in a collection.
-  _.invoke = function(obj, method) {
-    var args = slice.call(arguments, 2);
-    var isFunc = _.isFunction(method);
-    return _.map(obj, function(value) {
-      var func = isFunc ? method : value[method];
-      return func == null ? func : func.apply(value, args);
-    });
-  };
-
-  // Convenience version of a common use case of `map`: fetching a property.
-  _.pluck = function(obj, key) {
-    return _.map(obj, _.property(key));
-  };
-
-  // Convenience version of a common use case of `filter`: selecting only objects
-  // containing specific `key:value` pairs.
-  _.where = function(obj, attrs) {
-    return _.filter(obj, _.matcher(attrs));
-  };
-
-  // Convenience version of a common use case of `find`: getting the first object
-  // containing specific `key:value` pairs.
-  _.findWhere = function(obj, attrs) {
-    return _.find(obj, _.matcher(attrs));
-  };
-
-  // Return the maximum element (or element-based computation).
-  _.max = function(obj, iteratee, context) {
-    var result = -Infinity, lastComputed = -Infinity,
-        value, computed;
-    if (iteratee == null && obj != null) {
-      obj = isArrayLike(obj) ? obj : _.values(obj);
-      for (var i = 0, length = obj.length; i < length; i++) {
-        value = obj[i];
-        if (value > result) {
-          result = value;
-        }
-      }
-    } else {
-      iteratee = cb(iteratee, context);
-      _.each(obj, function(value, index, list) {
-        computed = iteratee(value, index, list);
-        if (computed > lastComputed || computed === -Infinity && result === -Infinity) {
-          result = value;
-          lastComputed = computed;
-        }
-      });
-    }
-    return result;
-  };
-
-  // Return the minimum element (or element-based computation).
-  _.min = function(obj, iteratee, context) {
-    var result = Infinity, lastComputed = Infinity,
-        value, computed;
-    if (iteratee == null && obj != null) {
-      obj = isArrayLike(obj) ? obj : _.values(obj);
-      for (var i = 0, length = obj.length; i < length; i++) {
-        value = obj[i];
-        if (value < result) {
-          result = value;
-        }
-      }
-    } else {
-      iteratee = cb(iteratee, context);
-      _.each(obj, function(value, index, list) {
-        computed = iteratee(value, index, list);
-        if (computed < lastComputed || computed === Infinity && result === Infinity) {
-          result = value;
-          lastComputed = computed;
-        }
-      });
-    }
-    return result;
-  };
-
-  // Shuffle a collection, using the modern version of the
-  // [Fisher-Yates shuffle](http://en.wikipedia.org/wiki/Fisher–Yates_shuffle).
-  _.shuffle = function(obj) {
-    var set = isArrayLike(obj) ? obj : _.values(obj);
-    var length = set.length;
-    var shuffled = Array(length);
-    for (var index = 0, rand; index < length; index++) {
-      rand = _.random(0, index);
-      if (rand !== index) shuffled[index] = shuffled[rand];
-      shuffled[rand] = set[index];
-    }
-    return shuffled;
-  };
-
-  // Sample **n** random values from a collection.
-  // If **n** is not specified, returns a single random element.
-  // The internal `guard` argument allows it to work with `map`.
-  _.sample = function(obj, n, guard) {
-    if (n == null || guard) {
-      if (!isArrayLike(obj)) obj = _.values(obj);
-      return obj[_.random(obj.length - 1)];
-    }
-    return _.shuffle(obj).slice(0, Math.max(0, n));
-  };
-
-  // Sort the object's values by a criterion produced by an iteratee.
-  _.sortBy = function(obj, iteratee, context) {
-    iteratee = cb(iteratee, context);
-    return _.pluck(_.map(obj, function(value, index, list) {
-      return {
-        value: value,
-        index: index,
-        criteria: iteratee(value, index, list)
-      };
-    }).sort(function(left, right) {
-      var a = left.criteria;
-      var b = right.criteria;
-      if (a !== b) {
-        if (a > b || a === void 0) return 1;
-        if (a < b || b === void 0) return -1;
-      }
-      return left.index - right.index;
-    }), 'value');
-  };
-
-  // An internal function used for aggregate "group by" operations.
-  var group = function(behavior) {
-    return function(obj, iteratee, context) {
-      var result = {};
-      iteratee = cb(iteratee, context);
-      _.each(obj, function(value, index) {
-        var key = iteratee(value, index, obj);
-        behavior(result, value, key);
-      });
-      return result;
-    };
-  };
-
-  // Groups the object's values by a criterion. Pass either a string attribute
-  // to group by, or a function that returns the criterion.
-  _.groupBy = group(function(result, value, key) {
-    if (_.has(result, key)) result[key].push(value); else result[key] = [value];
-  });
-
-  // Indexes the object's values by a criterion, similar to `groupBy`, but for
-  // when you know that your index values will be unique.
-  _.indexBy = group(function(result, value, key) {
-    result[key] = value;
-  });
-
-  // Counts instances of an object that group by a certain criterion. Pass
-  // either a string attribute to count by, or a function that returns the
-  // criterion.
-  _.countBy = group(function(result, value, key) {
-    if (_.has(result, key)) result[key]++; else result[key] = 1;
-  });
-
-  // Safely create a real, live array from anything iterable.
-  _.toArray = function(obj) {
-    if (!obj) return [];
-    if (_.isArray(obj)) return slice.call(obj);
-    if (isArrayLike(obj)) return _.map(obj, _.identity);
-    return _.values(obj);
-  };
-
-  // Return the number of elements in an object.
-  _.size = function(obj) {
-    if (obj == null) return 0;
-    return isArrayLike(obj) ? obj.length : _.keys(obj).length;
-  };
-
-  // Split a collection into two arrays: one whose elements all satisfy the given
-  // predicate, and one whose elements all do not satisfy the predicate.
-  _.partition = function(obj, predicate, context) {
-    predicate = cb(predicate, context);
-    var pass = [], fail = [];
-    _.each(obj, function(value, key, obj) {
-      (predicate(value, key, obj) ? pass : fail).push(value);
-    });
-    return [pass, fail];
-  };
-
-  // Array Functions
-  // ---------------
-
-  // Get the first element of an array. Passing **n** will return the first N
-  // values in the array. Aliased as `head` and `take`. The **guard** check
-  // allows it to work with `_.map`.
-  _.first = _.head = _.take = function(array, n, guard) {
-    if (array == null) return void 0;
-    if (n == null || guard) return array[0];
-    return _.initial(array, array.length - n);
-  };
-
-  // Returns everything but the last entry of the array. Especially useful on
-  // the arguments object. Passing **n** will return all the values in
-  // the array, excluding the last N.
-  _.initial = function(array, n, guard) {
-    return slice.call(array, 0, Math.max(0, array.length - (n == null || guard ? 1 : n)));
-  };
-
-  // Get the last element of an array. Passing **n** will return the last N
-  // values in the array.
-  _.last = function(array, n, guard) {
-    if (array == null) return void 0;
-    if (n == null || guard) return array[array.length - 1];
-    return _.rest(array, Math.max(0, array.length - n));
-  };
-
-  // Returns everything but the first entry of the array. Aliased as `tail` and `drop`.
-  // Especially useful on the arguments object. Passing an **n** will return
-  // the rest N values in the array.
-  _.rest = _.tail = _.drop = function(array, n, guard) {
-    return slice.call(array, n == null || guard ? 1 : n);
-  };
-
-  // Trim out all falsy values from an array.
-  _.compact = function(array) {
-    return _.filter(array, _.identity);
-  };
-
-  // Internal implementation of a recursive `flatten` function.
-  var flatten = function(input, shallow, strict, startIndex) {
-    var output = [], idx = 0;
-    for (var i = startIndex || 0, length = getLength(input); i < length; i++) {
-      var value = input[i];
-      if (isArrayLike(value) && (_.isArray(value) || _.isArguments(value))) {
-        //flatten current level of array or arguments object
-        if (!shallow) value = flatten(value, shallow, strict);
-        var j = 0, len = value.length;
-        output.length += len;
-        while (j < len) {
-          output[idx++] = value[j++];
-        }
-      } else if (!strict) {
-        output[idx++] = value;
-      }
-    }
-    return output;
-  };
-
-  // Flatten out an array, either recursively (by default), or just one level.
-  _.flatten = function(array, shallow) {
-    return flatten(array, shallow, false);
-  };
-
-  // Return a version of the array that does not contain the specified value(s).
-  _.without = function(array) {
-    return _.difference(array, slice.call(arguments, 1));
-  };
-
-  // Produce a duplicate-free version of the array. If the array has already
-  // been sorted, you have the option of using a faster algorithm.
-  // Aliased as `unique`.
-  _.uniq = _.unique = function(array, isSorted, iteratee, context) {
-    if (!_.isBoolean(isSorted)) {
-      context = iteratee;
-      iteratee = isSorted;
-      isSorted = false;
-    }
-    if (iteratee != null) iteratee = cb(iteratee, context);
-    var result = [];
-    var seen = [];
-    for (var i = 0, length = getLength(array); i < length; i++) {
-      var value = array[i],
-          computed = iteratee ? iteratee(value, i, array) : value;
-      if (isSorted) {
-        if (!i || seen !== computed) result.push(value);
-        seen = computed;
-      } else if (iteratee) {
-        if (!_.contains(seen, computed)) {
-          seen.push(computed);
-          result.push(value);
-        }
-      } else if (!_.contains(result, value)) {
-        result.push(value);
-      }
-    }
-    return result;
-  };
-
-  // Produce an array that contains the union: each distinct element from all of
-  // the passed-in arrays.
-  _.union = function() {
-    return _.uniq(flatten(arguments, true, true));
-  };
-
-  // Produce an array that contains every item shared between all the
-  // passed-in arrays.
-  _.intersection = function(array) {
-    var result = [];
-    var argsLength = arguments.length;
-    for (var i = 0, length = getLength(array); i < length; i++) {
-      var item = array[i];
-      if (_.contains(result, item)) continue;
-      for (var j = 1; j < argsLength; j++) {
-        if (!_.contains(arguments[j], item)) break;
-      }
-      if (j === argsLength) result.push(item);
-    }
-    return result;
-  };
-
-  // Take the difference between one array and a number of other arrays.
-  // Only the elements present in just the first array will remain.
-  _.difference = function(array) {
-    var rest = flatten(arguments, true, true, 1);
-    return _.filter(array, function(value){
-      return !_.contains(rest, value);
-    });
-  };
-
-  // Zip together multiple lists into a single array -- elements that share
-  // an index go together.
-  _.zip = function() {
-    return _.unzip(arguments);
-  };
-
-  // Complement of _.zip. Unzip accepts an array of arrays and groups
-  // each array's elements on shared indices
-  _.unzip = function(array) {
-    var length = array && _.max(array, getLength).length || 0;
-    var result = Array(length);
-
-    for (var index = 0; index < length; index++) {
-      result[index] = _.pluck(array, index);
-    }
-    return result;
-  };
-
-  // Converts lists into objects. Pass either a single array of `[key, value]`
-  // pairs, or two parallel arrays of the same length -- one of keys, and one of
-  // the corresponding values.
-  _.object = function(list, values) {
-    var result = {};
-    for (var i = 0, length = getLength(list); i < length; i++) {
-      if (values) {
-        result[list[i]] = values[i];
-      } else {
-        result[list[i][0]] = list[i][1];
-      }
-    }
-    return result;
-  };
-
-  // Generator function to create the findIndex and findLastIndex functions
-  function createPredicateIndexFinder(dir) {
-    return function(array, predicate, context) {
-      predicate = cb(predicate, context);
-      var length = getLength(array);
-      var index = dir > 0 ? 0 : length - 1;
-      for (; index >= 0 && index < length; index += dir) {
-        if (predicate(array[index], index, array)) return index;
-      }
-      return -1;
-    };
-  }
-
-  // Returns the first index on an array-like that passes a predicate test
-  _.findIndex = createPredicateIndexFinder(1);
-  _.findLastIndex = createPredicateIndexFinder(-1);
-
-  // Use a comparator function to figure out the smallest index at which
-  // an object should be inserted so as to maintain order. Uses binary search.
-  _.sortedIndex = function(array, obj, iteratee, context) {
-    iteratee = cb(iteratee, context, 1);
-    var value = iteratee(obj);
-    var low = 0, high = getLength(array);
-    while (low < high) {
-      var mid = Math.floor((low + high) / 2);
-      if (iteratee(array[mid]) < value) low = mid + 1; else high = mid;
-    }
-    return low;
-  };
-
-  // Generator function to create the indexOf and lastIndexOf functions
-  function createIndexFinder(dir, predicateFind, sortedIndex) {
-    return function(array, item, idx) {
-      var i = 0, length = getLength(array);
-      if (typeof idx == 'number') {
-        if (dir > 0) {
-            i = idx >= 0 ? idx : Math.max(idx + length, i);
-        } else {
-            length = idx >= 0 ? Math.min(idx + 1, length) : idx + length + 1;
-        }
-      } else if (sortedIndex && idx && length) {
-        idx = sortedIndex(array, item);
-        return array[idx] === item ? idx : -1;
-      }
-      if (item !== item) {
-        idx = predicateFind(slice.call(array, i, length), _.isNaN);
-        return idx >= 0 ? idx + i : -1;
-      }
-      for (idx = dir > 0 ? i : length - 1; idx >= 0 && idx < length; idx += dir) {
-        if (array[idx] === item) return idx;
-      }
-      return -1;
-    };
-  }
-
-  // Return the position of the first occurrence of an item in an array,
-  // or -1 if the item is not included in the array.
-  // If the array is large and already in sort order, pass `true`
-  // for **isSorted** to use binary search.
-  _.indexOf = createIndexFinder(1, _.findIndex, _.sortedIndex);
-  _.lastIndexOf = createIndexFinder(-1, _.findLastIndex);
-
-  // Generate an integer Array containing an arithmetic progression. A port of
-  // the native Python `range()` function. See
-  // [the Python documentation](http://docs.python.org/library/functions.html#range).
-  _.range = function(start, stop, step) {
-    if (stop == null) {
-      stop = start || 0;
-      start = 0;
-    }
-    step = step || 1;
-
-    var length = Math.max(Math.ceil((stop - start) / step), 0);
-    var range = Array(length);
-
-    for (var idx = 0; idx < length; idx++, start += step) {
-      range[idx] = start;
-    }
-
-    return range;
-  };
-
-  // Function (ahem) Functions
-  // ------------------
-
-  // Determines whether to execute a function as a constructor
-  // or a normal function with the provided arguments
-  var executeBound = function(sourceFunc, boundFunc, context, callingContext, args) {
-    if (!(callingContext instanceof boundFunc)) return sourceFunc.apply(context, args);
-    var self = baseCreate(sourceFunc.prototype);
-    var result = sourceFunc.apply(self, args);
-    if (_.isObject(result)) return result;
-    return self;
-  };
-
-  // Create a function bound to a given object (assigning `this`, and arguments,
-  // optionally). Delegates to **ECMAScript 5**'s native `Function.bind` if
-  // available.
-  _.bind = function(func, context) {
-    if (nativeBind && func.bind === nativeBind) return nativeBind.apply(func, slice.call(arguments, 1));
-    if (!_.isFunction(func)) throw new TypeError('Bind must be called on a function');
-    var args = slice.call(arguments, 2);
-    var bound = function() {
-      return executeBound(func, bound, context, this, args.concat(slice.call(arguments)));
-    };
-    return bound;
-  };
-
-  // Partially apply a function by creating a version that has had some of its
-  // arguments pre-filled, without changing its dynamic `this` context. _ acts
-  // as a placeholder, allowing any combination of arguments to be pre-filled.
-  _.partial = function(func) {
-    var boundArgs = slice.call(arguments, 1);
-    var bound = function() {
-      var position = 0, length = boundArgs.length;
-      var args = Array(length);
-      for (var i = 0; i < length; i++) {
-        args[i] = boundArgs[i] === _ ? arguments[position++] : boundArgs[i];
-      }
-      while (position < arguments.length) args.push(arguments[position++]);
-      return executeBound(func, bound, this, this, args);
-    };
-    return bound;
-  };
-
-  // Bind a number of an object's methods to that object. Remaining arguments
-  // are the method names to be bound. Useful for ensuring that all callbacks
-  // defined on an object belong to it.
-  _.bindAll = function(obj) {
-    var i, length = arguments.length, key;
-    if (length <= 1) throw new Error('bindAll must be passed function names');
-    for (i = 1; i < length; i++) {
-      key = arguments[i];
-      obj[key] = _.bind(obj[key], obj);
-    }
-    return obj;
-  };
-
-  // Memoize an expensive function by storing its results.
-  _.memoize = function(func, hasher) {
-    var memoize = function(key) {
-      var cache = memoize.cache;
-      var address = '' + (hasher ? hasher.apply(this, arguments) : key);
-      if (!_.has(cache, address)) cache[address] = func.apply(this, arguments);
-      return cache[address];
-    };
-    memoize.cache = {};
-    return memoize;
-  };
-
-  // Delays a function for the given number of milliseconds, and then calls
-  // it with the arguments supplied.
-  _.delay = function(func, wait) {
-    var args = slice.call(arguments, 2);
-    return setTimeout(function(){
-      return func.apply(null, args);
-    }, wait);
-  };
-
-  // Defers a function, scheduling it to run after the current call stack has
-  // cleared.
-  _.defer = _.partial(_.delay, _, 1);
-
-  // Returns a function, that, when invoked, will only be triggered at most once
-  // during a given window of time. Normally, the throttled function will run
-  // as much as it can, without ever going more than once per `wait` duration;
-  // but if you'd like to disable the execution on the leading edge, pass
-  // `{leading: false}`. To disable execution on the trailing edge, ditto.
-  _.throttle = function(func, wait, options) {
-    var context, args, result;
-    var timeout = null;
-    var previous = 0;
-    if (!options) options = {};
-    var later = function() {
-      previous = options.leading === false ? 0 : _.now();
-      timeout = null;
-      result = func.apply(context, args);
-      if (!timeout) context = args = null;
-    };
-    return function() {
-      var now = _.now();
-      if (!previous && options.leading === false) previous = now;
-      var remaining = wait - (now - previous);
-      context = this;
-      args = arguments;
-      if (remaining <= 0 || remaining > wait) {
-        if (timeout) {
-          clearTimeout(timeout);
-          timeout = null;
-        }
-        previous = now;
-        result = func.apply(context, args);
-        if (!timeout) context = args = null;
-      } else if (!timeout && options.trailing !== false) {
-        timeout = setTimeout(later, remaining);
-      }
-      return result;
-    };
-  };
-
-  // Returns a function, that, as long as it continues to be invoked, will not
-  // be triggered. The function will be called after it stops being called for
-  // N milliseconds. If `immediate` is passed, trigger the function on the
-  // leading edge, instead of the trailing.
-  _.debounce = function(func, wait, immediate) {
-    var timeout, args, context, timestamp, result;
-
-    var later = function() {
-      var last = _.now() - timestamp;
-
-      if (last < wait && last >= 0) {
-        timeout = setTimeout(later, wait - last);
-      } else {
-        timeout = null;
-        if (!immediate) {
-          result = func.apply(context, args);
-          if (!timeout) context = args = null;
-        }
-      }
-    };
-
-    return function() {
-      context = this;
-      args = arguments;
-      timestamp = _.now();
-      var callNow = immediate && !timeout;
-      if (!timeout) timeout = setTimeout(later, wait);
-      if (callNow) {
-        result = func.apply(context, args);
-        context = args = null;
-      }
-
-      return result;
-    };
-  };
-
-  // Returns the first function passed as an argument to the second,
-  // allowing you to adjust arguments, run code before and after, and
-  // conditionally execute the original function.
-  _.wrap = function(func, wrapper) {
-    return _.partial(wrapper, func);
-  };
-
-  // Returns a negated version of the passed-in predicate.
-  _.negate = function(predicate) {
-    return function() {
-      return !predicate.apply(this, arguments);
-    };
-  };
-
-  // Returns a function that is the composition of a list of functions, each
-  // consuming the return value of the function that follows.
-  _.compose = function() {
-    var args = arguments;
-    var start = args.length - 1;
-    return function() {
-      var i = start;
-      var result = args[start].apply(this, arguments);
-      while (i--) result = args[i].call(this, result);
-      return result;
-    };
-  };
-
-  // Returns a function that will only be executed on and after the Nth call.
-  _.after = function(times, func) {
-    return function() {
-      if (--times < 1) {
-        return func.apply(this, arguments);
-      }
-    };
-  };
-
-  // Returns a function that will only be executed up to (but not including) the Nth call.
-  _.before = function(times, func) {
-    var memo;
-    return function() {
-      if (--times > 0) {
-        memo = func.apply(this, arguments);
-      }
-      if (times <= 1) func = null;
-      return memo;
-    };
-  };
-
-  // Returns a function that will be executed at most one time, no matter how
-  // often you call it. Useful for lazy initialization.
-  _.once = _.partial(_.before, 2);
-
-  // Object Functions
-  // ----------------
-
-  // Keys in IE < 9 that won't be iterated by `for key in ...` and thus missed.
-  var hasEnumBug = !{toString: null}.propertyIsEnumerable('toString');
-  var nonEnumerableProps = ['valueOf', 'isPrototypeOf', 'toString',
-                      'propertyIsEnumerable', 'hasOwnProperty', 'toLocaleString'];
-
-  function collectNonEnumProps(obj, keys) {
-    var nonEnumIdx = nonEnumerableProps.length;
-    var constructor = obj.constructor;
-    var proto = (_.isFunction(constructor) && constructor.prototype) || ObjProto;
-
-    // Constructor is a special case.
-    var prop = 'constructor';
-    if (_.has(obj, prop) && !_.contains(keys, prop)) keys.push(prop);
-
-    while (nonEnumIdx--) {
-      prop = nonEnumerableProps[nonEnumIdx];
-      if (prop in obj && obj[prop] !== proto[prop] && !_.contains(keys, prop)) {
-        keys.push(prop);
-      }
-    }
-  }
-
-  // Retrieve the names of an object's own properties.
-  // Delegates to **ECMAScript 5**'s native `Object.keys`
-  _.keys = function(obj) {
-    if (!_.isObject(obj)) return [];
-    if (nativeKeys) return nativeKeys(obj);
-    var keys = [];
-    for (var key in obj) if (_.has(obj, key)) keys.push(key);
-    // Ahem, IE < 9.
-    if (hasEnumBug) collectNonEnumProps(obj, keys);
-    return keys;
-  };
-
-  // Retrieve all the property names of an object.
-  _.allKeys = function(obj) {
-    if (!_.isObject(obj)) return [];
-    var keys = [];
-    for (var key in obj) keys.push(key);
-    // Ahem, IE < 9.
-    if (hasEnumBug) collectNonEnumProps(obj, keys);
-    return keys;
-  };
-
-  // Retrieve the values of an object's properties.
-  _.values = function(obj) {
-    var keys = _.keys(obj);
-    var length = keys.length;
-    var values = Array(length);
-    for (var i = 0; i < length; i++) {
-      values[i] = obj[keys[i]];
-    }
-    return values;
-  };
-
-  // Returns the results of applying the iteratee to each element of the object
-  // In contrast to _.map it returns an object
-  _.mapObject = function(obj, iteratee, context) {
-    iteratee = cb(iteratee, context);
-    var keys =  _.keys(obj),
-          length = keys.length,
-          results = {},
-          currentKey;
-      for (var index = 0; index < length; index++) {
-        currentKey = keys[index];
-        results[currentKey] = iteratee(obj[currentKey], currentKey, obj);
-      }
-      return results;
-  };
-
-  // Convert an object into a list of `[key, value]` pairs.
-  _.pairs = function(obj) {
-    var keys = _.keys(obj);
-    var length = keys.length;
-    var pairs = Array(length);
-    for (var i = 0; i < length; i++) {
-      pairs[i] = [keys[i], obj[keys[i]]];
-    }
-    return pairs;
-  };
-
-  // Invert the keys and values of an object. The values must be serializable.
-  _.invert = function(obj) {
-    var result = {};
-    var keys = _.keys(obj);
-    for (var i = 0, length = keys.length; i < length; i++) {
-      result[obj[keys[i]]] = keys[i];
-    }
-    return result;
-  };
-
-  // Return a sorted list of the function names available on the object.
-  // Aliased as `methods`
-  _.functions = _.methods = function(obj) {
-    var names = [];
-    for (var key in obj) {
-      if (_.isFunction(obj[key])) names.push(key);
-    }
-    return names.sort();
-  };
-
-  // Extend a given object with all the properties in passed-in object(s).
-  _.extend = createAssigner(_.allKeys);
-
-  // Assigns a given object with all the own properties in the passed-in object(s)
-  // (https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object/assign)
-  _.extendOwn = _.assign = createAssigner(_.keys);
-
-  // Returns the first key on an object that passes a predicate test
-  _.findKey = function(obj, predicate, context) {
-    predicate = cb(predicate, context);
-    var keys = _.keys(obj), key;
-    for (var i = 0, length = keys.length; i < length; i++) {
-      key = keys[i];
-      if (predicate(obj[key], key, obj)) return key;
-    }
-  };
-
-  // Return a copy of the object only containing the whitelisted properties.
-  _.pick = function(object, oiteratee, context) {
-    var result = {}, obj = object, iteratee, keys;
-    if (obj == null) return result;
-    if (_.isFunction(oiteratee)) {
-      keys = _.allKeys(obj);
-      iteratee = optimizeCb(oiteratee, context);
-    } else {
-      keys = flatten(arguments, false, false, 1);
-      iteratee = function(value, key, obj) { return key in obj; };
-      obj = Object(obj);
-    }
-    for (var i = 0, length = keys.length; i < length; i++) {
-      var key = keys[i];
-      var value = obj[key];
-      if (iteratee(value, key, obj)) result[key] = value;
-    }
-    return result;
-  };
-
-   // Return a copy of the object without the blacklisted properties.
-  _.omit = function(obj, iteratee, context) {
-    if (_.isFunction(iteratee)) {
-      iteratee = _.negate(iteratee);
-    } else {
-      var keys = _.map(flatten(arguments, false, false, 1), String);
-      iteratee = function(value, key) {
-        return !_.contains(keys, key);
-      };
-    }
-    return _.pick(obj, iteratee, context);
-  };
-
-  // Fill in a given object with default properties.
-  _.defaults = createAssigner(_.allKeys, true);
-
-  // Creates an object that inherits from the given prototype object.
-  // If additional properties are provided then they will be added to the
-  // created object.
-  _.create = function(prototype, props) {
-    var result = baseCreate(prototype);
-    if (props) _.extendOwn(result, props);
-    return result;
-  };
-
-  // Create a (shallow-cloned) duplicate of an object.
-  _.clone = function(obj) {
-    if (!_.isObject(obj)) return obj;
-    return _.isArray(obj) ? obj.slice() : _.extend({}, obj);
-  };
-
-  // Invokes interceptor with the obj, and then returns obj.
-  // The primary purpose of this method is to "tap into" a method chain, in
-  // order to perform operations on intermediate results within the chain.
-  _.tap = function(obj, interceptor) {
-    interceptor(obj);
-    return obj;
-  };
-
-  // Returns whether an object has a given set of `key:value` pairs.
-  _.isMatch = function(object, attrs) {
-    var keys = _.keys(attrs), length = keys.length;
-    if (object == null) return !length;
-    var obj = Object(object);
-    for (var i = 0; i < length; i++) {
-      var key = keys[i];
-      if (attrs[key] !== obj[key] || !(key in obj)) return false;
-    }
-    return true;
-  };
-
-
-  // Internal recursive comparison function for `isEqual`.
-  var eq = function(a, b, aStack, bStack) {
-    // Identical objects are equal. `0 === -0`, but they aren't identical.
-    // See the [Harmony `egal` proposal](http://wiki.ecmascript.org/doku.php?id=harmony:egal).
-    if (a === b) return a !== 0 || 1 / a === 1 / b;
-    // A strict comparison is necessary because `null == undefined`.
-    if (a == null || b == null) return a === b;
-    // Unwrap any wrapped objects.
-    if (a instanceof _) a = a._wrapped;
-    if (b instanceof _) b = b._wrapped;
-    // Compare `[[Class]]` names.
-    var className = toString.call(a);
-    if (className !== toString.call(b)) return false;
-    switch (className) {
-      // Strings, numbers, regular expressions, dates, and booleans are compared by value.
-      case '[object RegExp]':
-      // RegExps are coerced to strings for comparison (Note: '' + /a/i === '/a/i')
-      case '[object String]':
-        // Primitives and their corresponding object wrappers are equivalent; thus, `"5"` is
-        // equivalent to `new String("5")`.
-        return '' + a === '' + b;
-      case '[object Number]':
-        // `NaN`s are equivalent, but non-reflexive.
-        // Object(NaN) is equivalent to NaN
-        if (+a !== +a) return +b !== +b;
-        // An `egal` comparison is performed for other numeric values.
-        return +a === 0 ? 1 / +a === 1 / b : +a === +b;
-      case '[object Date]':
-      case '[object Boolean]':
-        // Coerce dates and booleans to numeric primitive values. Dates are compared by their
-        // millisecond representations. Note that invalid dates with millisecond representations
-        // of `NaN` are not equivalent.
-        return +a === +b;
-    }
-
-    var areArrays = className === '[object Array]';
-    if (!areArrays) {
-      if (typeof a != 'object' || typeof b != 'object') return false;
-
-      // Objects with different constructors are not equivalent, but `Object`s or `Array`s
-      // from different frames are.
-      var aCtor = a.constructor, bCtor = b.constructor;
-      if (aCtor !== bCtor && !(_.isFunction(aCtor) && aCtor instanceof aCtor &&
-                               _.isFunction(bCtor) && bCtor instanceof bCtor)
-                          && ('constructor' in a && 'constructor' in b)) {
-        return false;
-      }
-    }
-    // Assume equality for cyclic structures. The algorithm for detecting cyclic
-    // structures is adapted from ES 5.1 section 15.12.3, abstract operation `JO`.
-
-    // Initializing stack of traversed objects.
-    // It's done here since we only need them for objects and arrays comparison.
-    aStack = aStack || [];
-    bStack = bStack || [];
-    var length = aStack.length;
-    while (length--) {
-      // Linear search. Performance is inversely proportional to the number of
-      // unique nested structures.
-      if (aStack[length] === a) return bStack[length] === b;
-    }
-
-    // Add the first object to the stack of traversed objects.
-    aStack.push(a);
-    bStack.push(b);
-
-    // Recursively compare objects and arrays.
-    if (areArrays) {
-      // Compare array lengths to determine if a deep comparison is necessary.
-      length = a.length;
-      if (length !== b.length) return false;
-      // Deep compare the contents, ignoring non-numeric properties.
-      while (length--) {
-        if (!eq(a[length], b[length], aStack, bStack)) return false;
-      }
-    } else {
-      // Deep compare objects.
-      var keys = _.keys(a), key;
-      length = keys.length;
-      // Ensure that both objects contain the same number of properties before comparing deep equality.
-      if (_.keys(b).length !== length) return false;
-      while (length--) {
-        // Deep compare each member
-        key = keys[length];
-        if (!(_.has(b, key) && eq(a[key], b[key], aStack, bStack))) return false;
-      }
-    }
-    // Remove the first object from the stack of traversed objects.
-    aStack.pop();
-    bStack.pop();
-    return true;
-  };
-
-  // Perform a deep comparison to check if two objects are equal.
-  _.isEqual = function(a, b) {
-    return eq(a, b);
-  };
-
-  // Is a given array, string, or object empty?
-  // An "empty" object has no enumerable own-properties.
-  _.isEmpty = function(obj) {
-    if (obj == null) return true;
-    if (isArrayLike(obj) && (_.isArray(obj) || _.isString(obj) || _.isArguments(obj))) return obj.length === 0;
-    return _.keys(obj).length === 0;
-  };
-
-  // Is a given value a DOM element?
-  _.isElement = function(obj) {
-    return !!(obj && obj.nodeType === 1);
-  };
-
-  // Is a given value an array?
-  // Delegates to ECMA5's native Array.isArray
-  _.isArray = nativeIsArray || function(obj) {
-    return toString.call(obj) === '[object Array]';
-  };
-
-  // Is a given variable an object?
-  _.isObject = function(obj) {
-    var type = typeof obj;
-    return type === 'function' || type === 'object' && !!obj;
-  };
-
-  // Add some isType methods: isArguments, isFunction, isString, isNumber, isDate, isRegExp, isError.
-  _.each(['Arguments', 'Function', 'String', 'Number', 'Date', 'RegExp', 'Error'], function(name) {
-    _['is' + name] = function(obj) {
-      return toString.call(obj) === '[object ' + name + ']';
-    };
-  });
-
-  // Define a fallback version of the method in browsers (ahem, IE < 9), where
-  // there isn't any inspectable "Arguments" type.
-  if (!_.isArguments(arguments)) {
-    _.isArguments = function(obj) {
-      return _.has(obj, 'callee');
-    };
-  }
-
-  // Optimize `isFunction` if appropriate. Work around some typeof bugs in old v8,
-  // IE 11 (#1621), and in Safari 8 (#1929).
-  if (typeof /./ != 'function' && typeof Int8Array != 'object') {
-    _.isFunction = function(obj) {
-      return typeof obj == 'function' || false;
-    };
-  }
-
-  // Is a given object a finite number?
-  _.isFinite = function(obj) {
-    return isFinite(obj) && !isNaN(parseFloat(obj));
-  };
-
-  // Is the given value `NaN`? (NaN is the only number which does not equal itself).
-  _.isNaN = function(obj) {
-    return _.isNumber(obj) && obj !== +obj;
-  };
-
-  // Is a given value a boolean?
-  _.isBoolean = function(obj) {
-    return obj === true || obj === false || toString.call(obj) === '[object Boolean]';
-  };
-
-  // Is a given value equal to null?
-  _.isNull = function(obj) {
-    return obj === null;
-  };
-
-  // Is a given variable undefined?
-  _.isUndefined = function(obj) {
-    return obj === void 0;
-  };
-
-  // Shortcut function for checking if an object has a given property directly
-  // on itself (in other words, not on a prototype).
-  _.has = function(obj, key) {
-    return obj != null && hasOwnProperty.call(obj, key);
-  };
-
-  // Utility Functions
-  // -----------------
-
-  // Run Underscore.js in *noConflict* mode, returning the `_` variable to its
-  // previous owner. Returns a reference to the Underscore object.
-  _.noConflict = function() {
-    root._ = previousUnderscore;
-    return this;
-  };
-
-  // Keep the identity function around for default iteratees.
-  _.identity = function(value) {
-    return value;
-  };
-
-  // Predicate-generating functions. Often useful outside of Underscore.
-  _.constant = function(value) {
-    return function() {
-      return value;
-    };
-  };
-
-  _.noop = function(){};
-
-  _.property = property;
-
-  // Generates a function for a given object that returns a given property.
-  _.propertyOf = function(obj) {
-    return obj == null ? function(){} : function(key) {
-      return obj[key];
-    };
-  };
-
-  // Returns a predicate for checking whether an object has a given set of
-  // `key:value` pairs.
-  _.matcher = _.matches = function(attrs) {
-    attrs = _.extendOwn({}, attrs);
-    return function(obj) {
-      return _.isMatch(obj, attrs);
-    };
-  };
-
-  // Run a function **n** times.
-  _.times = function(n, iteratee, context) {
-    var accum = Array(Math.max(0, n));
-    iteratee = optimizeCb(iteratee, context, 1);
-    for (var i = 0; i < n; i++) accum[i] = iteratee(i);
-    return accum;
-  };
-
-  // Return a random integer between min and max (inclusive).
-  _.random = function(min, max) {
-    if (max == null) {
-      max = min;
-      min = 0;
-    }
-    return min + Math.floor(Math.random() * (max - min + 1));
-  };
-
-  // A (possibly faster) way to get the current timestamp as an integer.
-  _.now = Date.now || function() {
-    return new Date().getTime();
-  };
-
-   // List of HTML entities for escaping.
-  var escapeMap = {
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#x27;',
-    '`': '&#x60;'
-  };
-  var unescapeMap = _.invert(escapeMap);
-
-  // Functions for escaping and unescaping strings to/from HTML interpolation.
-  var createEscaper = function(map) {
-    var escaper = function(match) {
-      return map[match];
-    };
-    // Regexes for identifying a key that needs to be escaped
-    var source = '(?:' + _.keys(map).join('|') + ')';
-    var testRegexp = RegExp(source);
-    var replaceRegexp = RegExp(source, 'g');
-    return function(string) {
-      string = string == null ? '' : '' + string;
-      return testRegexp.test(string) ? string.replace(replaceRegexp, escaper) : string;
-    };
-  };
-  _.escape = createEscaper(escapeMap);
-  _.unescape = createEscaper(unescapeMap);
-
-  // If the value of the named `property` is a function then invoke it with the
-  // `object` as context; otherwise, return it.
-  _.result = function(object, property, fallback) {
-    var value = object == null ? void 0 : object[property];
-    if (value === void 0) {
-      value = fallback;
-    }
-    return _.isFunction(value) ? value.call(object) : value;
-  };
-
-  // Generate a unique integer id (unique within the entire client session).
-  // Useful for temporary DOM ids.
-  var idCounter = 0;
-  _.uniqueId = function(prefix) {
-    var id = ++idCounter + '';
-    return prefix ? prefix + id : id;
-  };
-
-  // By default, Underscore uses ERB-style template delimiters, change the
-  // following template settings to use alternative delimiters.
-  _.templateSettings = {
-    evaluate    : /<%([\s\S]+?)%>/g,
-    interpolate : /<%=([\s\S]+?)%>/g,
-    escape      : /<%-([\s\S]+?)%>/g
-  };
-
-  // When customizing `templateSettings`, if you don't want to define an
-  // interpolation, evaluation or escaping regex, we need one that is
-  // guaranteed not to match.
-  var noMatch = /(.)^/;
-
-  // Certain characters need to be escaped so that they can be put into a
-  // string literal.
-  var escapes = {
-    "'":      "'",
-    '\\':     '\\',
-    '\r':     'r',
-    '\n':     'n',
-    '\u2028': 'u2028',
-    '\u2029': 'u2029'
-  };
-
-  var escaper = /\\|'|\r|\n|\u2028|\u2029/g;
-
-  var escapeChar = function(match) {
-    return '\\' + escapes[match];
-  };
-
-  // JavaScript micro-templating, similar to John Resig's implementation.
-  // Underscore templating handles arbitrary delimiters, preserves whitespace,
-  // and correctly escapes quotes within interpolated code.
-  // NB: `oldSettings` only exists for backwards compatibility.
-  _.template = function(text, settings, oldSettings) {
-    if (!settings && oldSettings) settings = oldSettings;
-    settings = _.defaults({}, settings, _.templateSettings);
-
-    // Combine delimiters into one regular expression via alternation.
-    var matcher = RegExp([
-      (settings.escape || noMatch).source,
-      (settings.interpolate || noMatch).source,
-      (settings.evaluate || noMatch).source
-    ].join('|') + '|$', 'g');
-
-    // Compile the template source, escaping string literals appropriately.
-    var index = 0;
-    var source = "__p+='";
-    text.replace(matcher, function(match, escape, interpolate, evaluate, offset) {
-      source += text.slice(index, offset).replace(escaper, escapeChar);
-      index = offset + match.length;
-
-      if (escape) {
-        source += "'+\n((__t=(" + escape + "))==null?'':_.escape(__t))+\n'";
-      } else if (interpolate) {
-        source += "'+\n((__t=(" + interpolate + "))==null?'':__t)+\n'";
-      } else if (evaluate) {
-        source += "';\n" + evaluate + "\n__p+='";
-      }
-
-      // Adobe VMs need the match returned to produce the correct offest.
-      return match;
-    });
-    source += "';\n";
-
-    // If a variable is not specified, place data values in local scope.
-    if (!settings.variable) source = 'with(obj||{}){\n' + source + '}\n';
-
-    source = "var __t,__p='',__j=Array.prototype.join," +
-      "print=function(){__p+=__j.call(arguments,'');};\n" +
-      source + 'return __p;\n';
-
-    try {
-      var render = new Function(settings.variable || 'obj', '_', source);
-    } catch (e) {
-      e.source = source;
-      throw e;
-    }
-
-    var template = function(data) {
-      return render.call(this, data, _);
-    };
-
-    // Provide the compiled source as a convenience for precompilation.
-    var argument = settings.variable || 'obj';
-    template.source = 'function(' + argument + '){\n' + source + '}';
-
-    return template;
-  };
-
-  // Add a "chain" function. Start chaining a wrapped Underscore object.
-  _.chain = function(obj) {
-    var instance = _(obj);
-    instance._chain = true;
-    return instance;
-  };
-
-  // OOP
-  // ---------------
-  // If Underscore is called as a function, it returns a wrapped object that
-  // can be used OO-style. This wrapper holds altered versions of all the
-  // underscore functions. Wrapped objects may be chained.
-
-  // Helper function to continue chaining intermediate results.
-  var result = function(instance, obj) {
-    return instance._chain ? _(obj).chain() : obj;
-  };
-
-  // Add your own custom functions to the Underscore object.
-  _.mixin = function(obj) {
-    _.each(_.functions(obj), function(name) {
-      var func = _[name] = obj[name];
-      _.prototype[name] = function() {
-        var args = [this._wrapped];
-        push.apply(args, arguments);
-        return result(this, func.apply(_, args));
-      };
-    });
-  };
-
-  // Add all of the Underscore functions to the wrapper object.
-  _.mixin(_);
-
-  // Add all mutator Array functions to the wrapper.
-  _.each(['pop', 'push', 'reverse', 'shift', 'sort', 'splice', 'unshift'], function(name) {
-    var method = ArrayProto[name];
-    _.prototype[name] = function() {
-      var obj = this._wrapped;
-      method.apply(obj, arguments);
-      if ((name === 'shift' || name === 'splice') && obj.length === 0) delete obj[0];
-      return result(this, obj);
-    };
-  });
-
-  // Add all accessor Array functions to the wrapper.
-  _.each(['concat', 'join', 'slice'], function(name) {
-    var method = ArrayProto[name];
-    _.prototype[name] = function() {
-      return result(this, method.apply(this._wrapped, arguments));
-    };
-  });
-
-  // Extracts the result from a wrapped and chained object.
-  _.prototype.value = function() {
-    return this._wrapped;
-  };
-
-  // Provide unwrapping proxy for some methods used in engine operations
-  // such as arithmetic and JSON stringification.
-  _.prototype.valueOf = _.prototype.toJSON = _.prototype.value;
-
-  _.prototype.toString = function() {
-    return '' + this._wrapped;
-  };
-
-  // AMD registration happens at the end for compatibility with AMD loaders
-  // that may not enforce next-turn semantics on modules. Even though general
-  // practice for AMD registration is to be anonymous, underscore registers
-  // as a named module because, like jQuery, it is a base library that is
-  // popular enough to be bundled in a third party lib, but not be part of
-  // an AMD load request. Those cases could generate an error when an
-  // anonymous define() is called outside of a loader request.
-  if (typeof define === 'function' && define.amd) {
-    define('underscore', [], function() {
-      return _;
-    });
-  }
-}.call(this));
-
-},{}],21:[function(require,module,exports){
-var Sync = require('./helpers/sync');
-var NXLoader = require('./helpers/nxloader');
-var arrangement = require('./model/arrangement');
-var MasterControls = require('./mastercontrols');
-var WindowUpdater = require('./windowupdater');
-
-// Load the nexus ui
-nxloader = new NXLoader();
-nxloader.load();
-// Get the arrangement Id from the URL
-var url = window.location.pathname;
-var arrangementId = url.split('/')[3];
-
-// Set the arrangement id
-arrangement.setId(arrangementId);
-
-// Connect to socket
-var socket = io.connect('http://localhost:3000');
-
-// Init the master controls
-var masterControls = new MasterControls(arrangement);
-
-// Init window updater
-var windowUpdater = new WindowUpdater(masterControls);
-
-// Create new instance of sync
-var sync = new Sync(windowUpdater, socket, arrangementId);
-
-
-},{"./helpers/nxloader":27,"./helpers/sync":30,"./mastercontrols":32,"./model/arrangement":33,"./windowupdater":34}],22:[function(require,module,exports){
-/**
- * Utility function for deep object cloning
- *
- * @param   {object} obj  Object to be cloned
- * @returns {object}      The deep-cloned object
- */
-function deepClone (object) {
-    return JSON.parse(JSON.stringify(object));
-};
-
-module.exports = deepClone;
-
-},{}],23:[function(require,module,exports){
-function guid() {
-  return s4() + s4() + '-' + s4() + '-' + s4() + '-' +
-    s4() + '-' + s4() + s4() + s4();
-}
-
-function s4() {
-  return Math.floor((1 + Math.random()) * 0x10000)
-    .toString(16)
-    .substring(1);
-}
-
-module.exports = guid;
-
-},{}],24:[function(require,module,exports){
-var generateSequencerElement = require('./sequencer/GenerateSequencerElement');
-var Sequencer = require('./sequencer/sequencer');
-
-/**
- * Constructor
- *
- * returns {instrumentFactory}   Instance of itself
- */
-var instrumentFactory = function () {
-    return this;
-};
-
-/**
- * Factory for creating instrument's HTML and initialise the instrument object
- *
- * @param {string}      instrument       The name of the instrument to be created
- * @param {string|bool} id               The guid of the instrument if it is already created
- * @returns {HTML}      instrumentTrack  The html of the instrument
- */
-instrumentFactory.prototype.createInstrument = function (instrument, id) {
-
-    // Switch on the instrument passed in
-    switch (instrument) {
-
-        // Create step sequencer
-        case 'step-sequencer':
-
-            // Create the html
-            return new Promise(function(resolve, reject) {
-                generateSequencerElement.generate(id, function (elements) {
-
-                    // Get the elements
-                    var matrix      = elements.matrix;
-                    var volume      = elements.volume;
-                    var mute        = elements.mute;
-                    var settings    = elements.settings;
-                    var trackId     = elements.id;
-
-                    // Init new sequencer object with id
-                    var seq = new Sequencer(trackId);
-
-                    // Set the sequencer objects
-                    seq.setMatrix(matrix);
-                    seq.setVolume(volume);
-                    seq.setSettingsClickHandler(settings);
-                    seq.setMuteClickHandler(mute);
-
-                    // Create a return object containing sequencer instance
-                    var instrumentContainer  = {};
-                    instrumentContainer.seq  = seq;
-                    instrumentContainer.id   = trackId;
-                    instrumentContainer.html = elements.html;
-                    resolve(instrumentContainer);
-
-                });
-            });
-            break;
-
-        default:
-
-            // Throw error
-            return new Error('No instrument passed into factory');
-            break;
-
-    };
-};
-
-module.exports = instrumentFactory;
-
-},{"./sequencer/GenerateSequencerElement":25,"./sequencer/sequencer":26}],25:[function(require,module,exports){
-var $ = require('jquery');
-var guid = require('../../../helpers/idgenerator');
-var samplesObject = require('../../../helpers/samplelist');
-
-/**
- * Constructor
- *
- * @returns {generateSequencerElement} instance of itself
- */
-var generateSequencerElement = function () {
-    return this;
-};
-
-generateSequencerElement.generate = function (id, callback) {
-
-        // Check if guid has been set
-        if (id == false) {
-            // Guid hasn't been set, create one
-            id = guid();
-        }
-
-        // Create the instrument container row div
-        var instrumentContainer = document.createElement("div");
-        instrumentContainer.className = 'row instrument-container';
-        instrumentContainer.setAttribute('id', id);
-
-        // Create the sample container column div
-        var sampleContainer = document.createElement("div");
-        sampleContainer.className = 'col-md-2 light-grey-background-colour sample-container';
-
-        // Create the steps container column div
-        var stepsContainer = document.createElement("div");
-        stepsContainer.className = 'col-md-9 step-sequencer-container';
-
-        // Create volume range for sequencer
-        var volume = document.createElement("input");
-        volume.className = 'volume-slider';
-        volume.setAttribute('type', 'range');
-        volume.setAttribute('value', 0);
-        volume.setAttribute('name', 'volume');
-        volume.setAttribute('min', -12);
-        volume.setAttribute('max', 12);
-
-        // Create settings button icon
-        var settingsIcon = document.createElement("i");
-        settingsIcon.className = "track-settings fa fa-cog fa-2x";
-        settingsIcon.setAttribute('aria-hidden', 'true');
-
-        // Create mute icons
-        var muteIcon = document.createElement("i");
-        muteIcon.className = "track-mute fa fa-volume-off fa-2x";
-        muteIcon.setAttribute('aria-hidden', 'true');
-
-        var muteIconCross = document.createElement("i");
-        muteIconCross.className = "track-mute-cross fa fa-times fa-1x";
-        muteIconCross.setAttribute('aria-hidden', 'true');
-
-        var muteIconsDiv = document.createElement("div");
-        muteIconsDiv.className = "track-mute-container";
-
-        // Create settings popup
-        var settingsPopup = document.createElement("div");
-        settingsPopup.className = "track-settings-popup light-grey-background-colour";
-        $(settingsPopup).hide();
-
-        // Create contents of popup
-        var settingsPopupContainerDiv = document.createElement("div");
-
-        // Create Title of popup
-        var settingsPopupTitle = document.createElement("h3");
-        settingsPopupTitle.innerHTML = "Sequencer Settings";
-        settingsPopupTitle.className = "settings-popup-title centre-text";
-
-        // Content of popup
-        var settingsPopupRow = document.createElement("div");
-        settingsPopupRow.className = "settings-popup-row";
-
-        var settingsPopupLableSamples = document.createElement("h4");
-        settingsPopupLableSamples.innerHTML = "Samples:";
-
-        //Create and append select list
-        var samplesList = document.createElement("select");
-
-        //Create and append the options
-        for (var sample in samplesObject) {
-
-            // Check if property is available
-            if(samplesObject.hasOwnProperty(sample)) {
-
-                // Create the option
-                var option = document.createElement("option");
-                option.value = samplesObject[sample];
-                option.text  = sample;
-
-                // Append it to the list
-                samplesList.appendChild(option);
-            }
-        };
-
-        // Create popup confirm and exit buttons
-        var settingsPopupConfirmBtn = document.createElement("button");
-        settingsPopupConfirmBtn.innerHTML = "Confirm";
-        var settingsPopupCancelBtn = document.createElement("button");
-        settingsPopupCancelBtn.innerHTML = "Cancel";
-
-        // Create a container div removing/clearing track actions
-        var trackRemoveActionsContainer = document.createElement("div");
-        trackRemoveActionsContainer.className = 'col-md-1 track-remove-actions-container';
-
-        // Create the remove track icon
-        var removeTrackIcon = document.createElement("i");
-        removeTrackIcon.className = 'delete-track fa fa-trash fa-3x';
-        removeTrackIcon.setAttribute('track-id', id);
-
-        // Build the entire rack
-        instrumentContainer.appendChild(sampleContainer);
-        instrumentContainer.appendChild(stepsContainer);
-        instrumentContainer.appendChild(trackRemoveActionsContainer);
-        instrumentContainer.appendChild(settingsPopup);
-
-        settingsPopup.appendChild(settingsPopupContainerDiv);
-        settingsPopupContainerDiv.appendChild(settingsPopupTitle);
-        settingsPopupContainerDiv.appendChild(settingsPopupRow);
-        settingsPopupRow.appendChild(settingsPopupLableSamples);
-        settingsPopupRow.appendChild(samplesList);
-        var secondRow = settingsPopupRow.cloneNode(true);
-        secondRow.innerHTML = "";
-        secondRow.appendChild(settingsPopupConfirmBtn);
-        secondRow.appendChild(settingsPopupCancelBtn);
-        settingsPopupContainerDiv.appendChild(secondRow);
-
-        trackRemoveActionsContainer.appendChild(removeTrackIcon);
-
-        sampleContainer.appendChild(volume);
-        sampleContainer.appendChild(settingsIcon);
-
-        muteIconsDiv.appendChild(muteIcon);
-        muteIconsDiv.appendChild(muteIconCross);
-
-        sampleContainer.appendChild(muteIconsDiv);
-
-        $('#instrumentTracks').append(instrumentContainer);
-
-        // Add the matrix
-        nx.add("matrix", {w: $('.step-sequencer-container').width(), h:  $('.step-sequencer-container').height(), parent: stepsContainer});
-
-        // Get the latest element added on
-        // BE WEARY OF THIS FUNCTIONALITY
-        var matrix = nx.widgets[Object.keys(nx.widgets)[Object.keys(nx.widgets).length - 1]];
-
-        // Set the properties of the matrix
-        matrix.col = 16;
-        matrix.row = 1;
-        matrix.init();
-
-        // Init empty elements object
-        var elements = {};
-
-        // Create the raw html of the instrument container and its children
-        var html = instrumentContainer.outerHTML;
-
-        // Create the settings popup object
-        var settingsPopupElements = {};
-        settingsPopupElements.confirmBtn = $(settingsPopupConfirmBtn);
-        settingsPopupElements.cancelBtn = $(settingsPopupCancelBtn);
-        settingsPopupElements.icon  = $(settingsIcon);
-        settingsPopupElements.popup = $(settingsPopup);
-        settingsPopupElements.samplesList = $(samplesList);
-
-
-        // Set the element
-        elements.matrix   = matrix;
-        elements.volume   = $(volume);
-        elements.mute     = $(muteIconsDiv);
-        elements.html     = html;
-        elements.id       = id;
-        elements.settings = settingsPopupElements;
-
-        // Send the elements back
-        callback(elements);
-
-};
-
-module.exports = generateSequencerElement;
-
-},{"../../../helpers/idgenerator":23,"../../../helpers/samplelist":29,"jquery":1}],26:[function(require,module,exports){
-var Tone = require('tone');
-var trigger = require('../../../helpers/trigger');
-var proxify = require('../../../helpers/proxify');
-var deepClone = require('../../../helpers/deepclone');
-var arrangement = require('../../../model/arrangement');
-
-// Start the tone timer
-Tone.Transport.start();
-
-/**
- * Constructor
- *
- * @param {string|bool} id  If track already exists from client or initalise
- *                          use the id to create it
- * @returns{Sequencer}      Instance of itself
- */
-function Sequencer (id) {
-
-    // Initialise empty matrix
-    this.steps;
-
-    // Init local guid
-    this.id = id;
-
-    // Init base url string
-    this.baseURL = '../../audio/';
-
-    // Create a player and connect it to the master output (your speakers)
-    this.source = new Tone.Player("../../audio/727-HM-CONGA.WAV").toMaster();
-
-    // Set initialised flag
-    this.isInitialised = false;
-
-    // Initialse volume DOM element as false
-    this.volumeDOM = false;
-
-    // Reference to self
-    var self = this;
-
-    // Sequence notes
-    this.seq = new Tone.Sequence(function(time, col) {
-
-        // Get the array of columns from the matrix
-        var column = self.steps.matrix[col];
-
-        // Jump to the current cell to highlight the block
-        self.steps.jumpToCol(col);
-
-        // If cell has value, play the note
-        if (1 === column[0]) {
-            // Trigger synth to play note at the time passed in to the callback
-            //trigger(self.synth, "C4", '32n');
-            try {
-                self.source.start();
-            }
-            catch (e) {
-                // Siliently fail in the hopes it would have loaded next time it plays
-            }
-        }
-
-    }, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], '16n');
-
-    /**
-     * Track struct
-     * {
-     *    id: 'id',
-     *    type: 'step-sequencer',
-     *    volume: 60,
-     *    pattern: this.steps.matrix
-     * }
-     */
-    this.createTrackJSON = function () {
-
-        // JSON object container meta data of track
-        var track = {
-            id: this.id,
-            type: 'step-sequencer',
-            volume: self.source.volume.value,
-            pattern: [],
-            sampleURL: '../../audio/727-HM-CONGA.WAV'
-        };
-
-        return track;
-    };
-
-    // Init JSON struct of the track
-    this.track = this.createTrackJSON();
-
-    // Add the track to the arrangement
-    arrangement.addTrack(deepClone(this.track));
-
-    /**
-     * Proxy that picks up the changes when a step is pressed and sets the track
-     * pattern to the steps
-     */
-    this.setStepsObserver = function () {
-
-        // Proxify the steps
-        proxify(this.track, function(object, property, oldValue, newValue) {
-
-            // If it hasn't been initialised, stop it setting the track and triggering
-            // a change
-            if (self.isInitialised == false) {
-                return;
-            }
-
-            // Set the track pattern
-            self.track.pattern = self.steps.matrix;
-
-            // Push the changes of the track to the arrangement
-            self.pushChanges();
-        });
-
-    };
-
-    /**
-     * Push track changes to the arrangement
-     */
-    this.pushChanges = function () {
-
-        // replace the track in the arrangement with updated track
-        arrangement.replaceTrack(deepClone(this.track));
-
-    };
-
-    return this;
-};
-
-/**
- * Start the loop sequence
- */
-Sequencer.prototype.start = function () {
-    // Start the Transport timer
-    this.seq.start();
-};
-
-/**
- * Stop the loop sequence
- */
-Sequencer.prototype.stop = function () {
-    // Stop the transport timer
-    this.seq.stop();
-
-    // Reset and stop the matrix animation
-    this.steps.jumpToCol(0);
-    this.steps.stop();
-};
-
-/**
- * Set the matrix for the steps Sequencer
- *
-* @param {DOM} matrix  The matrix DOM that is the steps of the sequencer
- */
-Sequencer.prototype.setMatrix = function (matrix) {
-
-    // Set the steps
-    this.steps = matrix;
-
-    // Set the track pattern
-    this.track.pattern = matrix.matrix;
-
-    // Set the steps observer
-    this.setStepsObserver();
-
-};
-
-/**
- * Get the matrix for the steps sequencer
- *
- * @returns {matrix} steps  The steps for the sequencer
- */
-Sequencer.prototype.getMatrix = function () {
-    return this.steps;
-};
-
-/**
- * Set the volume of the track
- *
- * @param {JQuery object} volume  The volume slider jquery object
- */
-Sequencer.prototype.setVolume = function (volume) {
-
-    var self = this;
-
-    // Set the class volumeDOM variable
-    this.volumeDOM = volume;
-
-    this.volumeDOM.on('input', function(event) {
-
-        // Get the volume value in decibles
-        var db = parseInt(event.target.value);
-
-        // Set the volume
-        self.source.volume.value = db;
-
-        // Set the track volume
-        self.track.volume = db;
-
-        // Push changes of the track to the arrangement
-        self.pushChanges();
-
-    });
-
-};
-
-/**
- * Set the settings click handler
- *
- * @param {object} settings  An object that contains the Jquey objects of
- *                           elements in the settings popup
- */
-Sequencer.prototype.setSettingsClickHandler = function (settings) {
-
-    // Reference to self
-    var self = this;
-
-    // Add the spinning animation to the settings icon on hover
-    settings.icon.hover(
-        function() {
-            settings.icon.addClass('fa-spin');
-        }, function() {
-            settings.icon.removeClass('fa-spin');
-        }
-    );
-
-    // On click handler for the settings icon
-    settings.icon.on('click', function (event) {
-        // Toggle the popup
-        settings.popup.toggle(400);
-    });
-
-    // On click handler for the settings icon
-    settings.cancelBtn.on('click', function (event) {
-        // Load the sample original sample
-        self.source.load(self.track.sampleURL);
-
-        // Toggle popup
-        settings.popup.toggle(400);
-    });
-
-    // On click handler for the settings icon
-    settings.confirmBtn.on('click', function (event) {
-        // Confirm choice of sample and push to other clients
-        // Get the new sample selected
-        var sample = settings.samplesList.val();
-
-        // Append the base url
-        var sampleURL = self.baseURL + sample;
-
-        // Set it to the track
-        self.track.sampleURL = sampleURL;
-
-        // Push changes
-        self.pushChanges();
-
-        // Close the popup
-        settings.popup.toggle(400);
-    });
-
-    // Select list handler for on change
-    settings.samplesList.change(function (event) {
-
-        // Get the new sample selected
-        var sample = settings.samplesList.val();
-
-        // Append the base url
-        var sampleURL = self.baseURL + sample;
-
-        // Load the sample
-        self.source.load(sampleURL);
-
-    });
-
-};
-
-/**
- * Mute the track click handler
- *
- * @param {JQuery} muteDiv  The div containing the mute icons
- */
-Sequencer.prototype.setMuteClickHandler = function (muteDiv) {
-
-    // Ref. to self
-    var self = this;
-
-    // Click handler
-    muteDiv.on('click', function (event) {
-
-        // Mute the source
-        self.source.mute == true ? self.source.mute = false : self.source.mute = true;
-
-        // Toggle the colour class to know its active
-        muteDiv.toggleClass('secondary-colour');
-
-    });
-
-};
-
-/**
- * Set the track JSON object, used for the syncing/updating of tracks from
- * other clients.
- *
- * @param {object} track  JSON object of the track
- */
-Sequencer.prototype.setTrackJSON = function (track) {
-
-    // Check if volume has been changed
-    if (this.track.volume != track.volume) {
-        // Volume has been changed, update it
-
-        // Set the slider value
-        this.volumeDOM.val(track.volume);
-
-        // Set the volume
-        this.source.volume.value = parseInt(track.volume);
-    }
-
-    // Check if sample has been changed
-    if (track.sampleURL != undefined
-        && this.track.sampleURL != track.sampleURL) {
-        // The sample has been changed
-
-        // Load the sample
-        this.source.load(track.sampleURL);
-
-    }
-
-    // Set the track json
-    this.track = deepClone(track);
-
-    // Set all the cells and their values
-    this.track.pattern.map(this.setStep.bind(this));
-
-    // Track has been initialised
-    this.isInitialised = true;
-
-};
-
-/**
- * Get the track JSON
- *
- * @return {object} this.track  The track JSON object
- */
-Sequencer.prototype.getTrackJSON = function () {
-    return this.track;
-};
-
-
-/**
- * Set the initialised flag, used when instrument is initalised
- * fresh, without exisiting track JSON data
- */
-Sequencer.prototype.setInitialised = function () {
-    // Track has been initialised
-    this.isInitialised = true;
-};
-
-/**
- * Set an individual step value either on or off and reflect the change
- *
- * @param {array} step  The steps value
- */
-Sequencer.prototype.setStep = function (step, index) {
-
-    // Get if it is on or off
-    var on = step[0] > 0 ? true : false;
-
-    // Set the cell value
-    this.steps.setCell(index, 0, on);
-
-};
-
-/**
- * Get the sequencer ID
- *
- * @returns {string} id  The track id of this sequencer
- */
-Sequencer.prototype.getId = function () {
-    return this.track.id;
-};
-
-
-module.exports = Sequencer;
-
-},{"../../../helpers/deepclone":22,"../../../helpers/proxify":28,"../../../helpers/trigger":31,"../../../model/arrangement":33,"tone":19}],27:[function(require,module,exports){
-var nxloader = function () {
-};
-
-nxloader.prototype.load = function () {
-
-    nx.onload = function () {
-
-        // Colours
-        nx.colorize("accent", "#ffbb4c");
-        nx.colorize("fill", "#1D2632");
-
-    }
-};
-
-module.exports = nxloader;
-
-},{}],28:[function(require,module,exports){
-/**
- * Create proxy object for as an observer
- *
- * @param {object}   object The object to be observered
- * @param {function} change The handler for the change
- * @param {bool}     deep   A flag setter to say if all children of the object should be proxied as well
- * @returns {Proxy}  proxy  The proxy object observing the object passed in
- */
-function proxify(object, change, deepProxy) {
-    var proxy = new Proxy(object, {
-        set: function(object, name, value) {
-            var old = object[name];
-            if (value && typeof value == 'object') {
-                // new object need to be proxify as well
-                value = proxify(value, change);
-            }
-            object[name] = value;
-            change(object, name, old, value);
-        }
-    });
-    for (var prop in object) {
-        if (object.hasOwnProperty(prop) && object[prop] &&
-            typeof object[prop] == 'object') {
-                // proxify all child objects
-                object[prop] = proxify(object[prop], change);
-        }
-    }
-    return proxy;
-}
-
-module.exports = proxify;
-
-},{}],29:[function(require,module,exports){
-module.exports = {
-    "727-CABASA":"727-CABASA.WAV",
-    "727-HI-BONGO":"727-HI-BONGO.WAV",
-    "727-HI-TIMBA":"727-HI-TIMBA.WAV",
-    "727-HM-CONGA":"727-HM-CONGA.WAV",
-    "727-HO-CONGA":"727-HO-CONGA.WAV",
-    "727-L":"727-L.WHISTL.WAV",
-    "727-LO-BONGO":"727-LO-BONGO.WAV",
-    "727-LO-CONGA":"727-LO-CONGA.WAV",
-    "727-LO-TIMBA":"727-LO-TIMBA.WAV",
-    "727-MARACAS":"727-MARACAS.WAV",
-    "727-QUIJADA":"727-QUIJADA.WAV",
-    "727-S":"727-S.WHISTL.WAV",
-    "727-STARCHIM":"727-STARCHIM.WAV",
-    "Acoustic-Crash-01":"Acoustic-Crash-01.wav",
-    "Acoustic-Crash-02":"Acoustic-Crash-02.wav",
-    "Acoustic-Hat-Closed-01":"Acoustic-Hat-Closed-01.wav",
-    "Acoustic-Hat-Closed-02":"Acoustic-Hat-Closed-02.4.wav",
-    "Acoustic-Hat-Closed-02":"Acoustic-Hat-Closed-02.5.wav",
-    "Acoustic-Hat-Closed-02":"Acoustic-Hat-Closed-02.6.wav",
-    "Acoustic-Hat-Closed-02":"Acoustic-Hat-Closed-02.7.wav",
-    "Acoustic-Hat-Closed-02":"Acoustic-Hat-Closed-02.wav",
-    "Acoustic-Hat-Open":"Acoustic-Hat-Open.wav",
-    "Acoustic-Hat-Trash":"Acoustic-Hat-Trash.wav",
-    "Acoustic-Kick-01":"Acoustic-Kick-01.wav",
-    "Acoustic-Kick-02":"Acoustic-Kick-02.wav",
-    "Acoustic-Kick-n-Crash":"Acoustic-Kick-n-Crash.wav",
-    "Acoustic-Snare-01":"Acoustic-Snare-01.wav",
-    "Acoustic-Snare-02":"Acoustic-Snare-02.wav",
-    "Acoustic-Snare-03":"Acoustic-Snare-03.wav",
-    "Acoustic-Snare-04":"Acoustic-Snare-04.wav",
-    "Acoustic-Tom-Hi":"Acoustic-Tom-Hi.wav",
-    "Acoustic-Tom-Lo":"Acoustic-Tom-Lo.wav",
-    "Acoustic-Tom-Mid":"Acoustic-Tom-Mid.wav",
-    "Axxe-HC1":"Axxe-HC1.wav",
-    "Axxe-HC2":"Axxe-HC2.wav",
-    "Axxe-HC3":"Axxe-HC3.wav",
-    "Axxe-HHC1":"Axxe-HHC1.wav",
-    "Axxe-HHC2":"Axxe-HHC2.wav",
-    "Axxe-HHO1":"Axxe-HHO1.wav",
-    "Axxe-HHO2":"Axxe-HHO2.wav",
-    "Axxe-Kick1":"Axxe-Kick1.wav",
-    "Axxe-Kick2":"Axxe-Kick2.wav",
-    "Axxe-Kick3":"Axxe-Kick3.wav",
-    "Axxe-Kick4":"Axxe-Kick4.wav",
-    "Axxe-SN1":"Axxe-SN1.wav",
-    "Axxe-SN2":"Axxe-SN2.wav",
-    "Axxe-SN3":"Axxe-SN3.wav",
-    "BD-Roll":"BD-Roll.wav",
-    "BOSS-HC-2-Clap1":"BOSS-HC-2-Clap1.wav",
-    "BOSS-HC-2-Clap10":"BOSS-HC-2-Clap10.wav",
-    "BOSS-HC-2-Clap11":"BOSS-HC-2-Clap11.wav",
-    "BOSS-HC-2-Clap12":"BOSS-HC-2-Clap12.wav",
-    "BOSS-HC-2-Clap13":"BOSS-HC-2-Clap13.wav",
-    "BOSS-HC-2-Clap14":"BOSS-HC-2-Clap14.wav",
-    "BOSS-HC-2-Clap2":"BOSS-HC-2-Clap2.wav",
-    "BOSS-HC-2-Clap3":"BOSS-HC-2-Clap3.wav",
-    "BOSS-HC-2-Clap4":"BOSS-HC-2-Clap4.wav",
-    "BOSS-HC-2-Clap5":"BOSS-HC-2-Clap5.wav",
-    "BOSS-HC-2-Clap6":"BOSS-HC-2-Clap6.wav",
-    "BOSS-HC-2-Clap7":"BOSS-HC-2-Clap7.wav",
-    "BOSS-HC-2-Clap8":"BOSS-HC-2-Clap8.wav",
-    "BOSS-HC-2-Clap9":"BOSS-HC-2-Clap9.wav",
-    "C-Cymbal01":"C-Cymbal01.wav",
-    "C-Cymbal02":"C-Cymbal02.wav",
-    "C-Cymbal03":"C-Cymbal03.wav",
-    "C-Cymbal04":"C-Cymbal04.wav",
-    "C-Hat01":"C-Hat01.wav",
-    "C-Hat02":"C-Hat02.wav",
-    "C-Hat03":"C-Hat03.wav",
-    "C-Hat04":"C-Hat04.wav",
-    "C-Kick":"C-Kick.wav",
-    "C-Snare01":"C-Snare01.wav",
-    "C-Snare02":"C-Snare02.wav",
-    "C-Snare03":"C-Snare03.wav",
-    "C-Snare04":"C-Snare04.wav",
-    "C-Tom01":"C-Tom01.wav",
-    "C-Tom02":"C-Tom02.wav",
-    "Castanets-1":"Castanets-1.wav",
-    "Castanets-2":"Castanets-2.wav",
-    "Church-Bells":"Church-Bells.wav",
-    "Concert-BD-1":"Concert-BD-1.wav",
-    "Concert-BD-2":"Concert-BD-2.wav",
-    "Concert-BD-3":"Concert-BD-3.wav",
-    "Concert-SNR1":"Concert-SNR1.wav",
-    "Concert-SNR2":"Concert-SNR2.wav",
-    "Concert-SNR3":"Concert-SNR3.wav",
-    "Crash-Cym-Lp":"Crash-Cym-Lp.wav",
-    "Crash-Cymbal":"Crash-Cymbal.wav",
-    "Cymbal-Hit":"Cymbal-Hit.wav",
-    "Elec-B-Cymbal01":"Elec-B-Cymbal01.wav",
-    "Elec-B-Cymbal02":"Elec-B-Cymbal02.wav",
-    "Elec-B-Cymbal03":"Elec-B-Cymbal03.wav",
-    "Elec-B-Cymbal04":"Elec-B-Cymbal04.wav",
-    "Elec-B-Hat01":"Elec-B-Hat01.wav",
-    "Elec-B-Hat02":"Elec-B-Hat02.wav",
-    "Elec-B-Hat03":"Elec-B-Hat03.wav",
-    "Elec-B-Hat04":"Elec-B-Hat04.wav",
-    "Elec-B-Kick":"Elec-B-Kick.wav",
-    "Elec-B-Snare01":"Elec-B-Snare01.wav",
-    "Elec-B-Snare02":"Elec-B-Snare02.wav",
-    "Elec-B-Snare03":"Elec-B-Snare03.wav",
-    "Elec-B-Snare04":"Elec-B-Snare04.wav",
-    "Elec-B-Tom01":"Elec-B-Tom01.wav",
-    "Elec-B-Tom02":"Elec-B-Tom02.wav",
-    "Elec-Cymbal01":"Elec-Cymbal01.wav",
-    "Elec-Cymbal02":"Elec-Cymbal02.wav",
-    "Elec-Cymbal03":"Elec-Cymbal03.wav",
-    "Elec-Cymbal04":"Elec-Cymbal04.wav",
-    "Elec-Hat01":"Elec-Hat01.wav",
-    "Elec-Hat02":"Elec-Hat02.wav",
-    "Elec-Hat03":"Elec-Hat03.wav",
-    "Elec-Hat04":"Elec-Hat04.wav",
-    "Elec-Kick":"Elec-Kick.wav",
-    "Elec-Snare01":"Elec-Snare01.wav",
-    "Elec-Snare02":"Elec-Snare02.wav",
-    "Elec-Snare03":"Elec-Snare03.wav",
-    "Elec-Snare04":"Elec-Snare04.wav",
-    "Elec-Tom01":"Elec-Tom01.wav",
-    "Elec-Tom02":"Elec-Tom02.wav",
-    "Gong":"Gong.wav",
-    "JV-2080-Int-B-060-Orch":"JV-2080-Int-B-060-Orch.-Hit.wav",
-    "JV-2080-Int-B-061-Tekno-Hit":"JV-2080-Int-B-061-Tekno-Hit.wav",
-    "JV-2080-Int-B-062-Back-Hit":"JV-2080-Int-B-062-Back-Hit.wav",
-    "JV-2080-Int-B-063-Philly-Hit":"JV-2080-Int-B-063-Philly-Hit.wav",
-    "JV-2080-Int-B-064-Scratch-1":"JV-2080-Int-B-064-Scratch-1.wav",
-    "JV-2080-Int-B-065-Scratch-2":"JV-2080-Int-B-065-Scratch-2.wav",
-    "JV-2080-Int-B-066-Scratch-3":"JV-2080-Int-B-066-Scratch-3.wav",
-    "JV-2080-Int-B-067-Natural-SN1":"JV-2080-Int-B-067-Natural-SN1.wav",
-    "JV-2080-Int-B-068-Natural-SN2":"JV-2080-Int-B-068-Natural-SN2.wav",
-    "JV-2080-Int-B-069-Piccolo-SN":"JV-2080-Int-B-069-Piccolo-SN.wav",
-    "JV-2080-Int-B-070-Ballad-SN":"JV-2080-Int-B-070-Ballad-SN.wav",
-    "JV-2080-Int-B-071-SN-Roll":"JV-2080-Int-B-071-SN-Roll.wav",
-    "JV-2080-Int-B-072-808-SN":"JV-2080-Int-B-072-808-SN.wav",
-    "JV-2080-Int-B-073-Brush-Slap":"JV-2080-Int-B-073-Brush-Slap.wav",
-    "JV-2080-Int-B-074-Brush-Swish":"JV-2080-Int-B-074-Brush-Swish.wav",
-    "JV-2080-Int-B-075-Brush-Roll":"JV-2080-Int-B-075-Brush-Roll.wav",
-    "JV-2080-Int-B-076-Dry-Stick":"JV-2080-Int-B-076-Dry-Stick.wav",
-    "JV-2080-Int-B-077-Side-Stick":"JV-2080-Int-B-077-Side-Stick.wav",
-    "JV-2080-Int-B-078-Lite-Kick":"JV-2080-Int-B-078-Lite-Kick.wav",
-    "JV-2080-Int-B-079-Hybrid-Kick1":"JV-2080-Int-B-079-Hybrid-Kick1.wav",
-    "JV-2080-Int-B-080-Hybrid-Kick2":"JV-2080-Int-B-080-Hybrid-Kick2.wav",
-    "JV-2080-Int-B-081-Old-Kick":"JV-2080-Int-B-081-Old-Kick.wav",
-    "JV-2080-Int-B-082-Verb-Kick":"JV-2080-Int-B-082-Verb-Kick.wav",
-    "JV-2080-Int-B-083-Round-Kick":"JV-2080-Int-B-083-Round-Kick.wav",
-    "JV-2080-Int-B-084-808-Kick":"JV-2080-Int-B-084-808-Kick.wav",
-    "JV-2080-Int-B-085-Verb-Tom-Hi":"JV-2080-Int-B-085-Verb-Tom-Hi.wav",
-    "JV-2080-Int-B-086-Verb-Tom-Lo":"JV-2080-Int-B-086-Verb-Tom-Lo.wav",
-    "JV-2080-Int-B-087-Dry-Tom-Hi":"JV-2080-Int-B-087-Dry-Tom-Hi.wav",
-    "JV-2080-Int-B-088-Dry-Tom-Lo":"JV-2080-Int-B-088-Dry-Tom-Lo.wav",
-    "JV-2080-Int-B-089-Cl-HiHat-1":"JV-2080-Int-B-089-Cl-HiHat-1.wav",
-    "JV-2080-Int-B-090-Cl-HiHat-2":"JV-2080-Int-B-090-Cl-HiHat-2.wav",
-    "JV-2080-Int-B-091-Op-HiHat":"JV-2080-Int-B-091-Op-HiHat.wav",
-    "JV-2080-Int-B-092-Pedal-HiHat":"JV-2080-Int-B-092-Pedal-HiHat.wav",
-    "JV-2080-Int-B-093-606-HiHat-Cl":"JV-2080-Int-B-093-606-HiHat-Cl.wav",
-    "JV-2080-Int-B-094-606-HiHat-Op":"JV-2080-Int-B-094-606-HiHat-Op.wav",
-    "JV-2080-Int-B-095-808-Claps":"JV-2080-Int-B-095-808-Claps.wav",
-    "JV-2080-Int-B-096-Hand-Claps":"JV-2080-Int-B-096-Hand-Claps.wav",
-    "JV-2080-Int-B-097-Finger-Snaps":"JV-2080-Int-B-097-Finger-Snaps.wav",
-    "JV-2080-Int-B-098-Ride-1":"JV-2080-Int-B-098-Ride-1.wav",
-    "JV-2080-Int-B-099-Ride-2":"JV-2080-Int-B-099-Ride-2.wav",
-    "JV-2080-Int-B-100-Ride-Bell-1":"JV-2080-Int-B-100-Ride-Bell-1.wav",
-    "JV-2080-Int-B-101-Crash-1":"JV-2080-Int-B-101-Crash-1.wav",
-    "JV-2080-Int-B-102-China-Cym":"JV-2080-Int-B-102-China-Cym.wav",
-    "JV-2080-Int-B-103-Cowbell-1":"JV-2080-Int-B-103-Cowbell-1.wav",
-    "JV-2080-Int-B-104-Wood-Block":"JV-2080-Int-B-104-Wood-Block.wav",
-    "JV-2080-Int-B-105-Claves":"JV-2080-Int-B-105-Claves.wav",
-    "JV-2080-Int-B-106-Bongo-Hi":"JV-2080-Int-B-106-Bongo-Hi.wav",
-    "JV-2080-Int-B-107-Bongo-Lo":"JV-2080-Int-B-107-Bongo-Lo.wav",
-    "JV-2080-Int-B-108-Cga-Open-Hi":"JV-2080-Int-B-108-Cga-Open-Hi.wav",
-    "JV-2080-Int-B-109-Cga-Open-Lo":"JV-2080-Int-B-109-Cga-Open-Lo.wav",
-    "JV-2080-Int-B-110-Cga-Mute-Hi":"JV-2080-Int-B-110-Cga-Mute-Hi.wav",
-    "JV-2080-Int-B-111-Cga-Mute-Lo":"JV-2080-Int-B-111-Cga-Mute-Lo.wav",
-    "JV-2080-Int-B-112-Cga-Slap":"JV-2080-Int-B-112-Cga-Slap.wav",
-    "JV-2080-Int-B-113-Timbale":"JV-2080-Int-B-113-Timbale.wav",
-    "JV-2080-Int-B-114-Cabasa-Up":"JV-2080-Int-B-114-Cabasa-Up.wav",
-    "JV-2080-Int-B-115-Cabasa-Down":"JV-2080-Int-B-115-Cabasa-Down.wav",
-    "JV-2080-Int-B-116-Cabasa-Cut":"JV-2080-Int-B-116-Cabasa-Cut.wav",
-    "JV-2080-Int-B-117-Maracas":"JV-2080-Int-B-117-Maracas.wav",
-    "JV-2080-Int-B-118-Long-Guiro":"JV-2080-Int-B-118-Long-Guiro.wav",
-    "JV-2080-Int-B-119-Tambourine":"JV-2080-Int-B-119-Tambourine.wav",
-    "JV-2080-Int-B-121-Cuica":"JV-2080-Int-B-121-Cuica.wav",
-    "JV-2080-Int-B-123-Timpani":"JV-2080-Int-B-123-Timpani.wav",
-    "JV-2080-Int-B-125-REV-Orch":"JV-2080-Int-B-125-REV-Orch.Hit.wav",
-    "JV-2080-Int-B-126-REV-TeknoHit":"JV-2080-Int-B-126-REV-TeknoHit.wav",
-    "JV-2080-Int-B-127-REV-Back-Hit":"JV-2080-Int-B-127-REV-Back-Hit.wav",
-    "JV-2080-Int-B-128-REV-PhillHit":"JV-2080-Int-B-128-REV-PhillHit.wav",
-    "JV-2080-Int-B-129-REV-Steel-DR":"JV-2080-Int-B-129-REV-Steel-DR.wav",
-    "JV-2080-Int-B-130-REV-Tin-Wave":"JV-2080-Int-B-130-REV-Tin-Wave.wav",
-    "JV-2080-Int-B-131-REV-NatrlSN1":"JV-2080-Int-B-131-REV-NatrlSN1.wav",
-    "JV-2080-Int-B-132-REV-NatrlSN2":"JV-2080-Int-B-132-REV-NatrlSN2.wav",
-    "JV-2080-Int-B-133-REV-PiccloSN":"JV-2080-Int-B-133-REV-PiccloSN.wav",
-    "JV-2080-Int-B-134-REV-BalladSN":"JV-2080-Int-B-134-REV-BalladSN.wav",
-    "JV-2080-Int-B-135-REV-Side-Stk":"JV-2080-Int-B-135-REV-Side-Stk.wav",
-    "JV-2080-Int-B-136-REV-SN-Roll":"JV-2080-Int-B-136-REV-SN-Roll.wav",
-    "JV-2080-Int-B-137-REV-Brush-1":"JV-2080-Int-B-137-REV-Brush-1.wav",
-    "JV-2080-Int-B-138-REV-Brush-2":"JV-2080-Int-B-138-REV-Brush-2.wav",
-    "JV-2080-Int-B-139-REV-Brush-3":"JV-2080-Int-B-139-REV-Brush-3.wav",
-    "JV-2080-Int-B-140-REV-LiteKick":"JV-2080-Int-B-140-REV-LiteKick.wav",
-    "JV-2080-Int-B-141-REV-HybridK1":"JV-2080-Int-B-141-REV-HybridK1.wav",
-    "JV-2080-Int-B-142-REV-HybridK2":"JV-2080-Int-B-142-REV-HybridK2.wav",
-    "JV-2080-Int-B-143-REV-Old-Kick":"JV-2080-Int-B-143-REV-Old-Kick.wav",
-    "JV-2080-Int-B-144-REV-Timpani":"JV-2080-Int-B-144-REV-Timpani.wav",
-    "JV-2080-Int-B-145-REV-VerbTomH":"JV-2080-Int-B-145-REV-VerbTomH.wav",
-    "JV-2080-Int-B-146-REV-VerbTomL":"JV-2080-Int-B-146-REV-VerbTomL.wav",
-    "JV-2080-Int-B-147-REV-Dry-Tom-H":"JV-2080-Int-B-147-REV-Dry-Tom-H.wav",
-    "JV-2080-Int-B-148-REV-Dry-Tom-M":"JV-2080-Int-B-148-REV-Dry-Tom-M.wav",
-    "JV-2080-Int-B-149-REV-ClHiHat1":"JV-2080-Int-B-149-REV-ClHiHat1.wav",
-    "JV-2080-Int-B-150-REV-ClHiHat2":"JV-2080-Int-B-150-REV-ClHiHat2.wav",
-    "JV-2080-Int-B-151-REV-Op-HiHat":"JV-2080-Int-B-151-REV-Op-HiHat.wav",
-    "JV-2080-Int-B-152-REV-Pedal-HH":"JV-2080-Int-B-152-REV-Pedal-HH.wav",
-    "JV-2080-Int-B-153-REV-606HH-Cl":"JV-2080-Int-B-153-REV-606HH-Cl.wav",
-    "JV-2080-Int-B-154-REV-606HH-Op":"JV-2080-Int-B-154-REV-606HH-Op.wav",
-    "JV-2080-Int-B-155-REV-Ride":"JV-2080-Int-B-155-REV-Ride.wav",
-    "JV-2080-Int-B-156-REV-Cup":"JV-2080-Int-B-156-REV-Cup.wav",
-    "JV-2080-Int-B-157-REV-Crash-1":"JV-2080-Int-B-157-REV-Crash-1.wav",
-    "JV-2080-Int-B-158-REV-China":"JV-2080-Int-B-158-REV-China.wav",
-    "JV-2080-Int-B-159-REV-DrySick":"JV-2080-Int-B-159-REV-DrySick.wav",
-    "JV-2080-Int-B-160-REV-RealCLP":"JV-2080-Int-B-160-REV-RealCLP.wav",
-    "JV-2080-Int-B-161-REV-FingSnap":"JV-2080-Int-B-161-REV-FingSnap.wav",
-    "JV-2080-Int-B-162-REV-Cowbell":"JV-2080-Int-B-162-REV-Cowbell.wav",
-    "JV-2080-Int-B-163-REV-WoodBlck":"JV-2080-Int-B-163-REV-WoodBlck.wav",
-    "JV-2080-Int-B-164-REV-Clve":"JV-2080-Int-B-164-REV-Clve.wav",
-    "JV-2080-Int-B-165-REV-Conga":"JV-2080-Int-B-165-REV-Conga.wav",
-    "JV-2080-Int-B-166-REV-Tamb":"JV-2080-Int-B-166-REV-Tamb.wav",
-    "JV-2080-Int-B-167-REV-Maracas":"JV-2080-Int-B-167-REV-Maracas.wav",
-    "JV-2080-Int-B-168-REV-Guiro":"JV-2080-Int-B-168-REV-Guiro.wav",
-    "JV-2080-Int-B-169-REV-Cuica":"JV-2080-Int-B-169-REV-Cuica.wav",
-    "JV-2080-Int-B-170-REV-Metro":"JV-2080-Int-B-170-REV-Metro.wav",
-    "JV-2080-Int-B-180-Metronome-2":"JV-2080-Int-B-180-Metronome-2.wav",
-    "JV-2080-Int-B-181-MC500-Beep-1":"JV-2080-Int-B-181-MC500-Beep-1.wav",
-    "JV-2080-Int-B-182-MC500-Beep-2":"JV-2080-Int-B-182-MC500-Beep-2.wav",
-    "Kit-A-FX01":"Kit-A-FX01.wav",
-    "Kit-A-FX02":"Kit-A-FX02.wav",
-    "Kit-A-FX03":"Kit-A-FX03.wav",
-    "Kit-A-FX04":"Kit-A-FX04.wav",
-    "Kit-A-FX05":"Kit-A-FX05.wav",
-    "Kit-A-FX06":"Kit-A-FX06.wav",
-    "Kit-A-Hat01":"Kit-A-Hat01.wav",
-    "Kit-A-Hat02":"Kit-A-Hat02.wav",
-    "Kit-A-Hat03":"Kit-A-Hat03.wav",
-    "Kit-A-Kick":"Kit-A-Kick.wav",
-    "Kit-A-Snare-01":"Kit-A-Snare-01.wav",
-    "Kit-A-Snare-02":"Kit-A-Snare-02.wav",
-    "Kit-A01":"Kit-A01.wav",
-    "Kit-A02":"Kit-A02.wav",
-    "Kit-A03":"Kit-A03.wav",
-    "Kit-A04":"Kit-A04.wav",
-    "Kit-A05":"Kit-A05.wav",
-    "Kit-A06":"Kit-A06.wav",
-    "Kit-A07":"Kit-A07.wav",
-    "Kit-A08":"Kit-A08.wav",
-    "Kit-A09":"Kit-A09.wav",
-    "Kit-A10":"Kit-A10.wav",
-    "Kit-A11":"Kit-A11.wav",
-    "Kit-A12":"Kit-A12.wav",
-    "Kit-A13":"Kit-A13.wav",
-    "Kit-A14":"Kit-A14.wav",
-    "Kit-A15":"Kit-A15.wav",
-    "Kit-A16":"Kit-A16.wav",
-    "Kit-A17":"Kit-A17.wav",
-    "Kit-A18":"Kit-A18.wav",
-    "Kit-A19":"Kit-A19.wav",
-    "Kit-A20":"Kit-A20.wav",
-    "Kit-A21":"Kit-A21.wav",
-    "Kit-A22":"Kit-A22.wav",
-    "Kit-A23":"Kit-A23.wav",
-    "Kit-A24":"Kit-A24.wav",
-    "Kit-B01":"Kit-B01.wav",
-    "Kit-B02":"Kit-B02.wav",
-    "Kit-B03":"Kit-B03.wav",
-    "Kit-B04":"Kit-B04.wav",
-    "Kit-B05":"Kit-B05.wav",
-    "Kit-B06":"Kit-B06.wav",
-    "Kit-B07":"Kit-B07.wav",
-    "Kit-B08":"Kit-B08.wav",
-    "Kit-B09":"Kit-B09.wav",
-    "Kit-B10":"Kit-B10.wav",
-    "Kit-B11":"Kit-B11.wav",
-    "Kit-B12":"Kit-B12.wav",
-    "Kit-B13":"Kit-B13.wav",
-    "Kit-B14":"Kit-B14.wav",
-    "Kit-B15":"Kit-B15.wav",
-    "Kit-B16":"Kit-B16.wav",
-    "Kit-B17":"Kit-B17.wav",
-    "Kit-B18":"Kit-B18.wav",
-    "Kit-B19":"Kit-B19.wav",
-    "Kit-B20":"Kit-B20.wav",
-    "Kit-B21":"Kit-B21.wav",
-    "Kit-B22":"Kit-B22.wav",
-    "Kit-B23":"Kit-B23.wav",
-    "Kit-B24":"Kit-B24.wav",
-    "Kit-C-FX01":"Kit-C-FX01.wav",
-    "Kit-C-FX02":"Kit-C-FX02.wav",
-    "Kit-C-FX03":"Kit-C-FX03.wav",
-    "Kit-C-FX04":"Kit-C-FX04.wav",
-    "Kit-C-FX05":"Kit-C-FX05.wav",
-    "Kit-C-FX06":"Kit-C-FX06.wav",
-    "Kit-C-Hat01":"Kit-C-Hat01.wav",
-    "Kit-C-Hat02":"Kit-C-Hat02.wav",
-    "Kit-C-Hat03":"Kit-C-Hat03.wav",
-    "Kit-C-Kick":"Kit-C-Kick.wav",
-    "Kit-C-Snare01":"Kit-C-Snare01.wav",
-    "Kit-C-Snare02":"Kit-C-Snare02.wav",
-    "Orch-Hit-Dim":"Orch-Hit-Dim.wav",
-    "Orch-Hit-Maj":"Orch-Hit-Maj.wav",
-    "Orch-Hit-Min":"Orch-Hit-Min.wav",
-    "Perc-Hit-1":"Perc-Hit-1.wav",
-    "Perc-Hit-2":"Perc-Hit-2.wav",
-    "ROLAND-CR80-Ahh":"ROLAND-CR80-Ahh.wav",
-    "ROLAND-CR80-BD":"ROLAND-CR80-BD.wav",
-    "ROLAND-CR80-Chh":"ROLAND-CR80-Chh.wav",
-    "ROLAND-CR80-Crash":"ROLAND-CR80-Crash.wav",
-    "ROLAND-CR80-Ha":"ROLAND-CR80-Ha.wav",
-    "ROLAND-CR80-Hey":"ROLAND-CR80-Hey.wav",
-    "ROLAND-CR80-Ohh":"ROLAND-CR80-Ohh.wav",
-    "ROLAND-CR80-Ride":"ROLAND-CR80-Ride.wav",
-    "ROLAND-CR80-Scratch1":"ROLAND-CR80-Scratch1.wav",
-    "ROLAND-CR80-Scratch2":"ROLAND-CR80-Scratch2.wav",
-    "ROLAND-CR80-Snare":"ROLAND-CR80-Snare.wav",
-    "ROLAND-CR80-Tom":"ROLAND-CR80-Tom.wav",
-    "ROLAND-CR80-Uuh":"ROLAND-CR80-Uuh.wav",
-    "ROLAND-TR1-Conga-1":"ROLAND-TR1-Conga-1.wav",
-    "ROLAND-TR1-Conga-2":"ROLAND-TR1-Conga-2.wav",
-    "ROLAND-TR1-Cymbal":"ROLAND-TR1-Cymbal.wav",
-    "ROLAND-TR1-Kick-1":"ROLAND-TR1-Kick-1.wav",
-    "ROLAND-TR1-Kick-2":"ROLAND-TR1-Kick-2.wav",
-    "ROLAND-TR1-Kick-3":"ROLAND-TR1-Kick-3.wav",
-    "ROLAND-TR1-Kick-4":"ROLAND-TR1-Kick-4.wav",
-    "ROLAND-TR1-Perc":"ROLAND-TR1-Perc.wav",
-    "ROLAND-TR1-Scratch-1":"ROLAND-TR1-Scratch-1.wav",
-    "ROLAND-TR1-Scratch-2":"ROLAND-TR1-Scratch-2.wav",
-    "ROLAND-TR1-Shaker-1":"ROLAND-TR1-Shaker-1.wav",
-    "ROLAND-TR1-Shaker-2":"ROLAND-TR1-Shaker-2.wav",
-    "ROLAND-TR1-Snare-1":"ROLAND-TR1-Snare-1.wav",
-    "ROLAND-TR1-Snare-2":"ROLAND-TR1-Snare-2.wav",
-    "ROLAND-TR1-Snare-3":"ROLAND-TR1-Snare-3.wav",
-    "ROLAND-TR1-Snare-4":"ROLAND-TR1-Snare-4.wav",
-    "ROLAND-TR1-Snare-5":"ROLAND-TR1-Snare-5.wav",
-    "ROLAND-TR1-Tom-1":"ROLAND-TR1-Tom-1.wav",
-    "ROLAND-TR1-Tom-2":"ROLAND-TR1-Tom-2.wav",
-    "Ratchet":"Ratchet.wav",
-    "SNR-Roll":"SNR-Roll.wav",
-    "Slapstick":"Slapstick.wav",
-    "Sleigh-Bell":"Sleigh-Bell.wav",
-    "Tam-Tam":"Tam-Tam.wav",
-    "Tambourine":"Tambourine.wav",
-    "Timp-Roll-f":"Timp-Roll-f.wav",
-    "Timp-Roll-p":"Timp-Roll-p.wav",
-    "Timpani-f":"Timpani-f.wav",
-    "Timpani-p":"Timpani-p.wav",
-    "Triangle":"Triangle.wav",
-    "TubularBells":"TubularBells.wav",
-    "Wind-Chime-2":"Wind-Chime-2.wav",
-    "YAHAMA-AN200-00":"YAHAMA-AN200-00.wav",
-    "YAHAMA-AN200-01":"YAHAMA-AN200-01.wav",
-    "YAHAMA-AN200-02":"YAHAMA-AN200-02.wav",
-    "YAHAMA-AN200-03":"YAHAMA-AN200-03.wav",
-    "YAHAMA-AN200-04":"YAHAMA-AN200-04.wav",
-    "YAHAMA-AN200-05":"YAHAMA-AN200-05.wav",
-    "YAHAMA-AN200-06":"YAHAMA-AN200-06.wav",
-    "YAHAMA-AN200-07":"YAHAMA-AN200-07.wav",
-    "YAHAMA-AN200-08":"YAHAMA-AN200-08.wav",
-    "YAHAMA-AN200-09":"YAHAMA-AN200-09.wav",
-    "YAHAMA-AN200-10":"YAHAMA-AN200-10.wav",
-    "YAHAMA-AN200-11":"YAHAMA-AN200-11.wav",
-    "YAHAMA-AN200-12":"YAHAMA-AN200-12.wav",
-    "YAHAMA-AN200-13":"YAHAMA-AN200-13.wav",
-    "YAHAMA-AN200-14":"YAHAMA-AN200-14.wav",
-    "YAHAMA-AN200-15":"YAHAMA-AN200-15.wav",
-    "YAHAMA-AN200-16":"YAHAMA-AN200-16.wav",
-    "YAHAMA-AN200-17":"YAHAMA-AN200-17.wav",
-    "YAHAMA-AN200-18":"YAHAMA-AN200-18.wav",
-    "YAHAMA-AN200-19":"YAHAMA-AN200-19.wav",
-    "YAHAMA-AN200-20":"YAHAMA-AN200-20.wav",
-    "YAHAMA-AN200-21":"YAHAMA-AN200-21.wav",
-    "YAHAMA-AN200-22":"YAHAMA-AN200-22.wav",
-    "YAHAMA-AN200-23":"YAHAMA-AN200-23.wav",
-    "YAHAMA-AN200-24":"YAHAMA-AN200-24.wav",
-    "YAHAMA-AN200-25":"YAHAMA-AN200-25.wav",
-    "YAHAMA-AN200-26":"YAHAMA-AN200-26.wav",
-    "YAHAMA-AN200-27":"YAHAMA-AN200-27.wav",
-    "YAHAMA-AN200-28":"YAHAMA-AN200-28.wav",
-    "YAHAMA-AN200-29":"YAHAMA-AN200-29.wav",
-    "YAHAMA-AN200-30":"YAHAMA-AN200-30.wav",
-    "YAHAMA-AN200-31":"YAHAMA-AN200-31.wav",
-    "YAHAMA-AN200-32":"YAHAMA-AN200-32.wav",
-    "YAHAMA-AN200-33":"YAHAMA-AN200-33.wav",
-    "YAHAMA-AN200-34":"YAHAMA-AN200-34.wav",
-    "YAHAMA-AN200-35":"YAHAMA-AN200-35.wav",
-    "YAHAMA-AN200-36":"YAHAMA-AN200-36.wav",
-    "YAHAMA-AN200-37":"YAHAMA-AN200-37.wav",
-    "YAHAMA-AN200-38":"YAHAMA-AN200-38.wav",
-    "YAHAMA-AN200-39":"YAHAMA-AN200-39.wav",
-    "YAHAMA-AN200-40":"YAHAMA-AN200-40.wav"
-};
-
-},{}],30:[function(require,module,exports){
-var arrangement = require('../model/arrangement');
-var jsondiffpatch = require('jsondiffpatch');
-var WindowUpdater = require('../windowupdater');
-var deepClone = require('../helpers/deepclone');
-var _ = require('underscore')._;
-
-/**
- * Constructor
- *
- * @param   {socket.io|socket} socket         The socket that the client is connected through
- * @param   {string}           arrangementId  The ID of the arrangement that it is syncing with
- * @returns {sync}                            Instance of self
- */
-var sync = function (WindowUpdater, socket, arrangementId) {
-
-    // Init a document that gets passed between server and client
-    this.doc = {
-        localVersion: 0,
-        serverVersion: 0,
-        shadow: {},
-        localCopy: {},
-        edits: []
-    }
-
-    // Flag to ensure for single syncing at a time
-    this.syncing = false;
-
-    // Flag to check if arrangement has been initialised
-    this.initialised = false;
-
-    // Flag to check if a edits are to be scheduled
-    this.scheduled = false;
-
-    // Set the socket
-    this.socket = socket;
-
-    // Class's instance of window updater
-    this.windowUpdater = WindowUpdater;
-
-    // Set the arrangement Id
-    this.arrangementId = arrangementId;
-
-    // Set up object comparison
-    jsondiffpatch = jsondiffpatch.create({
-        objectHash: function(obj) {
-            return obj.id || JSON.stringify(obj);
-        }
-    });
-
-    // Set this sync variable in the arrangement class
-    arrangement.setSync(this);
-
-    /**
-     * When Initialising class, get the latest arrangement to init the client
-     *
-     * @returns {this}   Implement fluent interface
-     */
-    this.initArrangement = function () {
-
-        // Check if initialised
-        if (this.isInitialised()) {
-            return false;
-        }
-
-        // Get the latest document
-        this.getLatestDocument();
-
-        // Implement fluent interface
-        return this;
-    };
-
-    /**
-     * Send the client changes
-     */
-    this.sendEditMessage = function (editMessage) {
-        // Send the message to the other sockets and handle the incoming return message
-        this.socket.emit('send-edit', editMessage, function(serverEdits) {
-            this.applyServerEdits(serverEdits);
-        }.bind(this));
-    };
-
-    /**
-     * Gets the latest document from the server
-     */
-    this.getLatestDocument = function () {
-
-        // Check if already syncing
-        if (this.isSyncing()) {
-            return false;
-        }
-
-        // Start syncing with server
-        this.syncing = true;
-
-        // Request the latest document
-        this.socket.emit('get-latest-document', arrangementId, this.initLocalVersion.bind(this));
-
-    };
-
-    /**
-     * Initialise the local version of the document
-     *
-     * @params {object} latestVersion  The latest version of the document from the server
-     */
-    this.initLocalVersion = function (latestVersion) {
-
-        // Not syncing any more
-        this.syncing = false;
-
-        // Init the client side document
-        this.doc.localCopy = deepClone(latestVersion.doc);
-        this.doc.shadow = deepClone(latestVersion.doc);
-        this.doc.serverVersion = latestVersion.version;
-
-        // Initialised this client
-        this.initialised = true;
-
-        // Set the local arrangement
-        arrangement.setArrangement(this.doc.localCopy);
-
-        // Set the local arrangement to window updater
-        this.windowUpdater.initialise(this.doc.localCopy);
-
-        // listen to incoming updates from the server
-        this.socket.on('updated-document', this.syncWithServer.bind(this));
-
-        // listen to errors and reload
-        this.socket.on('error', function(message){
-            window.location.reload();
-        });
-    };
-
-    /**
-     * Apply all edits from the server
-     */
-    this.applyServerEdits = function(serverEdits){
-
-        // Check if any edits to apply
-        if (serverEdits.edits.length == 0) {
-            // No edits, don't sync
-            this.syncing = false;
-            this.scheduled = false;
-
-            return this;
-        }
-
-        // Check if versions match and there is edits to apply
-        if (serverEdits && serverEdits.localVersion == this.doc.localVersion){
-
-            // Delete all previous edits
-            this.doc.edits = [];
-
-            // Iterate over all edits
-            serverEdits.edits.forEach(this.applyServerEdit.bind(this));
-
-        } else {
-            console.log('rejected patch because localVersions don\'t match');
-        }
-
-        // Not syncing anymore
-        this.syncing = false;
-        this.scheduled = false;
-    };
-
-    /**
-     * Apply the individual edit from the server to the client doc
-     */
-    this.applyServerEdit = function(edit) {
-
-        // Check the version numbers
-        if (edit.localVersion == this.doc.localVersion &&
-            edit.serverVersion == this.doc.serverVersion) {
-            // Versions match
-
-            // Patch the shadow
-            jsondiffpatch.patch(this.doc.shadow, edit.diff);
-
-            // Check if there is a diff
-            if (!_.isEmpty(edit.diff)) {
-                // Is an edit increase the version number for the
-                // shadow
-                this.doc.serverVersion++;
-            }
-
-            // Apply the patch to the local document
-            jsondiffpatch.patch(this.doc.localCopy, deepClone(edit.diff));
-
-            // Set the arrangement
-            arrangement.setArrangement(this.doc.localCopy);
-
-            // Update the window
-            this.windowUpdater.update(this.doc.localCopy);
-
-        } else {
-            console.log('patch from server rejected, due to not matching version numbers');
-        }
-    };
-
-    /**
-     * Creates the send edit message
-     */
-    this.createSendEditMessage = function (localBaseVersion) {
-        return {
-            id: this.doc.localCopy._id,
-            edits: this.doc.edits,
-            localVersion: localBaseVersion,
-            serverVersion: this.doc.serverVersion
-        };
-    }
-
-    /**
-     * Add the edit to the list of edits in the doc
-     */
-    this.addEdit = function(diff, baseVersion){
-
-      this.doc.edits.push({
-        serverVersion: this.doc.serverVersion,
-        localVersion: baseVersion,
-        diff: diff
-      });
-
-      // Update the local version number
-      this.doc.localVersion++;
-    };
-
-    /**
-     * Checks whether the client is already syncing
-     *
-     * @returns {bool} syncing  The flag to check if it is syncing
-     */
-    this.isSyncing = function () {
-        return this.syncing;
-    };
-
-    /**
-     * Checks whether or not a sync has been scheduled
-     *
-     * @returns {bool} scheduled The flag to check if it has been scheduled
-     */
-    this.isScheduled = function () {
-        return this.isScheduled;
-    };
-
-    /**
-     * Checks whether document has been initialised already
-     *
-     * @returns {bool} initialised  The flag to check if it has been initialised
-     */
-    this.isInitialised = function () {
-        return this.initialised;
-    };
-
-    /**
-     * Sync document with server
-     *
-     * @returns {this}  Implements fluent interface
-     */
-    this.syncWithServer = function () {
-
-        // Check if syncing or if it isn't initialised
-        if (this.isSyncing() || !this.isInitialised()) {
-            // Don't sync
-            return false;
-        }
-
-        // Set syncing
-        this.syncing = true;
-
-        // Create a diff of the local copy and the shadow copy
-        var diff = jsondiffpatch.diff(deepClone(this.doc.shadow), deepClone(this.doc.localCopy));
-
-        // Create running copy of local version number
-        var localBaseVersion = this.doc.localVersion;
-
-        // Check if there is a diff
-        if (!_.isEmpty(diff)) {
-            // Diff made, add edit
-            this.addEdit(diff, localBaseVersion);
-        }
-
-        // Create the send edit message
-        var editMessage = this.createSendEditMessage(localBaseVersion);
-
-        // Apply the the diff to the shadow document
-        jsondiffpatch.patch(this.doc.shadow, diff);
-
-        // Send to the server
-        this.sendEditMessage(editMessage);
-
-        // Implement fluent interface
-        return this;
-
-    };
-
-    /**
-     * Schedules a server-sync
-     */
-    this.scheduleSync = function () {
-
-        // Check if already scheduled
-        if (this.isScheduled()) {
-            return;
-        }
-
-        // Schedule sync
-        this.scheduled = true;
-        this.syncWithServer();
-
-    };
-
-    // Initialise 
-    this.initArrangement();
-
-    // Allow 50 millisecond delay before execution to allow for data to arrive
-    this.syncWithServer = _.debounce(this.syncWithServer.bind(this), 50);
-
-    // Update client every 5 seconds
-    setInterval(this.scheduleSync.bind(this), 5000);
-
-    // Implement fluent interface
-    return this;
-};
-
-/**
- * Add a change to be sync'd
- *
- * @param {object} arrangement  The updated client version of the arrangement
- */
-sync.prototype.addChange = function (arrangement) {
-
-    // Change to arrangement made update the local copy
-    this.doc.localCopy = deepClone(arrangement);
-
-    // Sync with the server
-    this.syncWithServer();
-
-    // Implements fluent interface
-    return this;
-};
-
-module.exports = sync;
-
-},{"../helpers/deepclone":22,"../model/arrangement":33,"../windowupdater":34,"jsondiffpatch":16,"underscore":20}],31:[function(require,module,exports){
-// Require tone
-var Tone = require('tone');
-
-/**
- * Triggers an instrument to be played using `triggerAttackRelease` function
- * for the instrument, note and duration specified
- *
- * @param {Tone.instrument} intrument  The instrument to be triggered
- * @param {string} note                The note value to be played
- * @param {string} duration            The duration that is should be played for
- */
-var trigger = function(instrument, note, duration) {
-    instrument.triggerAttackRelease(note, duration);
-};
-
-module.exports = trigger;
-
-},{"tone":19}],32:[function(require,module,exports){
-var $ = require('jquery');
-var Tone = require('tone');
-var InstrumentFactory = require('./helpers/instruments/InstrumentFactory');
-
-/**
- * Constructor, it controls:
- * - Getting/Setting bpm
- * - Control of sequences, starting, stopping, etc
- * - Adding an instrument
- *
- * @param  {object}         arrangement  The arrangement data structure
- * @return {MasterControls}              Instance of self
- */
-var MasterControls = function (arrangement) {
-
-    // Array to hold a the objects of the tracks
-    this.tracks = [];
-
-    // Int to hold bpm
-    this.bpm = $('#bpm').attr("value");
-
-    // Local instance of window updater
-    this.windowUpdater = false;
-
-    // Play back bool
-    this.playing = false;
-
-    // Reference to self
-    var self = this;
-
-    // Create instance of instrument factory
-    this.instrumentFactory = new InstrumentFactory();
-
-    /**
-     * Add event listener for the bpm slider
-     */
-    $('#bpm').on('input', function(event) {
-
-        // Check if bpm is set
-        if ('' !== event.target.value) {
-
-            // Get the bpm value
-            bpm = parseInt(event.target.value);
-
-            // Set the BPM value
-            Tone.Transport.bpm.value = bpm;
-
-            // Set the bpm of the arrangement
-            arrangement.setBpm(bpm);
-        }
-
-    });
-
-    /**
-     * Event listener for starting the playback
-     */
-    $('#start-stop').on('click', function() {
-
-        // Set the playing toggle
-        self.playing == true ? self.playing = false : self.playing = true;
-
-        // Toggle the stop class on
-        $(this).toggleClass('fa-play-circle fa-stop-circle');
-
-        // Check if playing
-        if (self.playing == true) {
-
-            // Loop all the tracks
-            self.tracks.forEach(function(track) {
-
-                // Start the track
-                track.start();
-
-            });
-
-        } else {
-
-            // Loop all the tracks
-            self.tracks.forEach(function(track) {
-
-                // Start the track
-                track.stop();
-
-            });
-
-        }
-
-    });
-
-    /**
-     * Event listener for adding an instrument
-     */
-    $('#addInstrument').on('click', function () {
-
-        // Get the selected instrument from the drop down
-        var instrument = $('#instruments').val();
-
-        // Create the instrument selected
-        self.instrumentFactory.createInstrument(instrument, false)
-            .then(function(instrumentContainer) {
-
-                // Push the track on to the tracks
-                self.tracks.push(instrumentContainer.seq);
-
-                // Initialise track locally
-                instrumentContainer.seq.setInitialised();
-
-                // Add it to the arrangement and reset the local copy of window's arrangment
-                arrangement.addTrack(instrumentContainer.seq.getTrackJSON());
-                self.windowUpdater.setArrangement(arrangement.getArrangement());
-
-            });
-    });
-
-    /**
-     * Event handler for the deleting of a track
-     */
-    $(document).on('click', 'i.delete-track', function () {
-
-        // Get the track id to be deleted
-        var trackId = $(this).attr('track-id');
-
-        // Delete track from list of tracks
-        self.deleteTrackById(trackId);
-
-        // Iterate all the instruments
-        $('#instrumentTracks > .instrument-container').each(function() {
-
-            // Get the current iteration's track id
-            var currTrackId = $(this).attr('id');
-
-            // Check if the ids are the same
-            if (currTrackId == trackId) {
-                // Delete the track
-                $(this).remove();
-                return false;
-            }
-        });
-
-        // Remove track from arrangement
-        arrangement.deleteTrack(trackId);
-
-        // delete the arrangement and reset the local copy of window's arrangment
-        self.windowUpdater.setArrangement(arrangement.getArrangement());
-
-    });
-
-    // Return instance of self
-    return this;
-};
-
-/**
- * Add track to list of class tracks
- *
- * @param {Object}         track  Sequencer/score track
- * @retun {MasterControls}        Instance of self
- */
-MasterControls.prototype.addTrack = function (track) {
-    // Push track to list of tracks
-    this.tracks.push(track);
-
-    // Implement fluent interface
-    return this;
-};
-
-/**
- * Remove track from list of class tracks by its id
- *
- * @param  {Object}        trackId  Sequencer/score track id
- * @return {MasterControls}         Instance of self
- */
-MasterControls.prototype.deleteTrackById = function (trackId) {
-
-    // Iterate all the tracks
-    for (var i = 0; i < this.tracks.length; i++) {
-
-        // Check if current track is the track to delete
-        if (this.tracks[i].id == trackId) {
-            // Delete the track and exit the loop
-            this.tracks.splice(i, 1);
-            break;
-        }
-    }
-
-    // Implement fluent interface
-    return this;
-};
-
-/**
- * Setter for local copy of window updater
- *
- * @param {WindowUpdater} windowUpdater Instance of the class
- */
-MasterControls.prototype.setWindowUpdater = function (windowUpdater) {
-    this.windowUpdater = windowUpdater;
-};
-
-/**
- * Return track from list by id
- *
- * @param {String}       id     Track id
- * @return {object|bool} track  The track or false if not found
- */
-MasterControls.prototype.getTrackById = function (id) {
-
-    // Loop through tracks
-    for (var i = 0; i < this.tracks.length; i++) {
-
-        // Check if ids match
-        if (this.tracks[i].id == id) {
-
-            // ids match, return track
-            var track = this.tracks[i];
-        }
-    }
-
-    // Check if variable is set
-    if (typeof track === 'undefined' || !track) {
-        // Not set, return false
-        return false;
-    }
-
-    // Return the found track
-    return track;
-};
-
-/**
- * Update the Tone bpm value when syncing with server
- *
- * @param  {int}            bpm  The newly updated bpm of track
- * @return {MasterControls}      Implement fluent interface
- */
-MasterControls.prototype.updateBpm = function (bpm) {
-
-    // Get the bpm value
-    bpm = parseInt(bpm);
-
-    // Set the BPM value
-    Tone.Transport.bpm.value = bpm;
-
-    // Implement fluent interface
-    return this;
-};
-
-module.exports = MasterControls;
-
-},{"./helpers/instruments/InstrumentFactory":24,"jquery":1,"tone":19}],33:[function(require,module,exports){
-var deepClone = require('../helpers/deepclone');
-
-/**
- * Arrangement singleton class that holds all tracks and their information
- */
-module.exports = {
-
-    /**
-     * Arrangement struct to hold all track
-     * {
-     *    id: 'id',
-     *    tracks: {objects},
-     *    bpm: 
-     * }
-     */
-    arrangement: {
-        id: null,
-        tracks: [],
-        bpm: 120
-    },
-    sync: null,
-    addTrack: function (track) {
-
-        // Set flag for track being found or not
-        var found = false;
-
-        // Iterate all tracks in the arrangement
-        for (var i = 0; i < this.arrangement.tracks.length; i++) {
-
-            // Check if the id of the track being passed in is same as current exisiting track
-            if (track.id == this.arrangement.tracks[i].id) {
-                // Track found
-                found = true;
-                break;
-            }
-        }
-
-        // Check if track was found
-        if (!found) {
-            // Wasn't found
-            // Add a track to the arrangements
-            this.arrangement.tracks.push(track);
-
-            // Sync with client
-            this.syncClientToServer();
-        }
-
-    },
-    deleteTrack: function (trackId) {
-
-        // Iterate all the tracks
-        for (var i = 0; i < this.arrangement.tracks.length; i++) {
-
-            // Check if current track is the track to delete
-            if (trackId == this.arrangement.tracks[i].id) {
-                // Delete the track and exit the loop
-                this.arrangement.tracks.splice(i, 1);
-
-                // Sync with client
-                this.syncClientToServer();
-
-                break;
-            }
-        }
-    },
-    setBpm: function (bpm) {
-
-        // Set the bpm of the arrangement
-        this.arrangement.bpm = bpm;
-
-        this.syncClientToServer();
-    },
-    getBpm: function () {
-        // Get the bpm of the arrangement
-        return this.arrangement.bpm;
-    },
-    replaceTrack: function (track) {
-
-        // Reference to self
-        var self = this;
-
-        // Loop through and replace the track
-        this.arrangement.tracks = this.arrangement.tracks.map(function (existingTrack) {
-            // If track ids match, replace the track with a deep clone
-            return track.id == existingTrack.id ? deepClone(track) : existingTrack;
-        });
-
-        // Sync with server
-        this.syncClientToServer();
-    },
-    setSync: function (sync) {
-        // Dependancy injection for the sync class
-        this.sync = sync;
-    },
-    syncClientToServer: function () {
-        // Sync the changes applied from the subsequent functions to the server
-        this.sync.addChange(deepClone(this.arrangement));
-    },
-    setId: function (arrangementId) {
-        this.arrangement.id = arrangementId;
-    },
-    getId: function () {
-        return this.arrangement.id;
-    },
-    setArrangement: function (arrangement) {
-        this.arrangement = arrangement;
-    },
-    getArrangement: function () {
-        return this.arrangement;
-    }
-};
-
-},{"../helpers/deepclone":22}],34:[function(require,module,exports){
-var $ = require('jquery');
-var deepClone = require('./helpers/deepclone');
-var _ = require('underscore')._;
-var InstrumentFactory = require('./helpers/instruments/InstrumentFactory');
-var jsondiffpatch = require('jsondiffpatch');
-
-/**
- * Gets called from the sync class
- * It needs to:
- * - set the changes of the arrangement to all existing sequences
- * - add more sequences
- * - delete sequences
- * - increase the volume of sequences
- * - set the pattern within sequences
- * - set bpm of the arrangement
- *
- * @param {MasterControls} MasterControls  Instance of Master controls to add
- *                         new tracks
- */
-var WindowUpdater = function (MasterControls) {
-
-    // Init arrangement object
-    this.arrangement = {
-        _id: "",
-        bpm: 120,
-        type: "arrangement",
-        name: "",
-        ownerId: "",
-        __v: 0,
-        tracks: [],
-        contributors: []
-    };
-
-    // Reference to this
-    var self = this;
-
-    // Initiliasation flag
-    this.isInitialised = false;
-
-    // Init instrument factory
-    this.instrumentFactory = new InstrumentFactory();
-
-    // Init class instance of master controls
-    this.masterControls = MasterControls;
-
-    // Set up object comparison
-    jsondiffpatch = jsondiffpatch.create({
-        objectHash: function(obj) {
-            return obj.id || JSON.stringify(obj);
-        }
-    });
-
-    /**
-     * Updates the bpm input field
-     *
-     * @param {int} bpm  The bpm of the arrangement
-     * @returns {WindowUpdater} this  Instance of self
-     */
-    this.updateBpm = function (bpm) {
-
-        // Get the DOM element
-        var bpmElement = $('#bpm');
-
-        // Reset the value of the bpm
-        bpmElement.attr("value", bpm);
-
-        // Set the text value of input field
-        bpmElement.text(bpm);
-
-        // Update the master controls
-        this.masterControls.updateBpm(bpm);
-
-        // Implement fluent interface
-        return this;
-    };
-
-    /**
-     * Initialise the tracks in the window
-     *
-     * @param {object} track  The track to initialise
-     */
-    this.addTrack = function (track) {
-
-        // Get the type
-        var type = track.type;
-        var id = track.id;
-
-        // Create the instrument selected
-        self.instrumentFactory.createInstrument(type, id).then(function(instrumentContainer) {
-
-            // Push the sequence on to the sequences
-            instrumentContainer.seq.setTrackJSON(track);
-            self.masterControls.addTrack(instrumentContainer.seq);
-
-        });
-
-    };
-
-    /**
-     * Delete the track from the window
-     *
-     * @param {object} track  The track to delete
-     */
-    this.deleteTrack = function (track) {
-
-        // Get the id
-        var deletedTrackId = track.id;
-
-        // Iterate all the instruments
-        $('#instrumentTracks > .instrument-container').each(function() {
-
-            // Get the current iteration's track id
-            var currTrackId = $(this).attr('id');
-
-            // Check if the ids are the same
-            if (currTrackId == deletedTrackId) {
-                // Delete the track
-
-                $(this).remove();
-                return false;
-            }
-        });
-
-        // Remove it from the list of sequeces in the master controls
-        self.masterControls.deleteTrackById(deletedTrackId);
-
-    };
-
-    /**
-     * Updates the tracks in the arrangement accordingly
-     */
-    this.updateTracks = function (tracks) {
-
-        // Check if initilised
-        if (this.isInitialised == false) {
-
-            // Not initalised, create all tracks
-            tracks.map(this.addTrack);
-
-        } else if (tracks.length > this.arrangement.tracks.length) {
-            // A track needs to be added
-
-            // Get how many tracks to add
-            var noOfTracksToAdd = tracks.length - this.arrangement.tracks.length;
-
-            // Get the tracks to add
-            var tracksToAdd = tracks.splice((tracks.length - 1), noOfTracksToAdd);
-
-            // Add the tracks
-            tracksToAdd.map(this.addTrack);
-
-        } else if (tracks.length < this.arrangement.tracks.length) {
-
-            // Make a working copy of the tracks
-            var tracksToDelete = deepClone(this.arrangement.tracks);
-
-            // Loop through each track checking if their equal to exisiting tracks
-            this.arrangement.tracks.forEach(function (existingTrack, index) {
-
-                // Loop through tracks passed in
-                tracks.forEach(function (newTrack) {
-
-                    // Check if tracks are the same
-                    if (existingTrack.id == newTrack.id) {
-                        // Tracks match, delete it from working copy
-                        tracksToDelete.splice(index, 1);
-                        return;
-                    }
-
-                });
-            });
-
-            // Delete the tracks remaining tracks found in the class's
-            // working copy of the tracks from the window
-            tracksToDelete.map(this.deleteTrack);
-
-
-        } else {
-            // No tracks added or deleted, an internal change to the tracks
-
-            // Loop through each track checking if their equal to exisiting tracks
-            this.arrangement.tracks.forEach(function (existingTrack) {
-
-                // Loop through tracks passed in
-                tracks.forEach(function (newTrack) {
-
-                    // Check if tracks are the same
-                    if (existingTrack.id != newTrack.id) {
-                        // Not the same, skip
-                        return;
-                    }
-
-                    // Tracks are the same, check if objects are equal
-                    if (!_.isEqual(existingTrack, newTrack)) {
-                        // Tracks are different
-                        // Get the track, object
-                        var trackToUpdate =
-                            self.masterControls.getTrackById(newTrack.id);
-
-                        // Set the new track json
-                        trackToUpdate.setTrackJSON(newTrack);
-                    }
-                });
-            });
-        }
-
-    };
-
-};
-
-/**
- * Updates the window objects effected by the arrangement being changed
- *
- * @param {object} arrangement  The newly updated arrangement
- */
-WindowUpdater.prototype.update = function (arrangement) {
-
-    // Check if bpm has changed
-    if (!_.isEqual(this.arrangement.bpm, arrangement.bpm)) {
-        // set the bpm of window
-        this.updateBpm(arrangement.bpm);
-    }
-
-    // Check tracks diff
-    if (!_.isEqual(this.arrangement.tracks, arrangement.tracks)) {
-        // Update tracks
-        this.updateTracks(arrangement.tracks);
-    }
-
-    // Reset the local copy of arrangement
-    this.arrangement = deepClone(arrangement);
-
-    // Implement fluent interface
-    return this;
-
-};
-
-/**
- * Reset the arrangement, used when creating track locally
- *
- * @param {object} arrangement  The local updated arrangement
- */
-WindowUpdater.prototype.setArrangement = function (arrangement) {
-    this.arrangement = arrangement
-};
-
-/**
- * Inits the arrangement so diffs can made and sets up window
- *
- * @param {object} arrangement  The initialised arrangement
- */
-WindowUpdater.prototype.initialise = function (arrangement) {
-
-    // Update the window
-    this.updateBpm(arrangement.bpm);
-    this.updateTracks(arrangement.tracks);
-
-    // Set is initialised
-    this.isInitialised = true;
-
-    // Set instance of self in master controls
-    this.masterControls.setWindowUpdater(this);
-
-    // Set the local copy of arrangement
-    this.arrangement = deepClone(arrangement);
-
-
-};
-
-module.exports = WindowUpdater;
-
-},{"./helpers/deepclone":22,"./helpers/instruments/InstrumentFactory":24,"jquery":1,"jsondiffpatch":16,"underscore":20}]},{},[21]);
+},{}]},{},[20]);

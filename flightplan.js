@@ -22,6 +22,8 @@ plan.local(function(local) {
   // Run Gulp build
   local.log('Run build');
   local.exec('gulp build');
+  local.log('Run browserify bundle');
+  local.exec('gulp browserify');
 
   // Copy local files
   local.log('Copy files to remote hosts');

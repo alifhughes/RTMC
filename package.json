@@ -25,7 +25,6 @@
   "dependencies": {
     "bcrypt-nodejs": "0.0.3",
     "body-parser": "~1.15.2",
-    "bufferutil": "^3.0.0",
     "connect-flash": "^0.1.1",
     "cookie-parser": "~1.4.3",
     "debug": "~2.2.0",
@@ -33,6 +32,7 @@
     "express-session": "^1.15.1",
     "jade": "~1.11.0",
     "jquery": "^3.1.1",
+    "jsondiffpatch": "^0.2.4",
     "mongoose": "^4.8.3",
     "morgan": "~1.7.0",
     "passport": "~0.2.0",
@@ -40,9 +40,8 @@
     "serve-favicon": "~2.3.0",
     "socket.io": "^1.7.3",
     "underscore": "^1.8.3",
-    "utf-8-validate": "^3.0.1",
     "uuid": "^3.0.1",
-    "ws": "^2.2.0"
+    "ws": "^2.2.1"
   },
   "devDependencies": {
     "browserify": "^14.1.0",
@@ -50,7 +49,8 @@
     "fly": "^1.4.1",
     "gulp": "^3.9.1",
     "gulp-mocha": "^3.0.1",
-    "jsondiffpatch": "^0.2.4",
+    "gulp-util": "^3.0.8",
+    "vinyl-source-stream": "^1.1.0",
     "watchify": "^3.9.0"
   }
 }

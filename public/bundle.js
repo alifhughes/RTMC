@@ -13226,6 +13226,7 @@ var WindowUpdater = require('./windowupdater');
 // Load the nexus ui
 nxloader = new NXLoader();
 nxloader.load();
+
 // Get the arrangement Id from the URL
 var url = window.location.pathname;
 var arrangementId = url.split('/')[3];
@@ -13233,8 +13234,14 @@ var arrangementId = url.split('/')[3];
 // Set the arrangement id
 arrangement.setId(arrangementId);
 
-// Connect to socket
-var socket = io.connect('http://localhost:3000');
+// Check if running locally or on server
+if ('localhost' === window.location.hostname) {
+    // Connect to socket locally
+    var socket = io.connect('http://localhost:3000');
+} else {
+    // Connect to socket remotely
+    var socket = io.connect('http://137.74.165.127:3000');
+}
 
 // Init the master controls
 var masterControls = new MasterControls(arrangement);

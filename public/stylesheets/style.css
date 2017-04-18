@@ -364,6 +364,10 @@ tr:nth-child(even) {
     justify-content: center;
 }
 
+.waveform-row {
+    margin-left: 10px;
+}
+
 .track-settings-popup {
     position: absolute;
     z-index: 15;
@@ -372,7 +376,7 @@ tr:nth-child(even) {
     margin: -100px 0 0 -150px;
     border-radius: 5px;
     width: 300px;
-    height: 300px;
+    height: 350px;
     border: 3px solid black;
 }
 

@@ -65,6 +65,7 @@ generateSequencerElement.generate = function (id, callback) {
 
         // Create contents of popup
         var settingsPopupContainerDiv = document.createElement("div");
+        settingsPopupContainerDiv.className = 'settings-popup-container';
 
         // Create Title of popup
         var settingsPopupTitle = document.createElement("h3");
@@ -123,11 +124,20 @@ generateSequencerElement.generate = function (id, callback) {
         settingsPopupContainerDiv.appendChild(settingsPopupRow);
         settingsPopupRow.appendChild(settingsPopupLableSamples);
         settingsPopupRow.appendChild(samplesList);
-        var secondRow = settingsPopupRow.cloneNode(true);
-        secondRow.innerHTML = "";
-        secondRow.appendChild(settingsPopupConfirmBtn);
-        secondRow.appendChild(settingsPopupCancelBtn);
-        settingsPopupContainerDiv.appendChild(secondRow);
+
+        var waveformRow = settingsPopupRow.cloneNode(true);
+        waveformRow.innerHTML = "";
+        waveformRow.className = "waveform-row";
+        var waveformLabel = document.createElement("h5");
+        waveformLabel.innerHTML = "Waveform selector:";
+        settingsPopupContainerDiv.appendChild(waveformRow);
+        waveformRow.appendChild(waveformLabel);
+
+        var buttonRow = settingsPopupRow.cloneNode(true);
+        buttonRow.innerHTML = "";
+        buttonRow.appendChild(settingsPopupConfirmBtn);
+        buttonRow.appendChild(settingsPopupCancelBtn);
+        settingsPopupContainerDiv.appendChild(buttonRow);
 
         trackRemoveActionsContainer.appendChild(removeTrackIcon);
 
@@ -166,7 +176,7 @@ generateSequencerElement.generate = function (id, callback) {
         settingsPopupElements.icon  = $(settingsIcon);
         settingsPopupElements.popup = $(settingsPopup);
         settingsPopupElements.samplesList = $(samplesList);
-
+        settingsPopupElements.waveformRow = waveformRow;
 
         // Set the element
         elements.matrix   = matrix;

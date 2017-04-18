@@ -1,5 +1,4 @@
 var Tone = require('tone');
-var trigger = require('../../../helpers/trigger');
 var proxify = require('../../../helpers/proxify');
 var deepClone = require('../../../helpers/deepclone');
 var arrangement = require('../../../model/arrangement');
@@ -25,8 +24,22 @@ function Sequencer (id) {
     // Init base url string
     this.baseURL = '../../audio/';
 
+    // Reference to self
+    var self = this;
+
+    // Audio buffer of the class
+    this.audioBuffer = false;
+
+    // The waveform of the sequencer
+    this.waveform = false;
+
     // Create a player and connect it to the master output (your speakers)
-    this.source = new Tone.Player("../../audio/727-HM-CONGA.WAV").toMaster();
+    this.source = new Tone.Player("../../audio/727-HM-CONGA.WAV", function () {
+
+        // Set the buffer
+        self.setBuffer(self.source.buffer.get());
+
+    }).toMaster();
 
     // Set initialised flag
     this.isInitialised = false;
@@ -34,8 +47,21 @@ function Sequencer (id) {
     // Initialse volume DOM element as false
     this.volumeDOM = false;
 
-    // Reference to self
-    var self = this;
+    /**
+     * Sets the buffer - called from onload callback of player
+     * And sets the waveform
+     *
+     * @param  {AudioBuffer} buffer  The audio buffer from player
+     * @return {Sequencer}   this    Instance of class
+     */
+    this.setBuffer = function (buffer) {
+
+        // Set buffer and waveform
+        this.audioBuffer = buffer;
+
+        // Implement fluent interface
+        return this;
+    };
 
     // Sequence notes
     this.seq = new Tone.Sequence(function(time, col) {
@@ -48,10 +74,17 @@ function Sequencer (id) {
 
         // If cell has value, play the note
         if (1 === column[0]) {
-            // Trigger synth to play note at the time passed in to the callback
-            //trigger(self.synth, "C4", '32n');
+
+            // Try to play the buffer
             try {
-                self.source.start();
+
+                // Play immediately, at the start time and for the duration
+                self.source.start(
+                    0,
+                    parseFloat(self.track.bufferStarttime),
+                    parseFloat(self.track.bufferDuration)
+                );
+
             }
             catch (e) {
                 // Siliently fail in the hopes it would have loaded next time it plays
@@ -77,7 +110,11 @@ function Sequencer (id) {
             type: 'step-sequencer',
             volume: self.source.volume.value,
             pattern: [],
-            sampleURL: '../../audio/727-HM-CONGA.WAV'
+            bufferName: '727-HM-CONGA.WAV',
+            bufferStarttime: 0,
+            bufferStoptime: 3,
+            bufferDuration: 3
+
         };
 
         return track;
@@ -121,6 +158,94 @@ function Sequencer (id) {
         // replace the track in the arrangement with updated track
         arrangement.replaceTrack(deepClone(this.track));
 
+    };
+
+    /**
+     * Re-/Renders the waveform in the popup
+     *
+     * @param  {DOM}       waveformRow  The html dom to be added to
+     * @return {Sequencer}              Implement fluent interface
+     */
+    this.renderWaveform = function (waveformRow) {
+
+        // Check if one has been created
+        if (this.waveform != false) {
+            // One already present, destroy it
+            this.waveform.destroy();
+        }
+
+        // Create unique name for the waveform
+        var waveformName = "waveform-" + self.id;
+
+        // Add the waveform to widgets
+        nx.add(
+            "waveform",
+            {
+                w: 264,
+                h: 140,
+                name: waveformName,
+                parent: waveformRow
+            }
+        );
+
+        // Get the newly created waveform
+        for(widget in nx.widgets) {
+            if (nx.widgets.hasOwnProperty(widget)) {
+                if (widget == waveformName) {
+                    this.waveform = nx.widgets[widget];
+                    break;
+                }
+            }
+        }
+
+        // Set the parameters for the buffer
+        this.waveform.setBuffer(this.audioBuffer);
+        this.waveform.colors.fill = "#ffffff";
+        this.waveform.definition = 1;
+        this.waveform.select((this.track.bufferStarttime * 1000), (this.track.bufferStoptime * 1000));
+        this.waveform.init();
+
+        // implement fluent interface
+        return this;
+
+    };
+
+    /**
+     * Add a observer to the val object inside the waveform
+     *
+     * @return {Sequencer}  Implment fluent interface
+     */
+    this.addWaveformWatcher = function () {
+
+        // Add watcher
+        WatchJS.watch(self.waveform, "val", function (prop, action, newvalue) {
+
+            // Check if the property val is set and only set if not playing
+            if (prop == "val"
+                && action == "set"
+                && self.source.state != "started") {
+
+                // Set the new start, stop times and duration
+                self.track.bufferStarttime = (newvalue.starttime / 1000);
+                self.track.bufferStoptime = (newvalue.stoptime / 1000);
+                self.track.bufferDuration = ((newvalue.stoptime - newvalue.starttime) / 1000);
+            }
+
+        });
+
+        // Implement fluent interface
+        return this;
+
+    };
+
+    /**
+     * Get the full path to the sample to be loaded
+     *
+     * @param {string}  bufferName  The name of the buffer
+     * @return {string}             The full path to sample
+     */
+    this.getSamplePath = function (bufferName) {
+        return this.baseURL + bufferName;
     };
 
     return this;
@@ -214,6 +339,9 @@ Sequencer.prototype.setSettingsClickHandler = function (settings) {
     // Reference to self
     var self = this;
 
+    // Init empty track snapshot
+    var trackSnapshot = false;
+
     // Add the spinning animation to the settings icon on hover
     settings.icon.hover(
         function() {
@@ -225,33 +353,59 @@ Sequencer.prototype.setSettingsClickHandler = function (settings) {
 
     // On click handler for the settings icon
     settings.icon.on('click', function (event) {
+
+        // Get clone of the object as it is
+        trackSnapshot = deepClone(self.track);
+
         // Toggle the popup
-        settings.popup.toggle(400);
+        settings.popup.toggle(400, function () {
+
+            // Set the drop down
+            settings.samplesList.val(self.track.bufferName);
+
+            // Render the waveform
+            self.renderWaveform(settings.waveformRow);
+
+            // Add the watcher
+            self.addWaveformWatcher();
+
+        });
     });
 
     // On click handler for the settings icon
     settings.cancelBtn.on('click', function (event) {
-        // Load the sample original sample
-        self.source.load(self.track.sampleURL);
+
+        // Set the original values back
+        self.track.bufferStarttime = trackSnapshot.bufferStarttime;
+        self.track.bufferStoptime  = trackSnapshot.bufferStoptime;
+        self.track.bufferName      = trackSnapshot.bufferName;
+        self.source.load(
+            self.getSamplePath(trackSnapshot.bufferName),
+            function () {
+                self.setBuffer(self.source.buffer.get());
+            }
+        );
 
         // Toggle popup
         settings.popup.toggle(400);
+
     });
 
     // On click handler for the settings icon
     settings.confirmBtn.on('click', function (event) {
+
         // Confirm choice of sample and push to other clients
         // Get the new sample selected
         var sample = settings.samplesList.val();
 
-        // Append the base url
-        var sampleURL = self.baseURL + sample;
-
         // Set it to the track
-        self.track.sampleURL = sampleURL;
+        self.track.bufferName = sample;
 
         // Push changes
         self.pushChanges();
+
+        // Overwrite the track snapshot
+        trackSnapshot = deepClone(self.track);
 
         // Close the popup
         settings.popup.toggle(400);
@@ -263,14 +417,21 @@ Sequencer.prototype.setSettingsClickHandler = function (settings) {
         // Get the new sample selected
         var sample = settings.samplesList.val();
 
-        // Append the base url
-        var sampleURL = self.baseURL + sample;
+        // Load the sample and set the buffer
+        self.source.load(self.getSamplePath(sample), function() {
 
-        // Load the sample
-        self.source.load(sampleURL);
+            // Set the buffer
+            self.setBuffer(self.source.buffer.get());
+
+            // Render the waveform
+            self.renderWaveform(settings.waveformRow);
+
+            // Add the watcher
+            self.addWaveformWatcher();
+
+        });
 
     });
-
 };
 
 /**

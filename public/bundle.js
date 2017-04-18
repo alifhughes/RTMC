@@ -13454,8 +13454,10 @@ generateSequencerElement.generate = function (id, callback) {
         // Create popup confirm and exit buttons
         var settingsPopupConfirmBtn = document.createElement("button");
         settingsPopupConfirmBtn.innerHTML = "Confirm";
+        settingsPopupConfirmBtn.className = "btn btn-default";
         var settingsPopupCancelBtn = document.createElement("button");
         settingsPopupCancelBtn.innerHTML = "Cancel";
+        settingsPopupCancelBtn.className = "btn btn-default";
 
         // Create a container div removing/clearing track actions
         var trackRemoveActionsContainer = document.createElement("div");
@@ -13703,7 +13705,7 @@ function Sequencer (id) {
      * Push track changes to the arrangement
      */
     this.pushChanges = function () {
-console.log('push changes \n', this.track);
+
         // replace the track in the arrangement with updated track
         arrangement.replaceTrack(deepClone(this.track));
 
@@ -14043,11 +14045,8 @@ Sequencer.prototype.setTrackJSON = function (track) {
 
     }
 
-console.log('track \n', track);
-console.log('this.track \n', this.track);
     // Set the track json
     this.track = deepClone(track);
-console.log('this.track \n', this.track);
 
     // Set all the cells and their values
     this.track.pattern.map(this.setStep.bind(this));

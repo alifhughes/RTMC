@@ -101,8 +101,10 @@ generateSequencerElement.generate = function (id, callback) {
         // Create popup confirm and exit buttons
         var settingsPopupConfirmBtn = document.createElement("button");
         settingsPopupConfirmBtn.innerHTML = "Confirm";
+        settingsPopupConfirmBtn.className = "btn btn-default";
         var settingsPopupCancelBtn = document.createElement("button");
         settingsPopupCancelBtn.innerHTML = "Cancel";
+        settingsPopupCancelBtn.className = "btn btn-default";
 
         // Create a container div removing/clearing track actions
         var trackRemoveActionsContainer = document.createElement("div");

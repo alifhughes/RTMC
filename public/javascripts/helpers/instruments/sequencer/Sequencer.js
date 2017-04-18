@@ -465,6 +465,9 @@ Sequencer.prototype.setMuteClickHandler = function (muteDiv) {
  */
 Sequencer.prototype.setTrackJSON = function (track) {
 
+    // Ref to self
+    var self = this;
+
     // Check if volume has been changed
     if (this.track.volume != track.volume) {
         // Volume has been changed, update it
@@ -477,12 +480,17 @@ Sequencer.prototype.setTrackJSON = function (track) {
     }
 
     // Check if sample has been changed
-    if (track.sampleURL != undefined
-        && this.track.sampleURL != track.sampleURL) {
+    if (track.bufferName != undefined
+        && this.track.bufferName != track.bufferName) {
         // The sample has been changed
 
-        // Load the sample
-        this.source.load(track.sampleURL);
+        // Load the sample and set the buffer
+        this.source.load(this.getSamplePath(track.bufferName), function() {
+
+            // Set the buffer
+            self.setBuffer(self.source.buffer.get());
+
+        });
 
     }
 

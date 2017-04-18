@@ -13703,7 +13703,7 @@ function Sequencer (id) {
      * Push track changes to the arrangement
      */
     this.pushChanges = function () {
-
+console.log('push changes \n', this.track);
         // replace the track in the arrangement with updated track
         arrangement.replaceTrack(deepClone(this.track));
 
@@ -13905,7 +13905,6 @@ Sequencer.prototype.setSettingsClickHandler = function (settings) {
 
         // Get clone of the object as it is
         trackSnapshot = deepClone(self.track);
-        console.log('trackSnapshot', trackSnapshot);
 
         // Toggle the popup
         settings.popup.toggle(400, function () {
@@ -13924,10 +13923,6 @@ Sequencer.prototype.setSettingsClickHandler = function (settings) {
 
     // On click handler for the settings icon
     settings.cancelBtn.on('click', function (event) {
-
-console.log('cancel \n');
-console.log('self.track', self.track);
-console.log('trackSnapshot', trackSnapshot);
 
         // Set the original values back
         self.track.bufferStarttime = trackSnapshot.bufferStarttime;
@@ -14019,6 +14014,9 @@ Sequencer.prototype.setMuteClickHandler = function (muteDiv) {
  */
 Sequencer.prototype.setTrackJSON = function (track) {
 
+    // Ref to self
+    var self = this;
+
     // Check if volume has been changed
     if (this.track.volume != track.volume) {
         // Volume has been changed, update it
@@ -14031,18 +14029,25 @@ Sequencer.prototype.setTrackJSON = function (track) {
     }
 
     // Check if sample has been changed
-    if (track.sampleURL != undefined
-        && this.track.sampleURL != track.sampleURL) {
+    if (track.bufferName != undefined
+        && this.track.bufferName != track.bufferName) {
         // The sample has been changed
 
-        // Load the sample
-        this.source.load(track.sampleURL);
+        // Load the sample and set the buffer
+        this.source.load(this.getSamplePath(track.bufferName), function() {
+
+            // Set the buffer
+            self.setBuffer(self.source.buffer.get());
+
+        });
 
     }
 
+console.log('track \n', track);
+console.log('this.track \n', this.track);
     // Set the track json
     this.track = deepClone(track);
-    console.log('track set track json', track);
+console.log('this.track \n', this.track);
 
     // Set all the cells and their values
     this.track.pattern.map(this.setStep.bind(this));

@@ -33,13 +33,21 @@ function Sequencer (id) {
     // The waveform of the sequencer
     this.waveform = false;
 
+    // The dials for the eqs
+    this.eqLowDial  = false;
+    this.eqMidDial  = false;
+    this.eqHighDial = false;
+
+    // Init a eq for the sample
+    this.eq3 = new Tone.EQ3().toMaster();
+
     // Create a player and connect it to the master output (your speakers)
     this.source = new Tone.Player("../../audio/727-HM-CONGA.WAV", function () {
 
         // Set the buffer
         self.setBuffer(self.source.buffer.get());
 
-    }).toMaster();
+    }).connect(this.eq3);
 
     // Set initialised flag
     this.isInitialised = false;
@@ -113,8 +121,10 @@ function Sequencer (id) {
             bufferName: '727-HM-CONGA.WAV',
             bufferStarttime: 0,
             bufferStoptime: 3,
-            bufferDuration: 3
-
+            bufferDuration: 3,
+            eqLowVal : 0,
+            eqMidVal : 0,
+            eqHighVal: 0
         };
 
         return track;
@@ -206,6 +216,129 @@ function Sequencer (id) {
         this.waveform.init();
 
         // implement fluent interface
+        return this;
+
+    };
+
+    /**
+     * Renders/re-renders the dials for the eq3
+     *
+     * @param {DOM} eq3Row  The javascript created DOM for eq3 row of dials
+     */
+    this.renderEq3Dials = function (eq3Row) {
+
+        // Check if any of one of the dials has been created before
+        if (this.eqLowDial != false) {
+            // Already present, destroy them
+            this.eqLowDial.destroy();
+            this.eqMidDial.destroy();
+            this.eqHighDial.destroy();
+        }
+
+        // Create the unique widget names for the dials
+        var eqLowDialName = "eqLowDial-" + self.id;
+        var eqMidDialName = "eqMidDial-" + self.id;
+        var eqHighDialName = "eqHighDial-" + self.id;
+
+        // Create them
+        this.eqLowDial = this.createDial(eqLowDialName, eq3Row, this.track.eqLowVal);
+        this.eqMidDial = this.createDial(eqMidDialName, eq3Row, this.track.eqMidVal);
+        this.eqHighDial = this.createDial(eqHighDialName, eq3Row, this.track.eqHighVal);
+
+        return this;
+
+    };
+
+    /**
+     * Create the dials adding to nx widgets and returning created object
+     *
+     * @param {string} dialName  The dial name
+     * @param {object} eq3Row    The row to add the dials to
+     * @param {number} value     The value of the eq
+     * @return {nxWidget}        The created widget
+     */
+    this.createDial = function (dialName, eq3Row, value) {
+
+        // Init empty variable for the dial to be assigned to
+        var dialObject;
+
+        // Add the dial to the widgets
+        nx.add(
+            "dial",
+            {
+                w: 75,
+                h: 75,
+                name: dialName,
+                parent: eq3Row
+            }
+        );
+
+        // Get the newly created waveform
+        for(widget in nx.widgets) {
+            if (nx.widgets.hasOwnProperty(widget)) {
+                if (widget == dialName) {
+                    dialObject = nx.widgets[widget];
+                    break;
+                }
+            }
+        }
+
+        // Set the parameters for the buffer
+        dialObject.colors.accent = "#FFBB4C";
+        dialObject.min = -15;
+        dialObject.max = 15;
+        dialObject.val.value = value;
+        dialObject.init();
+
+        // Implement fluent interface
+        return dialObject;
+
+    };
+
+    /**
+     * Add a observer to the val object inside the dials
+     *
+     * @return {Sequencer}  Implment fluent interface
+     */
+    this.addEq3Watcher = function () {
+
+        // Add watcher
+        WatchJS.watch(self.eqLowDial, "val", function (prop, action, newvalue) {
+
+            // Check if the property val is set
+            if (prop == "value" && action == "set") {
+                // Set the new start, stop times and duration
+                self.track.eqLowVal = newvalue;
+                self.eq3.low.value = newvalue;
+            }
+
+        });
+
+        // Add watcher
+        WatchJS.watch(self.eqMidDial, "val", function (prop, action, newvalue) {
+
+            // Check if the property val is set
+            if (prop == "value" && action == "set") {
+                // Set the new start, stop times and duration
+                self.track.eqMidVal = newvalue;
+                self.eq3.mid.value = newvalue;
+            }
+
+        });
+
+        // Add watcher
+        WatchJS.watch(self.eqHighDial, "val", function (prop, action, newvalue) {
+
+            // Check if the property val is set
+            if (prop == "value" && action == "set") {
+                // Set the new start, stop times and duration
+                self.track.eqHighVal = newvalue;
+                self.eq3.high.value = newvalue;
+            }
+
+        });
+
+        // Implement fluent interface
         return this;
 
     };
@@ -369,6 +502,12 @@ Sequencer.prototype.setSettingsClickHandler = function (settings) {
             // Add the watcher
             self.addWaveformWatcher();
 
+            // Render the eq buttons
+            self.renderEq3Dials(settings.eq3Row);
+
+            // Add the watcher
+            self.addEq3Watcher();
+
         });
     });
 
@@ -379,6 +518,12 @@ Sequencer.prototype.setSettingsClickHandler = function (settings) {
         self.track.bufferStarttime = trackSnapshot.bufferStarttime;
         self.track.bufferStoptime  = trackSnapshot.bufferStoptime;
         self.track.bufferName      = trackSnapshot.bufferName;
+        self.track.eqLowVal        = trackSnapshot.eqLowVal;
+        self.eq3.low.value         = trackSnapshot.eqLowVal;
+        self.track.eqMidVal        = trackSnapshot.eqMidVal;
+        self.eq3.mid.value         = trackSnapshot.eqMidVal;
+        self.track.eqHighVal       = trackSnapshot.eqHighVal;
+        self.eq3.high.value        = trackSnapshot.eqHighVal;
         self.source.load(
             self.getSamplePath(trackSnapshot.bufferName),
             function () {
@@ -494,6 +639,11 @@ Sequencer.prototype.setTrackJSON = function (track) {
 
     }
 
+    // Set eq
+    this.eq3.low.value = track.eqLowVal;
+    this.eq3.mid.value = track.eqMidVal;
+    this.eq3.high.value = track.eqHighVal;
+
     // Set the track json
     this.track = deepClone(track);
 
@@ -513,7 +663,6 @@ Sequencer.prototype.setTrackJSON = function (track) {
 Sequencer.prototype.getTrackJSON = function () {
     return this.track;
 };
-
 
 /**
  * Set the initialised flag, used when instrument is initalised

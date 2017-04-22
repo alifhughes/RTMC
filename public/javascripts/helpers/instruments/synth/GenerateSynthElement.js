@@ -1,17 +1,16 @@
 var $ = require('jquery');
 var guid = require('../../../helpers/idgenerator');
-var samplesObject = require('../../../helpers/samplelist');
 
 /**
  * Constructor
  *
- * @returns {generateSequencerElement} instance of itself
+ * @returns {generateSynthElement} instance of itself
  */
-var generateSequencerElement = function () {
+var generateSynthElement = function () {
     return this;
 };
 
-generateSequencerElement.generate = function (id, callback) {
+generateSynthElement.generate = function (id, callback) {
 
         // Check if guid has been set
         if (id == false) {
@@ -69,34 +68,12 @@ generateSequencerElement.generate = function (id, callback) {
 
         // Create Title of popup
         var settingsPopupTitle = document.createElement("h3");
-        settingsPopupTitle.innerHTML = "Sequencer Settings";
+        settingsPopupTitle.innerHTML = "Synth Settings";
         settingsPopupTitle.className = "settings-popup-title centre-text";
 
         // Content of popup
         var settingsPopupRow = document.createElement("div");
         settingsPopupRow.className = "settings-popup-row";
-
-        var settingsPopupLableSamples = document.createElement("h4");
-        settingsPopupLableSamples.innerHTML = "Samples:";
-
-        //Create and append select list
-        var samplesList = document.createElement("select");
-
-        //Create and append the options
-        for (var sample in samplesObject) {
-
-            // Check if property is available
-            if(samplesObject.hasOwnProperty(sample)) {
-
-                // Create the option
-                var option = document.createElement("option");
-                option.value = samplesObject[sample];
-                option.text  = sample;
-
-                // Append it to the list
-                samplesList.appendChild(option);
-            }
-        };
 
         // Create popup confirm and exit buttons
         var settingsPopupConfirmBtn = document.createElement("button");
@@ -105,6 +82,18 @@ generateSequencerElement.generate = function (id, callback) {
         var settingsPopupCancelBtn = document.createElement("button");
         settingsPopupCancelBtn.innerHTML = "Cancel";
         settingsPopupCancelBtn.className = "btn btn-default";
+
+        var settingsPopupCancelBtn = document.createElement("button");
+        settingsPopupCancelBtn.innerHTML = "Cancel";
+        settingsPopupCancelBtn.className = "btn btn-default";
+
+        var settingsPopupRecordBtn = document.createElement("button");
+        settingsPopupRecordBtn.innerHTML = "Record";
+        settingsPopupRecordBtn.className = "btn btn-error";
+
+        var settingsPopupClearBtn = document.createElement("button");
+        settingsPopupClearBtn.innerHTML = "Clear recording";
+        settingsPopupClearBtn.className = "btn btn-default";
 
         // Create a container div removing/clearing track actions
         var trackRemoveActionsContainer = document.createElement("div");
@@ -124,24 +113,13 @@ generateSequencerElement.generate = function (id, callback) {
         settingsPopup.appendChild(settingsPopupContainerDiv);
         settingsPopupContainerDiv.appendChild(settingsPopupTitle);
         settingsPopupContainerDiv.appendChild(settingsPopupRow);
-        settingsPopupRow.appendChild(settingsPopupLableSamples);
-        settingsPopupRow.appendChild(samplesList);
 
-        var waveformRow = settingsPopupRow.cloneNode(true);
-        waveformRow.innerHTML = "";
-        waveformRow.className = "waveform-row";
-        var waveformLabel = document.createElement("h5");
-        waveformLabel.innerHTML = "Waveform selector:";
-        settingsPopupContainerDiv.appendChild(waveformRow);
-        waveformRow.appendChild(waveformLabel);
+        var recordingButtonRow = settingsPopupRow.cloneNode(true);
+        recordingButtonRow.innerHTML = "";
+        recordingButtonRow.appendChild(settingsPopupRecordBtn);
+        recordingButtonRow.appendChild(settingsPopupClearBtn);
+        settingsPopupContainerDiv.appendChild(recordingButtonRow);
 
-        var eq3Row = settingsPopupRow.cloneNode(true);
-        eq3Row.innerHTML = "";
-        eq3Row.className = "eq3-row";
-        var eq3Label = document.createElement("h5");
-        eq3Label.innerHTML = "EQ The sample: (low, mid, high)";
-        settingsPopupContainerDiv.appendChild(eq3Row);
-        eq3Row.appendChild(eq3Label);
 
         var buttonRow = settingsPopupRow.cloneNode(true);
         buttonRow.innerHTML = "";
@@ -161,17 +139,18 @@ generateSequencerElement.generate = function (id, callback) {
 
         $('#instrumentTracks').append(instrumentContainer);
 
-        // Add the matrix
-        nx.add("matrix", {w: $('.step-sequencer-container').width(), h:  $('.step-sequencer-container').height(), parent: stepsContainer});
+        // Add the keyboard
+        nx.add("keyboard", {w: $('.step-sequencer-container').width(), h:  $('.step-sequencer-container').height(), parent: stepsContainer});
 
         // Get the latest element added on
         // BE WEARY OF THIS FUNCTIONALITY
-        var matrix = nx.widgets[Object.keys(nx.widgets)[Object.keys(nx.widgets).length - 1]];
+        var keyboard = nx.widgets[Object.keys(nx.widgets)[Object.keys(nx.widgets).length - 1]];
 
-        // Set the properties of the matrix
-        matrix.col = 16;
-        matrix.row = 1;
-        matrix.init();
+        //This key pattern would put a black key between every white key
+        keyboard.octaves = 5;
+        keyboard.colors.fill = "#1D2632";
+        keyboard.colors.black = "#FFBB4C";
+        keyboard.init();
 
         // Init empty elements object
         var elements = {};
@@ -181,25 +160,23 @@ generateSequencerElement.generate = function (id, callback) {
 
         // Create the settings popup object
         var settingsPopupElements = {};
+        settingsPopupElements.recordBtn = $(settingsPopupRecordBtn);
+        settingsPopupElements.clearBtn = $(settingsPopupClearBtn);
         settingsPopupElements.confirmBtn = $(settingsPopupConfirmBtn);
         settingsPopupElements.cancelBtn = $(settingsPopupCancelBtn);
         settingsPopupElements.icon  = $(settingsIcon);
         settingsPopupElements.popup = $(settingsPopup);
-        settingsPopupElements.samplesList = $(samplesList);
-        settingsPopupElements.waveformRow = waveformRow;
-        settingsPopupElements.eq3Row = eq3Row;
 
         // Set the element
-        elements.matrix   = matrix;
         elements.volume   = $(volume);
         elements.mute     = $(muteIconsDiv);
-        elements.html     = html;
         elements.id       = id;
         elements.settings = settingsPopupElements;
+        elements.keyboard = keyboard;
 
         // Send the elements back
         callback(elements);
 
 };
 
-module.exports = generateSequencerElement;
+module.exports = generateSynthElement;

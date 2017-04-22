@@ -1,5 +1,7 @@
 var generateSequencerElement = require('./sequencer/GenerateSequencerElement');
+var generateSynthElement = require('./synth/GenerateSynthElement');
 var Sequencer = require('./sequencer/sequencer');
+var Synth = require('./synth/synth');
 
 /**
  * Constructor
@@ -54,6 +56,43 @@ instrumentFactory.prototype.createInstrument = function (instrument, id) {
 
                 });
             });
+
+            break;
+
+        // Create synth
+        case 'synth':
+
+            // Create the html
+            return new Promise(function(resolve, reject) {
+                generateSynthElement.generate(id, function (elements) {
+
+                    // Get the elements
+                    var volume      = elements.volume;
+                    var mute        = elements.mute;
+                    var settings    = elements.settings;
+                    var trackId     = elements.id;
+                    var keyboard    = elements.keyboard;
+
+                    // Init new sequencer object with id
+                    var synth = new Synth(trackId);
+
+                    // Set the sequencer objects
+                    synth.setVolume(volume);
+                    synth.setSettingsClickHandler(settings);
+                    synth.setMuteClickHandler(mute);
+                    synth.setKeyboard(keyboard);
+
+                    // Create a return object containing sequencer instance
+                    var instrumentContainer  = {};
+                    instrumentContainer.seq = synth;
+                    instrumentContainer.id   = trackId;
+                    instrumentContainer.html = elements.html;
+                    resolve(instrumentContainer);
+
+                });
+            });
+
+
             break;
 
         default:

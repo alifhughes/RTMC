@@ -13,7 +13,7 @@ router.get('/', login.render);
  */
 router.post('/', passport.authenticate('login', {
         successRedirect: '/portal',
-        failureRedirect: '/',
+        failureRedirect: '/login',
         failureFlash : true
     })
 );

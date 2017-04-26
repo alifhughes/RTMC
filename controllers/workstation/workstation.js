@@ -8,6 +8,17 @@ exports.render = function(req, res) {
     // Get the arrangement id from url
     var arrangementId = req.params.arrangementId;
 
+    // User registered
+    var userRegistered = false;
+
+    // Check if user is logged in
+    if (req.user) {
+        userRegistered = true;
+    }
+
+    // Get full url for sharing
+    var fullUrl = req.protocol + '://' + req.get('host') + req.originalUrl;
+
     // Get the arrangement by the ID passed in the url
     Arrangement.findById(arrangementId, function (error, doc) {
 
@@ -19,7 +30,9 @@ exports.render = function(req, res) {
         res.render(
             'workstation/workstation',
             {
-                title: doc.name
+                title: doc.name,
+                userRegistered: userRegistered,
+                path: fullUrl
             }
         )
     });

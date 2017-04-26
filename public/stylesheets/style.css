@@ -150,6 +150,10 @@ a {
     margin-top: 50px;
 }
 
+.float-left {
+    float:left;
+}
+
 div.centre {
     text-align: center !important;
 }
@@ -249,6 +253,11 @@ td, th {
 tr:nth-child(even) {
     background-color: #dddddd;
 } 
+
+input[type=checkbox] {
+    transform: scale(1.2);
+}
+
 /*---------------------------------- */
 /*-------- SPECIFIC CLASSES--------- */
 /*---------------------------------- */
@@ -269,6 +278,12 @@ tr:nth-child(even) {
     width: 50px;
     border-radius: 5px;
 }
+
+#shareUrl {
+    right: 190px;
+    position: absolute;
+}
+
 .btn-workstation-back {
     right: 10px;
     position: absolute;
@@ -327,6 +342,18 @@ tr:nth-child(even) {
 .track-remove-actions-container {
     height: 40px;
     width: 7.333% !important;
+}
+
+.track-remove-actions-container-synth {
+    height: 40px;
+    width: 7.333% !important;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+}
+
+.track-selected-checkbox-btn {
+    margin-left: 19px !important;
 }
 
 .delete-track {
@@ -388,6 +415,35 @@ tr:nth-child(even) {
     height: 455px;
     border: 3px solid black;
 }
+
+.track-settings-popup-synth {
+    position: absolute;
+    z-index: 15;
+    top: 15%;
+    left: 30%;
+    margin: -100px 0 0 -150px;
+    border-radius: 5px;
+    width: 860px;
+    height: 620px;
+    border: 3px solid black;
+}
+
+.osc-edit-row {
+    display: flex;
+    justify-content: center;
+    padding:10px;
+}
+
+.osc-edit-wrapper {
+    display:flex;
+    justify-content:center;
+    align-items:center;
+}
+
+
+.osc-edit-container > * {
+}
+
 
 .track-settings:hover {
     cursor: pointer;

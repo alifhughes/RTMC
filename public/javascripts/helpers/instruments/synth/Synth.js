@@ -24,8 +24,28 @@ function Synth (id) {
     // Initialse volume DOM element as false
     this.volumeDOM = false;
 
+    // Attack slider
+    this.osc1AttackSlider = false;
+    this.osc2AttackSlider = false;
+
+    // Release slider
+    this.osc1ReleaseSlider = false;
+    this.osc2ReleaseSlider = false;
+
     // The keyboard ui object
     this.keyboard = false;
+
+    // Playing
+    this.playing = false;
+
+    // Track selected flag
+    this.trackSelected = false;
+
+    // The recorded buffer waveform
+    this.waveform = false;
+
+    // The recorded buffer waveform
+    this.waveformRow = false;
 
     /**
      * Track struct
@@ -42,17 +62,72 @@ function Synth (id) {
         var track = {
             id: this.id,
             type: 'synth',
-            volume: 0
+            volume: 0,
+            audioBuffer: false,
+            bufferStarttime: 0,
+            bufferStoptime: 3,
+            bufferDuration: 3
         };
 
         return track;
     };
+
+    // Create osc one and two types
+    this.osc1Type = 'sawtooth';
+    this.osc2Type = 'triangle';
+
+    // Set detune values
+    this.osc1Detune = -10;
+    this.osc2Detune = 10;
+
+    // Create attack values and release
+    this.osc1Attack = 0;
+    this.osc2Attack = 0;
+    this.osc1Release = 0;
+    this.osc2Release = 0;
+
+    // Init gain nodes for osc
+    this.oscGain = null;
+    this.osc2Gain = null;
 
     // Init JSON struct of the track
     this.track = this.createTrackJSON();
 
     // Add the track to the arrangement
     arrangement.addTrack(deepClone(this.track));
+
+    // Ref to self
+    var self = this;
+
+    // Object to hold midi info
+    this.midi = false;
+
+    // Init Abuffer
+    this.audioBuffer = null;
+
+    // Init audio DOM holder
+    this.ai = null;
+
+    // Create audio context
+    this.context = new AudioContext();
+    this.oscillators = {};
+
+    // Init master volume fo the synth
+    this.masterVolume = this.context.createGain();
+    this.masterVolume.connect(this.context.destination);
+
+    // Init chunks array to hold data to create blob
+    this.chunks = [];
+
+    // Create source from audio context to hold AudioBuffer
+    this.source = this.context.createBufferSource();
+
+    // Create recording destination
+    this.recordDestination = this.context.createMediaStreamDestination();
+    this.mediaRecorder = new MediaRecorder(this.recordDestination.stream);
+
+    // init audiobuffer
+    this.audioBuffer = this.context.createBuffer(2, 22050, 44100);
 
     /**
      * Push track changes to the arrangement
@@ -64,31 +139,79 @@ function Synth (id) {
 
     };
 
-    var self = this;
-
-    // Object to hold midi info
-    this.midi = false;
-
-    // Create audio context
-    this.context = new AudioContext();
-    this.oscillators = {};
-
-    this.chunks = [];
-
-    this.recordDestination = this.context.createMediaStreamDestination();
-    this.mediaRecorder = new MediaRecorder(this.recordDestination.stream);
-
+    /**
+     * When media recorder receives data, push it to chunks array
+     *
+     */
     this.mediaRecorder.ondataavailable = function(evt) {
         // push each chunk (blobs) in an array
         self.chunks.push(evt.data);
     };
 
+    // Init new file reader for converting blob
+    this.fileReader = new FileReader();
+
+    // Loading for filereader
+    this.fileReader.onloadend = function () {
+
+        // Create audio buffer
+        self.createAudioBuffer(self.fileReader.result);
+
+        // reset the chunks
+        self.chunks = [];
+    };
+
+    /**
+     * When media recorder stops recording, create blob for audio
+     * and convert that into a buffer for the source
+     *
+     */
     this.mediaRecorder.onstop = function(evt) {
-        // Make blob out of our blobs, and open it.
-        var blob = new Blob(self.chunks, { 'type' : 'audio/ogg; codecs=opus' });
-        var ai = document.createElement("audio");
-        ai.src = URL.createObjectURL(blob);
-        document.getElementById(self.id).appendChild(ai);
+
+        // Make blob out of our blobs, and open it
+        var blob = new Blob(self.chunks, {'type' : 'audio/ogg; codecs=opus'});
+
+        // Read the blob into array buffer
+        self.fileReader.readAsArrayBuffer(blob);
+
+        // Create doc element
+        self.ai = document.createElement("audio");
+        self.ai.src = URL.createObjectURL(blob);
+
+        //document.getElementById(self.id).appendChild(self.ai);
+    };
+
+    /**
+     * Create audio buffer from buffer
+     *
+     * @param {ArrayBuffer} arrayBuffer  The array buffer converted from the blob
+     */
+    this.createAudioBuffer = function (arrayBuffer) {
+
+        // Decode the array buffer and covert to AudioBuffer
+        this.context.decodeAudioData(arrayBuffer).then(function(decodedData) {
+
+            // Set audio buffer
+            self.audioBuffer = decodedData;
+
+            // Reset the audio buffer source
+            self.resetAudioBufferSource();
+
+            // Render the waveform
+            self.renderWaveform(self.waveformRow);
+
+            // Add the watcher
+            self.addWaveformWatcher();
+
+            // Check if playing
+            if (self.playing) {
+                // Start the audio again
+                self.playing = false;
+                self.start();
+            }
+
+        });
+
     };
 
     /**
@@ -98,10 +221,14 @@ function Synth (id) {
      */
     this.onMIDIMessage = function (message) {
 
+        // Check if track is selected to play
+        if (!self.trackSelected) {
+            // Not selected, don't trigger notes
+            return this;
+        }
+
         // This gives us our [command/channel, note, velocity] data
         var data = message.data;
-
-console.log('MIDI data', data); // MIDI data [144, 63, 73]
 
         // Extract the info from the data
         var cmd = data[0] >> 4;
@@ -251,14 +378,99 @@ console.log('MIDI Access Object', midiAccess);
      * Note is being pressed
      */
     this.noteOn = function (frequency, velocity, note){
-        // call trigger
-        //player(midiNote, velocity);
-        self.oscillators[frequency] = self.context.createOscillator();
-        self.oscillators[frequency].frequency.value = frequency;
-        self.oscillators[frequency].connect(self.context.destination);
-        self.oscillators[frequency].connect(self.recordDestination);
-        self.oscillators[frequency].start(self.context.currentTime);
 
+        // Get current time audio context time
+        var now = this.context.currentTime;
+
+        // Get the attack values
+        var osc1AttackVal = now + this.osc1Attack;
+        var osc2AttackVal = now + this.osc2Attack;
+
+        // Create the oscilators
+        var osc = this.context.createOscillator(),
+            osc2 = this.context.createOscillator();
+
+        this.oscGain = this.context.createGain(),
+        this.osc2Gain = this.context.createGain();
+
+        this.oscGain.gain.value = 0.0;
+        this.osc2Gain.gain.value = 0.0;
+
+        // Set the frequency
+        osc.frequency.value = frequency;
+        osc2.frequency.value = frequency;
+
+        // Set the osc type
+        osc.type = this.osc1Type;
+        osc2.type = this.osc2Type;
+
+        // Set detune values
+        osc.detune.value = this.osc1Detune;
+        osc2.detune.value = this.osc2Detune;
+
+        // Connect them to the master volume gain node
+        osc.connect(this.oscGain);
+        osc2.connect(this.osc2Gain);
+
+        // Connect individual gain nodes to master gain
+        this.oscGain.connect(this.masterVolume);
+        this.osc2Gain.connect(this.masterVolume);
+
+        // Connect the out of context
+        this.masterVolume.connect(this.context.destination);
+
+        // Connect the recorder
+        this.masterVolume.connect(this.recordDestination);
+
+        // Set the frequencies
+        this.oscillators[frequency] = [osc, osc2];
+
+        // Set ramp up for attack
+        this.oscGain.gain.cancelScheduledValues(now);
+        this.oscGain.gain.setValueAtTime(this.oscGain.gain.value, now);
+        this.oscGain.gain.linearRampToValueAtTime(1 , osc1AttackVal);
+
+        // Set ramp up for attack
+        this.osc2Gain.gain.cancelScheduledValues(now);
+        this.osc2Gain.gain.setValueAtTime(this.osc2Gain.gain.value, now);
+        this.osc2Gain.gain.linearRampToValueAtTime(1 , osc2AttackVal);
+
+        // Start the context
+        osc.start(this.context.currentTime);
+        osc2.start(this.context.currentTime);
+
+        // Display the key on the keyboard canvas
+        var key = self.midiNoteToKeyboardIndex(note);
+        self.keyboard.toggle(self.keyboard.keys[key]);
+
+    }
+    /**
+     * Note is being released
+     */
+    this.noteOff = function (frequency, velocity, note){
+
+        var now = this.context.currentTime;
+
+        // Get the release values
+        var osc1ReleaseVal = now + this.osc1Release;
+        var osc2ReleaseVal = now + this.osc2Release;
+
+        // Cancel scheduled values
+        this.oscGain.gain.cancelScheduledValues(now);
+        this.osc2Gain.gain.cancelScheduledValues(now);
+
+        // Set the value
+        this.oscGain.gain.setValueAtTime(this.oscGain.gain.value, now);
+        this.osc2Gain.gain.setValueAtTime(this.osc2Gain.gain.value, now);
+
+        // Release the note
+        this.oscGain.gain.linearRampToValueAtTime(0.0, osc1ReleaseVal);
+        this.osc2Gain.gain.linearRampToValueAtTime(0.0, osc2ReleaseVal);
+
+        this.oscillators[frequency][0].stop(osc1ReleaseVal);
+        this.oscillators[frequency][1].stop(osc2ReleaseVal);
+
+        // Turn off display on keyboard
         var key = self.midiNoteToKeyboardIndex(note);
         self.keyboard.toggle(self.keyboard.keys[key]);
 
@@ -275,39 +487,54 @@ console.log('MIDI Access Object', midiAccess);
         return note - 48;
     };
 
-    /**
-     * Note is being released
-     */
-    this.noteOff = function (frequency, velocity, note){
-        // call release
-        //player(midiNote, velocity);
-        self.oscillators[frequency].stop(self.context.currentTime);
-        self.oscillators[frequency].stop(self.recordDestination.currentTime);
-        self.oscillators[frequency].disconnect();
-
-        var key = self.midiNoteToKeyboardIndex(note);
-        self.keyboard.toggle(self.keyboard.keys[key]);
-
-    }
 
     /**
      * Record midi input
      */
     this.startRecordMidi = function () {
-       this.mediaRecorder.start();
+        this.mediaRecorder.start();
     };
 
     /**
      * Record midi input
      */
     this.stopRecordMidi = function () {
-       this.mediaRecorder.stop();
+
+        // Stop recording
+        this.mediaRecorder.stop();
+
     };
 
     /**
      * Clear recording
      */
     this.clearRecording = function () {
+
+        // Check if playing
+        if (this.playing) {
+            // Playing but maintain state
+            this.stop();
+            this.playing = true;
+        }
+
+        // Init empty audio buffer
+        this.audioBuffer = this.context.createBuffer(2, 22050, 44100);
+
+        // set the audio source node
+        this.resetAudioBufferSource();
+
+        // Re-render the waveform
+        this.renderWaveform(this.waveformRow);
+
+        // Check if playing
+        if (this.playing) {
+            // Playing but maintain state
+            this.playing = false;
+            this.start();
+        }
+
+        // Implement fluent interface
+        return this;
     };
 
     // Check if MIDI is available
@@ -319,7 +546,103 @@ console.log('MIDI Access Object', midiAccess);
         alert("No MIDI support in your browser.");
     }
 
+    /**
+     * Re-/Renders the waveform in the popup
+     *
+     * @param  {DOM}       waveformRow  The html dom to be added to
+     * @return {Synth}                  Implement fluent interface
+     */
+    this.renderWaveform = function (waveformRow) {
 
+        // Check if one has been created
+        if (this.waveform != false) {
+            // One already present, destroy it
+            this.waveform.destroy();
+        }
+
+        // Create unique name for the waveform
+        var waveformName = "waveform-" + self.id;
+
+        // Add the waveform to widgets
+        nx.add(
+            "waveform",
+            {
+                w: 825,
+                h: 160,
+                name: waveformName,
+                parent: waveformRow
+            }
+        );
+
+        // Get the newly created waveform
+        for(widget in nx.widgets) {
+            if (nx.widgets.hasOwnProperty(widget)) {
+                if (widget == waveformName) {
+                    this.waveform = nx.widgets[widget];
+                    break;
+                }
+            }
+        }
+
+        // Set the parameters for the buffer
+        this.waveform.setBuffer(this.audioBuffer);
+        this.waveform.colors.fill = "#ffffff";
+        this.waveform.definition = 1;
+        this.waveform.select((this.track.bufferStarttime * 1000), (this.track.bufferStoptime * 1000));
+        this.waveform.init();
+
+        // implement fluent interface
+        return this;
+
+    };
+
+    /**
+     * Add a observer to the val object inside the waveform
+     *
+     * @return {Synth}  Implment fluent interface
+     */
+    this.addWaveformWatcher = function () {
+
+        // Add watcher
+        WatchJS.watch(self.waveform, "val", function (prop, action, newvalue) {
+
+            // Check if the property val is set and only set if not playing
+            if (prop == "val" && action == "set") {
+
+                // Set the new start, stop times and duration
+                self.track.bufferStarttime = (newvalue.starttime / 1000);
+                self.track.bufferStoptime = (newvalue.stoptime / 1000);
+                self.track.bufferDuration = ((newvalue.stoptime - newvalue.starttime) / 1000);
+
+                // Edit the loop start n stop time
+                self.source.loopEnd = self.track.bufferStoptime;
+                self.source.loopStart = self.track.bufferStarttime;
+
+            }
+
+        });
+
+        // Implement fluent interface
+        return this;
+
+    };
+
+    /**
+     * Reset the audio buffer source with buffer
+     * @return {Synth} Implement fluent interface
+     */
+    this.resetAudioBufferSource = function () {
+
+        // Recreate the source buffer
+        this.source = this.context.createBufferSource();
+        this.source.buffer = this.audioBuffer;
+        this.source.connect(this.context.destination);
+        this.source.loop = true;
+
+        return this;
+    };
+
+    // Implement fluent interface
     return this;
 }
 
@@ -327,7 +650,25 @@ console.log('MIDI Access Object', midiAccess);
  * Start the loop synth
  */
 Synth.prototype.start = function () {
-    // Start the recorded audio buffer
+
+    // Check if playing already
+    if (this.playing) {
+        return this;
+    }
+
+    // Set buffer loop stop and start time
+    this.source.loopEnd = this.track.bufferStoptime;
+    this.source.loopStart = this.track.bufferStarttime;
+
+    // Not playing, start the buffer now, with offset of starttime
+    this.source.start(
+        this.context.currentTime,
+        this.track.bufferStarttime
+    );
+
+    // Set playing to true
+    this.playing = true;
+
     // Start the drawing syncing on the keyboard
 };
 
@@ -335,7 +676,22 @@ Synth.prototype.start = function () {
  * Stop the loop synth
  */
 Synth.prototype.stop = function () {
-    // stop the recorded audio buffer
+
+    // Check if not playing
+    if (!this.playing) {
+        return this;
+    }
+
+    // Audio is playing, stop it
+    this.source.stop();
+
+    // Set flag
+    this.playing = false;
+
+    // Recreate buffer source node
+    this.resetAudioBufferSource();
+
+    // Stop the keyboard animation
 };
 
 /**
@@ -355,6 +711,13 @@ Synth.prototype.setSettingsClickHandler = function (settings) {
     // Flag for recording click
     var clicked = false;
 
+    // Assign the dom elements
+    this.osc1AttackSlider = settings.osc1AttackSlider;
+    this.osc2AttackSlider = settings.osc2AttackSlider;
+    this.osc1ReleaseSlider = settings.osc1ReleaseSlider;
+    this.osc2ReleaseSlider = settings.osc2ReleaseSlider;
+    this.waveformRow = settings.waveformRow;
+
     // Add the spinning animation to the settings icon on hover
     settings.icon.hover(
         function() {
@@ -372,6 +735,19 @@ Synth.prototype.setSettingsClickHandler = function (settings) {
 
         // Toggle the popup
         settings.popup.toggle(400, function () {
+
+            // Set the drop downs
+            settings.osc1TypeSelect.val(self.osc1Type);
+            settings.osc2TypeSelect.val(self.osc2Type);
+            settings.osc1DetuneSelect.val(self.osc1Detune);
+            settings.osc2DetuneSelect.val(self.osc2Detune);
+
+            // Render the waveform
+            self.renderWaveform(settings.waveformRow);
+
+            // Add the watcher
+            self.addWaveformWatcher();
+
         });
 
     });
@@ -389,25 +765,48 @@ Synth.prototype.setSettingsClickHandler = function (settings) {
     // On click for record
     settings.recordBtn.on('click', function (event) {
 
+        // Check if track is selected
+        if (!self.trackSelected) {
+            alert('Please select the track before recording! The selector box is next to the trash can');
+            return;
+        }
+
         // Check if clicked
         if (!clicked) {
             // Not clicked, record midi
             self.startRecordMidi();
             event.target.innerHTML = "Stop recording";
             clicked = true;
+
+            // Disable buttons
+            settings.clearBtn.prop('disabled', true);
+            settings.cancelBtn.prop('disabled', true);
+            settings.confirmBtn.prop('disabled', true);
+
         } else {
             // Is clicked, stop recording
             self.stopRecordMidi();
+            clicked = false;
+
+            // Enable/disable buttons
             event.target.disabled = true;
+            settings.clearBtn.prop('disabled', false);
+            settings.cancelBtn.prop('disabled', false);
+            settings.confirmBtn.prop('disabled', false);
+
         }
 
     });
 
-
     // On click for clear recording
     settings.clearBtn.on('click', function (event) {
 
+        // Clear the recording
         self.clearRecording();
+
+        // Reset the button
+        settings.recordBtn.html('Record');
+        settings.recordBtn.prop('disabled', false);
 
     });
 
@@ -425,6 +824,54 @@ Synth.prototype.setSettingsClickHandler = function (settings) {
         // Close the popup
         settings.popup.toggle(400);
 
+    });
+
+    // Select list handler for osc1 type
+    settings.osc1TypeSelect.change(function (event) {
+        // Get the new type and set it to class variable
+        self.osc1Type = settings.osc1TypeSelect.val();
+    });
+
+    // Select list handler for osc2 type
+    settings.osc2TypeSelect.change(function (event) {
+        // Get the new type and set it to class variable
+        self.osc2Type = settings.osc2TypeSelect.val();
+    });
+
+    // Select list handler for osc1 type
+    settings.osc1DetuneSelect.change(function (event) {
+        // Get the new type and set it to class variable
+        self.osc1Detune = parseInt(settings.osc1DetuneSelect.val());
+    });
+
+    // Select list handler for osc2 type
+    settings.osc2DetuneSelect.change(function (event) {
+        // Get the new type and set it to class variable
+        self.osc2Detune = parseInt(settings.osc2DetuneSelect.val());
+    });
+
+    // On input for osc1 attack slider
+    this.osc1AttackSlider.on('input', function (event) {
+        // Set the attack value
+        self.osc1Attack = parseFloat(event.target.value);
+    });
+
+    // On input for osc2 attack slider
+    this.osc2AttackSlider.on('input', function (event) {
+        // Set the attack value
+        self.osc2Attack = parseFloat(event.target.value);
+    });
+
+    // On input for osc2 release slider
+    this.osc1ReleaseSlider.on('input', function (event) {
+        // Set the attack value
+        self.osc1Release = parseFloat(event.target.value);
+    });
+
+    // On input for osc2 release slider
+    this.osc2ReleaseSlider.on('input', function (event) {
+        // Set the attack value
+        self.osc2Release = parseFloat(event.target.value);
     });
 
 };
@@ -473,10 +920,13 @@ Synth.prototype.setVolume = function (volume) {
     this.volumeDOM.on('input', function(event) {
 
         // Get the volume value in decibles
-        var db = parseInt(event.target.value);
+        var db = parseFloat(event.target.value);
 
         // Set the track volume
         self.track.volume = db;
+
+        // Set the master volume
+        self.masterVolume.gain.value = db;
 
         // Push changes of the track to the arrangement
         self.pushChanges();
@@ -502,6 +952,9 @@ Synth.prototype.setTrackJSON = function (track) {
 
         // Set the slider value
         this.volumeDOM.val(track.volume);
+
+        // Set the master volume
+        this.masterVolume.gain.value = track.volume;
 
     }
 
@@ -538,6 +991,25 @@ Synth.prototype.getId = function () {
  */
 Synth.prototype.setKeyboard = function (keyboard) {
     this.keyboard = keyboard;
+};
+
+/**
+ * Track selected checkbox btn handler
+ *
+ * @param {object} trackSelectedCheckbox  The JQuery Checkbox item for this track
+ */
+Synth.prototype.setTrackSelectedClickHandler= function (trackSelectedCheckbox) {
+
+    // Ref to self
+    var self = this;
+
+    // On checkbox change
+    trackSelectedCheckbox.change(function(){
+
+        // If checked, set track selected to true
+        self.trackSelected = this.checked ? true : false;
+
+    });
 };
 
 module.exports = Synth;

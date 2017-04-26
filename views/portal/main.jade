@@ -7,6 +7,7 @@ block content
         h2.white-colour.col-lg-2 User portal
         a(href="/portal/edit").btn.btn-default.col-lg-2.col-lg-offset-1.portal-header-btn Edit your information
         a(href="/workstation/setup").btn.btn-default.col-lg-2.col-lg-offset-1.portal-header-btn  Create a new arrangement
+        a(href="/signout").btn.btn-default.col-lg-2.col-lg-offset-1.portal-header-btn  Logout
   div.light-grey-background-colour
     h3.no-margin.portal-user-names Hello #{firstName} #{lastName}
     if userTracks.length > 0
@@ -35,6 +36,8 @@ block content
 
     else
         h4.no-margin.portal-user-names No arrangements yet!
+          br
+          | Click 'Create a new arrangement' to get started!
 
   div(id='dialog-confirm', title="Are you sure?", hidden="hidden")
     p Deleting an arrangement is perminant, are you sure want to?

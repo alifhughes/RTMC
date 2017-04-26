@@ -5,6 +5,11 @@ var Arrangement = require('../../models/arrangement');
 // Render portal main page.
 exports.render = function(req, res) {
 
+    // Check if user available
+    if (!req.user) {
+        res.redirect('/');
+    }
+
     // Find the user's details logged in
     User.findById(req.user.id)
         .then(function(userDetailsDoc) {

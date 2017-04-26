@@ -273,7 +273,7 @@ function Sequencer (id) {
             }
         );
 
-        // Get the newly created waveform
+        // Get the newly created dial
         for(widget in nx.widgets) {
             if (nx.widgets.hasOwnProperty(widget)) {
                 if (widget == dialName) {
@@ -307,7 +307,7 @@ function Sequencer (id) {
 
             // Check if the property val is set
             if (prop == "value" && action == "set") {
-                // Set the new start, stop times and duration
+                // Set the new eq values
                 self.track.eqLowVal = newvalue;
                 self.eq3.low.value = newvalue;
             }
@@ -319,7 +319,7 @@ function Sequencer (id) {
 
             // Check if the property val is set
             if (prop == "value" && action == "set") {
-                // Set the new start, stop times and duration
+                // Set the new eq vals
                 self.track.eqMidVal = newvalue;
                 self.eq3.mid.value = newvalue;
             }
@@ -331,7 +331,7 @@ function Sequencer (id) {
 
             // Check if the property val is set
             if (prop == "value" && action == "set") {
-                // Set the new start, stop times and duration
+                // Set the new eq values
                 self.track.eqHighVal = newvalue;
                 self.eq3.high.value = newvalue;
             }

@@ -38,6 +38,7 @@ instrumentFactory.prototype.createInstrument = function (instrument, id) {
                     var settings    = elements.settings;
                     var trackId     = elements.id;
 
+
                     // Init new sequencer object with id
                     var seq = new Sequencer(trackId);
 
@@ -72,6 +73,7 @@ instrumentFactory.prototype.createInstrument = function (instrument, id) {
                     var settings    = elements.settings;
                     var trackId     = elements.id;
                     var keyboard    = elements.keyboard;
+                    var trackSelectedCheckbox = elements.trackSelectedCheckboxBtn;
 
                     // Init new sequencer object with id
                     var synth = new Synth(trackId);
@@ -81,6 +83,7 @@ instrumentFactory.prototype.createInstrument = function (instrument, id) {
                     synth.setSettingsClickHandler(settings);
                     synth.setMuteClickHandler(mute);
                     synth.setKeyboard(keyboard);
+                    synth.setTrackSelectedClickHandler(trackSelectedCheckbox);
 
                     // Create a return object containing sequencer instance
                     var instrumentContainer  = {};

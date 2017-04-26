@@ -1,12 +1,16 @@
 extends layout
 
 block content
-  input(type='hidden', value=local_data)#myLocalDataObj
   div.width-100.control-bar.dark-grey-background-colour
     i#start-stop.fa.fa-play-circle.fa-4x.white-colour(aria-hidden="true")
     p.white-colour BPM:
     input#bpm.bpm-input(type='number' value='120' min='60' max='200')
-    a(href="/portal").btn.btn-default.btn-workstation-back Back to portal
+    button.btn.btn-default#shareUrl(data-clipboard-text="#{path}") Share the URL 
+      i.fa.fa-share-square-o(aria-hidden="true")
+    if userRegistered
+        a(href="/portal").btn.btn-default.btn-workstation-back Back to portal
+    else
+        a(href="/signup").btn.btn-default.btn-workstation-back Register an account
   div#instrumentTracks.container-fluid
   div#gutter.container-fluid
     div.row

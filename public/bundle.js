@@ -1,4 +1,659 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+(function (global, factory) {
+    if (typeof define === "function" && define.amd) {
+        define(['module', 'select'], factory);
+    } else if (typeof exports !== "undefined") {
+        factory(module, require('select'));
+    } else {
+        var mod = {
+            exports: {}
+        };
+        factory(mod, global.select);
+        global.clipboardAction = mod.exports;
+    }
+})(this, function (module, _select) {
+    'use strict';
+
+    var _select2 = _interopRequireDefault(_select);
+
+    function _interopRequireDefault(obj) {
+        return obj && obj.__esModule ? obj : {
+            default: obj
+        };
+    }
+
+    var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) {
+        return typeof obj;
+    } : function (obj) {
+        return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj;
+    };
+
+    function _classCallCheck(instance, Constructor) {
+        if (!(instance instanceof Constructor)) {
+            throw new TypeError("Cannot call a class as a function");
+        }
+    }
+
+    var _createClass = function () {
+        function defineProperties(target, props) {
+            for (var i = 0; i < props.length; i++) {
+                var descriptor = props[i];
+                descriptor.enumerable = descriptor.enumerable || false;
+                descriptor.configurable = true;
+                if ("value" in descriptor) descriptor.writable = true;
+                Object.defineProperty(target, descriptor.key, descriptor);
+            }
+        }
+
+        return function (Constructor, protoProps, staticProps) {
+            if (protoProps) defineProperties(Constructor.prototype, protoProps);
+            if (staticProps) defineProperties(Constructor, staticProps);
+            return Constructor;
+        };
+    }();
+
+    var ClipboardAction = function () {
+        /**
+         * @param {Object} options
+         */
+        function ClipboardAction(options) {
+            _classCallCheck(this, ClipboardAction);
+
+            this.resolveOptions(options);
+            this.initSelection();
+        }
+
+        /**
+         * Defines base properties passed from constructor.
+         * @param {Object} options
+         */
+
+
+        _createClass(ClipboardAction, [{
+            key: 'resolveOptions',
+            value: function resolveOptions() {
+                var options = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+
+                this.action = options.action;
+                this.emitter = options.emitter;
+                this.target = options.target;
+                this.text = options.text;
+                this.trigger = options.trigger;
+
+                this.selectedText = '';
+            }
+        }, {
+            key: 'initSelection',
+            value: function initSelection() {
+                if (this.text) {
+                    this.selectFake();
+                } else if (this.target) {
+                    this.selectTarget();
+                }
+            }
+        }, {
+            key: 'selectFake',
+            value: function selectFake() {
+                var _this = this;
+
+                var isRTL = document.documentElement.getAttribute('dir') == 'rtl';
+
+                this.removeFake();
+
+                this.fakeHandlerCallback = function () {
+                    return _this.removeFake();
+                };
+                this.fakeHandler = document.body.addEventListener('click', this.fakeHandlerCallback) || true;
+
+                this.fakeElem = document.createElement('textarea');
+                // Prevent zooming on iOS
+                this.fakeElem.style.fontSize = '12pt';
+                // Reset box model
+                this.fakeElem.style.border = '0';
+                this.fakeElem.style.padding = '0';
+                this.fakeElem.style.margin = '0';
+                // Move element out of screen horizontally
+                this.fakeElem.style.position = 'absolute';
+                this.fakeElem.style[isRTL ? 'right' : 'left'] = '-9999px';
+                // Move element to the same position vertically
+                var yPosition = window.pageYOffset || document.documentElement.scrollTop;
+                this.fakeElem.style.top = yPosition + 'px';
+
+                this.fakeElem.setAttribute('readonly', '');
+                this.fakeElem.value = this.text;
+
+                document.body.appendChild(this.fakeElem);
+
+                this.selectedText = (0, _select2.default)(this.fakeElem);
+                this.copyText();
+            }
+        }, {
+            key: 'removeFake',
+            value: function removeFake() {
+                if (this.fakeHandler) {
+                    document.body.removeEventListener('click', this.fakeHandlerCallback);
+                    this.fakeHandler = null;
+                    this.fakeHandlerCallback = null;
+                }
+
+                if (this.fakeElem) {
+                    document.body.removeChild(this.fakeElem);
+                    this.fakeElem = null;
+                }
+            }
+        }, {
+            key: 'selectTarget',
+            value: function selectTarget() {
+                this.selectedText = (0, _select2.default)(this.target);
+                this.copyText();
+            }
+        }, {
+            key: 'copyText',
+            value: function copyText() {
+                var succeeded = void 0;
+
+                try {
+                    succeeded = document.execCommand(this.action);
+                } catch (err) {
+                    succeeded = false;
+                }
+
+                this.handleResult(succeeded);
+            }
+        }, {
+            key: 'handleResult',
+            value: function handleResult(succeeded) {
+                this.emitter.emit(succeeded ? 'success' : 'error', {
+                    action: this.action,
+                    text: this.selectedText,
+                    trigger: this.trigger,
+                    clearSelection: this.clearSelection.bind(this)
+                });
+            }
+        }, {
+            key: 'clearSelection',
+            value: function clearSelection() {
+                if (this.target) {
+                    this.target.blur();
+                }
+
+                window.getSelection().removeAllRanges();
+            }
+        }, {
+            key: 'destroy',
+            value: function destroy() {
+                this.removeFake();
+            }
+        }, {
+            key: 'action',
+            set: function set() {
+                var action = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 'copy';
+
+                this._action = action;
+
+                if (this._action !== 'copy' && this._action !== 'cut') {
+                    throw new Error('Invalid "action" value, use either "copy" or "cut"');
+                }
+            },
+            get: function get() {
+                return this._action;
+            }
+        }, {
+            key: 'target',
+            set: function set(target) {
+                if (target !== undefined) {
+                    if (target && (typeof target === 'undefined' ? 'undefined' : _typeof(target)) === 'object' && target.nodeType === 1) {
+                        if (this.action === 'copy' && target.hasAttribute('disabled')) {
+                            throw new Error('Invalid "target" attribute. Please use "readonly" instead of "disabled" attribute');
+                        }
+
+                        if (this.action === 'cut' && (target.hasAttribute('readonly') || target.hasAttribute('disabled'))) {
+                            throw new Error('Invalid "target" attribute. You can\'t cut text from elements with "readonly" or "disabled" attributes');
+                        }
+
+                        this._target = target;
+                    } else {
+                        throw new Error('Invalid "target" value, use a valid Element');
+                    }
+                }
+            },
+            get: function get() {
+                return this._target;
+            }
+        }]);
+
+        return ClipboardAction;
+    }();
+
+    module.exports = ClipboardAction;
+});
+},{"select":25}],2:[function(require,module,exports){
+(function (global, factory) {
+    if (typeof define === "function" && define.amd) {
+        define(['module', './clipboard-action', 'tiny-emitter', 'good-listener'], factory);
+    } else if (typeof exports !== "undefined") {
+        factory(module, require('./clipboard-action'), require('tiny-emitter'), require('good-listener'));
+    } else {
+        var mod = {
+            exports: {}
+        };
+        factory(mod, global.clipboardAction, global.tinyEmitter, global.goodListener);
+        global.clipboard = mod.exports;
+    }
+})(this, function (module, _clipboardAction, _tinyEmitter, _goodListener) {
+    'use strict';
+
+    var _clipboardAction2 = _interopRequireDefault(_clipboardAction);
+
+    var _tinyEmitter2 = _interopRequireDefault(_tinyEmitter);
+
+    var _goodListener2 = _interopRequireDefault(_goodListener);
+
+    function _interopRequireDefault(obj) {
+        return obj && obj.__esModule ? obj : {
+            default: obj
+        };
+    }
+
+    function _classCallCheck(instance, Constructor) {
+        if (!(instance instanceof Constructor)) {
+            throw new TypeError("Cannot call a class as a function");
+        }
+    }
+
+    var _createClass = function () {
+        function defineProperties(target, props) {
+            for (var i = 0; i < props.length; i++) {
+                var descriptor = props[i];
+                descriptor.enumerable = descriptor.enumerable || false;
+                descriptor.configurable = true;
+                if ("value" in descriptor) descriptor.writable = true;
+                Object.defineProperty(target, descriptor.key, descriptor);
+            }
+        }
+
+        return function (Constructor, protoProps, staticProps) {
+            if (protoProps) defineProperties(Constructor.prototype, protoProps);
+            if (staticProps) defineProperties(Constructor, staticProps);
+            return Constructor;
+        };
+    }();
+
+    function _possibleConstructorReturn(self, call) {
+        if (!self) {
+            throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
+        }
+
+        return call && (typeof call === "object" || typeof call === "function") ? call : self;
+    }
+
+    function _inherits(subClass, superClass) {
+        if (typeof superClass !== "function" && superClass !== null) {
+            throw new TypeError("Super expression must either be null or a function, not " + typeof superClass);
+        }
+
+        subClass.prototype = Object.create(superClass && superClass.prototype, {
+            constructor: {
+                value: subClass,
+                enumerable: false,
+                writable: true,
+                configurable: true
+            }
+        });
+        if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass;
+    }
+
+    var Clipboard = function (_Emitter) {
+        _inherits(Clipboard, _Emitter);
+
+        /**
+         * @param {String|HTMLElement|HTMLCollection|NodeList} trigger
+         * @param {Object} options
+         */
+        function Clipboard(trigger, options) {
+            _classCallCheck(this, Clipboard);
+
+            var _this = _possibleConstructorReturn(this, (Clipboard.__proto__ || Object.getPrototypeOf(Clipboard)).call(this));
+
+            _this.resolveOptions(options);
+            _this.listenClick(trigger);
+            return _this;
+        }
+
+        /**
+         * Defines if attributes would be resolved using internal setter functions
+         * or custom functions that were passed in the constructor.
+         * @param {Object} options
+         */
+
+
+        _createClass(Clipboard, [{
+            key: 'resolveOptions',
+            value: function resolveOptions() {
+                var options = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+
+                this.action = typeof options.action === 'function' ? options.action : this.defaultAction;
+                this.target = typeof options.target === 'function' ? options.target : this.defaultTarget;
+                this.text = typeof options.text === 'function' ? options.text : this.defaultText;
+            }
+        }, {
+            key: 'listenClick',
+            value: function listenClick(trigger) {
+                var _this2 = this;
+
+                this.listener = (0, _goodListener2.default)(trigger, 'click', function (e) {
+                    return _this2.onClick(e);
+                });
+            }
+        }, {
+            key: 'onClick',
+            value: function onClick(e) {
+                var trigger = e.delegateTarget || e.currentTarget;
+
+                if (this.clipboardAction) {
+                    this.clipboardAction = null;
+                }
+
+                this.clipboardAction = new _clipboardAction2.default({
+                    action: this.action(trigger),
+                    target: this.target(trigger),
+                    text: this.text(trigger),
+                    trigger: trigger,
+                    emitter: this
+                });
+            }
+        }, {
+            key: 'defaultAction',
+            value: function defaultAction(trigger) {
+                return getAttributeValue('action', trigger);
+            }
+        }, {
+            key: 'defaultTarget',
+            value: function defaultTarget(trigger) {
+                var selector = getAttributeValue('target', trigger);
+
+                if (selector) {
+                    return document.querySelector(selector);
+                }
+            }
+        }, {
+            key: 'defaultText',
+            value: function defaultText(trigger) {
+                return getAttributeValue('text', trigger);
+            }
+        }, {
+            key: 'destroy',
+            value: function destroy() {
+                this.listener.destroy();
+
+                if (this.clipboardAction) {
+                    this.clipboardAction.destroy();
+                    this.clipboardAction = null;
+                }
+            }
+        }], [{
+            key: 'isSupported',
+            value: function isSupported() {
+                var action = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : ['copy', 'cut'];
+
+                var actions = typeof action === 'string' ? [action] : action;
+                var support = !!document.queryCommandSupported;
+
+                actions.forEach(function (action) {
+                    support = support && !!document.queryCommandSupported(action);
+                });
+
+                return support;
+            }
+        }]);
+
+        return Clipboard;
+    }(_tinyEmitter2.default);
+
+    /**
+     * Helper function to retrieve attribute value.
+     * @param {String} suffix
+     * @param {Element} element
+     */
+    function getAttributeValue(suffix, element) {
+        var attribute = 'data-clipboard-' + suffix;
+
+        if (!element.hasAttribute(attribute)) {
+            return;
+        }
+
+        return element.getAttribute(attribute);
+    }
+
+    module.exports = Clipboard;
+});
+},{"./clipboard-action":1,"good-listener":6,"tiny-emitter":26}],3:[function(require,module,exports){
+var DOCUMENT_NODE_TYPE = 9;
+
+/**
+ * A polyfill for Element.matches()
+ */
+if (typeof Element !== 'undefined' && !Element.prototype.matches) {
+    var proto = Element.prototype;
+
+    proto.matches = proto.matchesSelector ||
+                    proto.mozMatchesSelector ||
+                    proto.msMatchesSelector ||
+                    proto.oMatchesSelector ||
+                    proto.webkitMatchesSelector;
+}
+
+/**
+ * Finds the closest parent that matches a selector.
+ *
+ * @param {Element} element
+ * @param {String} selector
+ * @return {Function}
+ */
+function closest (element, selector) {
+    while (element && element.nodeType !== DOCUMENT_NODE_TYPE) {
+        if (element.matches(selector)) return element;
+        element = element.parentNode;
+    }
+}
+
+module.exports = closest;
+
+},{}],4:[function(require,module,exports){
+var closest = require('./closest');
+
+/**
+ * Delegates event to a selector.
+ *
+ * @param {Element} element
+ * @param {String} selector
+ * @param {String} type
+ * @param {Function} callback
+ * @param {Boolean} useCapture
+ * @return {Object}
+ */
+function delegate(element, selector, type, callback, useCapture) {
+    var listenerFn = listener.apply(this, arguments);
+
+    element.addEventListener(type, listenerFn, useCapture);
+
+    return {
+        destroy: function() {
+            element.removeEventListener(type, listenerFn, useCapture);
+        }
+    }
+}
+
+/**
+ * Finds closest match and invokes callback.
+ *
+ * @param {Element} element
+ * @param {String} selector
+ * @param {String} type
+ * @param {Function} callback
+ * @return {Function}
+ */
+function listener(element, selector, type, callback) {
+    return function(e) {
+        e.delegateTarget = closest(e.target, selector);
+
+        if (e.delegateTarget) {
+            callback.call(element, e);
+        }
+    }
+}
+
+module.exports = delegate;
+
+},{"./closest":3}],5:[function(require,module,exports){
+/**
+ * Check if argument is a HTML element.
+ *
+ * @param {Object} value
+ * @return {Boolean}
+ */
+exports.node = function(value) {
+    return value !== undefined
+        && value instanceof HTMLElement
+        && value.nodeType === 1;
+};
+
+/**
+ * Check if argument is a list of HTML elements.
+ *
+ * @param {Object} value
+ * @return {Boolean}
+ */
+exports.nodeList = function(value) {
+    var type = Object.prototype.toString.call(value);
+
+    return value !== undefined
+        && (type === '[object NodeList]' || type === '[object HTMLCollection]')
+        && ('length' in value)
+        && (value.length === 0 || exports.node(value[0]));
+};
+
+/**
+ * Check if argument is a string.
+ *
+ * @param {Object} value
+ * @return {Boolean}
+ */
+exports.string = function(value) {
+    return typeof value === 'string'
+        || value instanceof String;
+};
+
+/**
+ * Check if argument is a function.
+ *
+ * @param {Object} value
+ * @return {Boolean}
+ */
+exports.fn = function(value) {
+    var type = Object.prototype.toString.call(value);
+
+    return type === '[object Function]';
+};
+
+},{}],6:[function(require,module,exports){
+var is = require('./is');
+var delegate = require('delegate');
+
+/**
+ * Validates all params and calls the right
+ * listener function based on its target type.
+ *
+ * @param {String|HTMLElement|HTMLCollection|NodeList} target
+ * @param {String} type
+ * @param {Function} callback
+ * @return {Object}
+ */
+function listen(target, type, callback) {
+    if (!target && !type && !callback) {
+        throw new Error('Missing required arguments');
+    }
+
+    if (!is.string(type)) {
+        throw new TypeError('Second argument must be a String');
+    }
+
+    if (!is.fn(callback)) {
+        throw new TypeError('Third argument must be a Function');
+    }
+
+    if (is.node(target)) {
+        return listenNode(target, type, callback);
+    }
+    else if (is.nodeList(target)) {
+        return listenNodeList(target, type, callback);
+    }
+    else if (is.string(target)) {
+        return listenSelector(target, type, callback);
+    }
+    else {
+        throw new TypeError('First argument must be a String, HTMLElement, HTMLCollection, or NodeList');
+    }
+}
+
+/**
+ * Adds an event listener to a HTML element
+ * and returns a remove listener function.
+ *
+ * @param {HTMLElement} node
+ * @param {String} type
+ * @param {Function} callback
+ * @return {Object}
+ */
+function listenNode(node, type, callback) {
+    node.addEventListener(type, callback);
+
+    return {
+        destroy: function() {
+            node.removeEventListener(type, callback);
+        }
+    }
+}
+
+/**
+ * Add an event listener to a list of HTML elements
+ * and returns a remove listener function.
+ *
+ * @param {NodeList|HTMLCollection} nodeList
+ * @param {String} type
+ * @param {Function} callback
+ * @return {Object}
+ */
+function listenNodeList(nodeList, type, callback) {
+    Array.prototype.forEach.call(nodeList, function(node) {
+        node.addEventListener(type, callback);
+    });
+
+    return {
+        destroy: function() {
+            Array.prototype.forEach.call(nodeList, function(node) {
+                node.removeEventListener(type, callback);
+            });
+        }
+    }
+}
+
+/**
+ * Add an event listener to a selector
+ * and returns a remove listener function.
+ *
+ * @param {String} selector
+ * @param {String} type
+ * @param {Function} callback
+ * @return {Object}
+ */
+function listenSelector(selector, type, callback) {
+    return delegate(document.body, selector, type, callback);
+}
+
+module.exports = listen;
+
+},{"./is":5,"delegate":4}],7:[function(require,module,exports){
 /*!
  * jQuery JavaScript Library v3.2.1
  * https://jquery.com/
@@ -10253,7 +10908,7 @@ if ( !noGlobal ) {
 return jQuery;
 } );
 
-},{}],2:[function(require,module,exports){
+},{}],8:[function(require,module,exports){
 
 var isArray = (typeof Array.isArray === 'function') ?
   // use native function
@@ -10295,7 +10950,7 @@ function clone(arg) {
 
 module.exports = clone;
 
-},{}],3:[function(require,module,exports){
+},{}],9:[function(require,module,exports){
 
 var Pipe = require('../pipe').Pipe;
 
@@ -10346,7 +11001,7 @@ Context.prototype.push = function(child, name) {
 
 exports.Context = Context;
 
-},{"../pipe":17}],4:[function(require,module,exports){
+},{"../pipe":23}],10:[function(require,module,exports){
 var Context = require('./context').Context;
 var defaultClone = require('../clone');
 
@@ -10374,7 +11029,7 @@ DiffContext.prototype.setResult = function(result) {
 
 exports.DiffContext = DiffContext;
 
-},{"../clone":2,"./context":3}],5:[function(require,module,exports){
+},{"../clone":8,"./context":9}],11:[function(require,module,exports){
 var Context = require('./context').Context;
 
 var PatchContext = function PatchContext(left, delta) {
@@ -10387,7 +11042,7 @@ PatchContext.prototype = new Context();
 
 exports.PatchContext = PatchContext;
 
-},{"./context":3}],6:[function(require,module,exports){
+},{"./context":9}],12:[function(require,module,exports){
 var Context = require('./context').Context;
 
 var ReverseContext = function ReverseContext(delta) {
@@ -10399,7 +11054,7 @@ ReverseContext.prototype = new Context();
 
 exports.ReverseContext = ReverseContext;
 
-},{"./context":3}],7:[function(require,module,exports){
+},{"./context":9}],13:[function(require,module,exports){
 // use as 2nd parameter for JSON.parse to revive Date instances
 module.exports = function dateReviver(key, value) {
   var parts;
@@ -10412,7 +11067,7 @@ module.exports = function dateReviver(key, value) {
   return value;
 };
 
-},{}],8:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
 var Processor = require('./processor').Processor;
 var Pipe = require('./pipe').Pipe;
 var DiffContext = require('./contexts/diff').DiffContext;
@@ -10481,11 +11136,11 @@ DiffPatcher.prototype.clone = function(value) {
 
 exports.DiffPatcher = DiffPatcher;
 
-},{"./clone":2,"./contexts/diff":4,"./contexts/patch":5,"./contexts/reverse":6,"./filters/arrays":10,"./filters/dates":11,"./filters/nested":13,"./filters/texts":14,"./filters/trivial":15,"./pipe":17,"./processor":18}],9:[function(require,module,exports){
+},{"./clone":8,"./contexts/diff":10,"./contexts/patch":11,"./contexts/reverse":12,"./filters/arrays":16,"./filters/dates":17,"./filters/nested":19,"./filters/texts":20,"./filters/trivial":21,"./pipe":23,"./processor":24}],15:[function(require,module,exports){
 
 exports.isBrowser = typeof window !== 'undefined';
 
-},{}],10:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 var DiffContext = require('../contexts/diff').DiffContext;
 var PatchContext = require('../contexts/patch').PatchContext;
 var ReverseContext = require('../contexts/reverse').ReverseContext;
@@ -10925,7 +11580,7 @@ exports.collectChildrenPatchFilter = collectChildrenPatchFilter;
 exports.reverseFilter = reverseFilter;
 exports.collectChildrenReverseFilter = collectChildrenReverseFilter;
 
-},{"../contexts/diff":4,"../contexts/patch":5,"../contexts/reverse":6,"./lcs":12}],11:[function(require,module,exports){
+},{"../contexts/diff":10,"../contexts/patch":11,"../contexts/reverse":12,"./lcs":18}],17:[function(require,module,exports){
 var diffFilter = function datesDiffFilter(context) {
   if (context.left instanceof Date) {
     if (context.right instanceof Date) {
@@ -10946,7 +11601,7 @@ diffFilter.filterName = 'dates';
 
 exports.diffFilter = diffFilter;
 
-},{}],12:[function(require,module,exports){
+},{}],18:[function(require,module,exports){
 /*
 
 LCS implementation that supports arrays or strings
@@ -11022,7 +11677,7 @@ var get = function(array1, array2, match, context) {
 
 exports.get = get;
 
-},{}],13:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
 var DiffContext = require('../contexts/diff').DiffContext;
 var PatchContext = require('../contexts/patch').PatchContext;
 var ReverseContext = require('../contexts/reverse').ReverseContext;
@@ -11166,7 +11821,7 @@ exports.collectChildrenPatchFilter = collectChildrenPatchFilter;
 exports.reverseFilter = reverseFilter;
 exports.collectChildrenReverseFilter = collectChildrenReverseFilter;
 
-},{"../contexts/diff":4,"../contexts/patch":5,"../contexts/reverse":6}],14:[function(require,module,exports){
+},{"../contexts/diff":10,"../contexts/patch":11,"../contexts/reverse":12}],20:[function(require,module,exports){
 /* global diff_match_patch */
 var TEXT_DIFF = 2;
 var DEFAULT_MIN_LENGTH = 60;
@@ -11304,7 +11959,7 @@ exports.diffFilter = diffFilter;
 exports.patchFilter = patchFilter;
 exports.reverseFilter = reverseFilter;
 
-},{}],15:[function(require,module,exports){
+},{}],21:[function(require,module,exports){
 var isArray = (typeof Array.isArray === 'function') ?
   // use native function
   Array.isArray :
@@ -11423,7 +12078,7 @@ exports.diffFilter = diffFilter;
 exports.patchFilter = patchFilter;
 exports.reverseFilter = reverseFilter;
 
-},{}],16:[function(require,module,exports){
+},{}],22:[function(require,module,exports){
 
 var environment = require('./environment');
 
@@ -11490,7 +12145,7 @@ if (environment.isBrowser) {
   exports.console = formatters.console;
 }
 
-},{"./date-reviver":7,"./diffpatcher":8,"./environment":9}],17:[function(require,module,exports){
+},{"./date-reviver":13,"./diffpatcher":14,"./environment":15}],23:[function(require,module,exports){
 var Pipe = function Pipe(name) {
   this.name = name;
   this.filters = [];
@@ -11604,7 +12259,7 @@ Pipe.prototype.shouldHaveResult = function(should) {
 
 exports.Pipe = Pipe;
 
-},{}],18:[function(require,module,exports){
+},{}],24:[function(require,module,exports){
 
 var Processor = function Processor(options){
   this.selfOptions = options || {};
@@ -11666,7 +12321,120 @@ Processor.prototype.process = function(input, pipe) {
 
 exports.Processor = Processor;
 
-},{}],19:[function(require,module,exports){
+},{}],25:[function(require,module,exports){
+function select(element) {
+    var selectedText;
+
+    if (element.nodeName === 'SELECT') {
+        element.focus();
+
+        selectedText = element.value;
+    }
+    else if (element.nodeName === 'INPUT' || element.nodeName === 'TEXTAREA') {
+        var isReadOnly = element.hasAttribute('readonly');
+
+        if (!isReadOnly) {
+            element.setAttribute('readonly', '');
+        }
+
+        element.select();
+        element.setSelectionRange(0, element.value.length);
+
+        if (!isReadOnly) {
+            element.removeAttribute('readonly');
+        }
+
+        selectedText = element.value;
+    }
+    else {
+        if (element.hasAttribute('contenteditable')) {
+            element.focus();
+        }
+
+        var selection = window.getSelection();
+        var range = document.createRange();
+
+        range.selectNodeContents(element);
+        selection.removeAllRanges();
+        selection.addRange(range);
+
+        selectedText = selection.toString();
+    }
+
+    return selectedText;
+}
+
+module.exports = select;
+
+},{}],26:[function(require,module,exports){
+function E () {
+  // Keep this empty so it's easier to inherit from
+  // (via https://github.com/lipsmack from https://github.com/scottcorgan/tiny-emitter/issues/3)
+}
+
+E.prototype = {
+  on: function (name, callback, ctx) {
+    var e = this.e || (this.e = {});
+
+    (e[name] || (e[name] = [])).push({
+      fn: callback,
+      ctx: ctx
+    });
+
+    return this;
+  },
+
+  once: function (name, callback, ctx) {
+    var self = this;
+    function listener () {
+      self.off(name, listener);
+      callback.apply(ctx, arguments);
+    };
+
+    listener._ = callback
+    return this.on(name, listener, ctx);
+  },
+
+  emit: function (name) {
+    var data = [].slice.call(arguments, 1);
+    var evtArr = ((this.e || (this.e = {}))[name] || []).slice();
+    var i = 0;
+    var len = evtArr.length;
+
+    for (i; i < len; i++) {
+      evtArr[i].fn.apply(evtArr[i].ctx, data);
+    }
+
+    return this;
+  },
+
+  off: function (name, callback) {
+    var e = this.e || (this.e = {});
+    var evts = e[name];
+    var liveEvents = [];
+
+    if (evts && callback) {
+      for (var i = 0, len = evts.length; i < len; i++) {
+        if (evts[i].fn !== callback && evts[i].fn._ !== callback)
+          liveEvents.push(evts[i]);
+      }
+    }
+
+    // Remove event from queue to prevent memory leak
+    // Suggested by https://github.com/lazd
+    // Ref: https://github.com/scottcorgan/tiny-emitter/commit/c6ebfaa9bc973b33d110a84a307742b7cf94c953#commitcomment-5024910
+
+    (liveEvents.length)
+      ? e[name] = liveEvents
+      : delete e[name];
+
+    return this;
+  }
+};
+
+module.exports = E;
+
+},{}],27:[function(require,module,exports){
 //     Underscore.js 1.8.3
 //     http://underscorejs.org
 //     (c) 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
@@ -13216,7 +13984,7 @@ exports.Processor = Processor;
   }
 }.call(this));
 
-},{}],20:[function(require,module,exports){
+},{}],28:[function(require,module,exports){
 var Sync = require('./helpers/sync');
 var NXLoader = require('./helpers/nxloader');
 var arrangement = require('./model/arrangement');
@@ -13253,7 +14021,7 @@ var windowUpdater = new WindowUpdater(masterControls);
 var sync = new Sync(windowUpdater, socket, arrangementId);
 
 
-},{"./helpers/nxloader":28,"./helpers/sync":31,"./mastercontrols":33,"./model/arrangement":34,"./windowupdater":35}],21:[function(require,module,exports){
+},{"./helpers/nxloader":36,"./helpers/sync":39,"./mastercontrols":41,"./model/arrangement":42,"./windowupdater":43}],29:[function(require,module,exports){
 /**
  * Utility function for deep object cloning
  *
@@ -13266,7 +14034,7 @@ function deepClone (object) {
 
 module.exports = deepClone;
 
-},{}],22:[function(require,module,exports){
+},{}],30:[function(require,module,exports){
 function guid() {
   return s4() + s4() + '-' + s4() + '-' + s4() + '-' +
     s4() + '-' + s4() + s4() + s4();
@@ -13280,7 +14048,7 @@ function s4() {
 
 module.exports = guid;
 
-},{}],23:[function(require,module,exports){
+},{}],31:[function(require,module,exports){
 var generateSequencerElement = require('./sequencer/GenerateSequencerElement');
 var generateSynthElement = require('./synth/GenerateSynthElement');
 var Sequencer = require('./sequencer/sequencer');
@@ -13321,6 +14089,7 @@ instrumentFactory.prototype.createInstrument = function (instrument, id) {
                     var settings    = elements.settings;
                     var trackId     = elements.id;
 
+
                     // Init new sequencer object with id
                     var seq = new Sequencer(trackId);
 
@@ -13355,6 +14124,7 @@ instrumentFactory.prototype.createInstrument = function (instrument, id) {
                     var settings    = elements.settings;
                     var trackId     = elements.id;
                     var keyboard    = elements.keyboard;
+                    var trackSelectedCheckbox = elements.trackSelectedCheckboxBtn;
 
                     // Init new sequencer object with id
                     var synth = new Synth(trackId);
@@ -13364,6 +14134,7 @@ instrumentFactory.prototype.createInstrument = function (instrument, id) {
                     synth.setSettingsClickHandler(settings);
                     synth.setMuteClickHandler(mute);
                     synth.setKeyboard(keyboard);
+                    synth.setTrackSelectedClickHandler(trackSelectedCheckbox);
 
                     // Create a return object containing sequencer instance
                     var instrumentContainer  = {};
@@ -13389,7 +14160,7 @@ instrumentFactory.prototype.createInstrument = function (instrument, id) {
 
 module.exports = instrumentFactory;
 
-},{"./sequencer/GenerateSequencerElement":24,"./sequencer/sequencer":25,"./synth/GenerateSynthElement":26,"./synth/synth":27}],24:[function(require,module,exports){
+},{"./sequencer/GenerateSequencerElement":32,"./sequencer/sequencer":33,"./synth/GenerateSynthElement":34,"./synth/synth":35}],32:[function(require,module,exports){
 var $ = require('jquery');
 var guid = require('../../../helpers/idgenerator');
 var samplesObject = require('../../../helpers/samplelist');
@@ -13596,7 +14367,7 @@ generateSequencerElement.generate = function (id, callback) {
 
 module.exports = generateSequencerElement;
 
-},{"../../../helpers/idgenerator":22,"../../../helpers/samplelist":30,"jquery":1}],25:[function(require,module,exports){
+},{"../../../helpers/idgenerator":30,"../../../helpers/samplelist":38,"jquery":7}],33:[function(require,module,exports){
 var Tone = require('tone');
 var proxify = require('../../../helpers/proxify');
 var deepClone = require('../../../helpers/deepclone');
@@ -13872,7 +14643,7 @@ function Sequencer (id) {
             }
         );
 
-        // Get the newly created waveform
+        // Get the newly created dial
         for(widget in nx.widgets) {
             if (nx.widgets.hasOwnProperty(widget)) {
                 if (widget == dialName) {
@@ -13906,7 +14677,7 @@ function Sequencer (id) {
 
             // Check if the property val is set
             if (prop == "value" && action == "set") {
-                // Set the new start, stop times and duration
+                // Set the new eq values
                 self.track.eqLowVal = newvalue;
                 self.eq3.low.value = newvalue;
             }
@@ -13918,7 +14689,7 @@ function Sequencer (id) {
 
             // Check if the property val is set
             if (prop == "value" && action == "set") {
-                // Set the new start, stop times and duration
+                // Set the new eq vals
                 self.track.eqMidVal = newvalue;
                 self.eq3.mid.value = newvalue;
             }
@@ -13930,7 +14701,7 @@ function Sequencer (id) {
 
             // Check if the property val is set
             if (prop == "value" && action == "set") {
-                // Set the new start, stop times and duration
+                // Set the new eq values
                 self.track.eqHighVal = newvalue;
                 self.eq3.high.value = newvalue;
             }
@@ -14243,8 +15014,6 @@ Sequencer.prototype.setTrackJSON = function (track) {
     this.eq3.mid.value = track.eqMidVal;
     this.eq3.high.value = track.eqHighVal;
 
-console.log('its been synced!');
-
     // Set the track json
     this.track = deepClone(track);
 
@@ -14301,7 +15070,7 @@ Sequencer.prototype.getId = function () {
 
 module.exports = Sequencer;
 
-},{"../../../helpers/deepclone":21,"../../../helpers/proxify":29,"../../../model/arrangement":34,"tone":36}],26:[function(require,module,exports){
+},{"../../../helpers/deepclone":29,"../../../helpers/proxify":37,"../../../model/arrangement":42,"tone":44}],34:[function(require,module,exports){
 var $ = require('jquery');
 var guid = require('../../../helpers/idgenerator');
 
@@ -14341,8 +15110,9 @@ generateSynthElement.generate = function (id, callback) {
         volume.setAttribute('type', 'range');
         volume.setAttribute('value', 0);
         volume.setAttribute('name', 'volume');
-        volume.setAttribute('min', -12);
-        volume.setAttribute('max', 12);
+        volume.setAttribute('min', 0);
+        volume.setAttribute('max', 0.5);
+        volume.setAttribute('step', 0.01);
 
         // Create settings button icon
         var settingsIcon = document.createElement("i");
@@ -14363,7 +15133,7 @@ generateSynthElement.generate = function (id, callback) {
 
         // Create settings popup
         var settingsPopup = document.createElement("div");
-        settingsPopup.className = "track-settings-popup light-grey-background-colour";
+        settingsPopup.className = "track-settings-popup-synth light-grey-background-colour";
         $(settingsPopup).hide();
 
         // Create contents of popup
@@ -14383,9 +15153,6 @@ generateSynthElement.generate = function (id, callback) {
         var settingsPopupConfirmBtn = document.createElement("button");
         settingsPopupConfirmBtn.innerHTML = "Confirm";
         settingsPopupConfirmBtn.className = "btn btn-default";
-        var settingsPopupCancelBtn = document.createElement("button");
-        settingsPopupCancelBtn.innerHTML = "Cancel";
-        settingsPopupCancelBtn.className = "btn btn-default";
 
         var settingsPopupCancelBtn = document.createElement("button");
         settingsPopupCancelBtn.innerHTML = "Cancel";
@@ -14393,7 +15160,7 @@ generateSynthElement.generate = function (id, callback) {
 
         var settingsPopupRecordBtn = document.createElement("button");
         settingsPopupRecordBtn.innerHTML = "Record";
-        settingsPopupRecordBtn.className = "btn btn-error";
+        settingsPopupRecordBtn.className = "btn btn-danger";
 
         var settingsPopupClearBtn = document.createElement("button");
         settingsPopupClearBtn.innerHTML = "Clear recording";
@@ -14401,12 +15168,168 @@ generateSynthElement.generate = function (id, callback) {
 
         // Create a container div removing/clearing track actions
         var trackRemoveActionsContainer = document.createElement("div");
-        trackRemoveActionsContainer.className = 'col-md-1 track-remove-actions-container';
+        trackRemoveActionsContainer.className = 'col-md-1 track-remove-actions-container-synth';
 
         // Create the remove track icon
         var removeTrackIcon = document.createElement("i");
         removeTrackIcon.className = 'delete-track fa fa-trash fa-3x';
         removeTrackIcon.setAttribute('track-id', id);
+
+        var trackSelectedCheckboxBtn = document.createElement("input");
+        trackSelectedCheckboxBtn.setAttribute("type", "checkbox");
+        trackSelectedCheckboxBtn.className = 'track-selected-checkbox-btn';
+
+        //Create and append select list for osc type
+        var oscTypeSelect = document.createElement("select");
+        oscTypeSelect.className = 'float-left';
+
+        // Create osc option type object
+        var oscTypesObj = {
+            'Sawtooth': 'sawtooth',
+            'Sinewave': 'sine',
+            'Triangle': 'triangle',
+            'Squarewave': 'square'
+        };
+
+        //Create and append the options
+        for (var oscType in oscTypesObj) {
+
+            // Check if property is available
+            if(oscTypesObj.hasOwnProperty(oscType)) {
+
+                // Create the option
+                var option = document.createElement("option");
+                option.value = oscTypesObj[oscType];
+                option.text  = oscType;
+
+                // Append it to the list
+                oscTypeSelect.appendChild(option);
+            }
+        };
+
+        // Clone the select
+        var osc1TypeSelect = oscTypeSelect.cloneNode(true);
+        var osc2TypeSelect = oscTypeSelect.cloneNode(true);
+
+        //Create and append select list for osc detune
+        var oscDetuneSelect = document.createElement("select");
+        oscDetuneSelect.className = 'float-left';
+
+        //Create and append the options
+        for (var i = -10; i <= 10; i++) {
+
+            // Create the option
+            var option = document.createElement("option");
+            option.value = i;
+            option.text  = i;
+
+            // Append it to the list
+            oscDetuneSelect.appendChild(option);
+        }
+
+        // Clone the select
+        var osc1DetuneSelect = oscDetuneSelect.cloneNode(true);
+        var osc2DetuneSelect = oscDetuneSelect.cloneNode(true);
+
+        // Build osc edit 1
+        var osc1EditContainerDiv = document.createElement('div');
+        osc1EditContainerDiv.className = 'osc-edit-container';
+
+        // Create Label
+        osc1EditTitleLabel = document.createElement('h5');
+        osc1EditTitleLabel.innerHTML = 'Oscillator 1:'
+
+        // The label type
+        osc1TypeLabel = document.createElement('h5');
+        osc1TypeLabel.innerHTML = 'Type: ';
+        osc1TypeLabel.className = 'float-left';
+
+        // The label detune
+        osc1DetuneLabel = document.createElement('h5');
+        osc1DetuneLabel.innerHTML = 'Detune: ';
+        osc1DetuneLabel.className = 'float-left';
+
+        // The label attack
+        oscAttackLabel = document.createElement('h5');
+        oscAttackLabel.innerHTML = 'Attack: ';
+
+        // The label release
+        oscReleaseLabel = document.createElement('h5');
+        oscReleaseLabel.innerHTML = 'Release: ';
+
+        // Create volume range for sequencer
+        var attack = document.createElement("input");
+        attack.className = 'volume-slider';
+        attack.setAttribute('type', 'range');
+        attack.setAttribute('value', 0);
+        attack.setAttribute('name', 'volume');
+        attack.setAttribute('min', 0);
+        attack.setAttribute('max', 4);
+        attack.setAttribute('step', 0.2);
+
+        // Create volume range for sequencer
+        var release = document.createElement("input");
+        release.className = 'volume-slider';
+        release.setAttribute('type', 'range');
+        release.setAttribute('value', 0);
+        release.setAttribute('name', 'volume');
+        release.setAttribute('min', 0);
+        release.setAttribute('max', 4);
+        release.setAttribute('step', 0.2);
+
+        // Clone the nodes for each osc
+        var osc1AttackLabel = oscAttackLabel.cloneNode(true);
+        var osc2AttackLabel = oscAttackLabel.cloneNode(true);
+        var osc1ReleaseLabel = oscReleaseLabel.cloneNode(true);
+        var osc2ReleaseLabel = oscReleaseLabel.cloneNode(true);
+        var osc1AttackSlider = attack.cloneNode(true);
+        var osc2AttackSlider = attack.cloneNode(true);
+        var osc1ReleaseSlider  = release.cloneNode(true);
+        var osc2ReleaseSlider  = release.cloneNode(true);
+
+        // Create osc 1
+        osc1EditContainerDiv.appendChild(osc1EditTitleLabel);
+        osc1EditContainerDiv.appendChild(osc1TypeLabel);
+        osc1EditContainerDiv.appendChild(osc1TypeSelect);
+        osc1EditContainerDiv.appendChild(osc1DetuneLabel);
+        osc1EditContainerDiv.appendChild(osc1DetuneSelect);
+        osc1EditContainerDiv.appendChild(osc1AttackLabel);
+        osc1EditContainerDiv.appendChild(osc1AttackSlider);
+        osc1EditContainerDiv.appendChild(osc1ReleaseLabel);
+        osc1EditContainerDiv.appendChild(osc1ReleaseSlider);
+
+        // Build osc edit 2
+        var osc2EditContainerDiv = document.createElement('div');
+        osc2EditContainerDiv.className = 'osc-edit-container';
+
+        // Create Label
+        osc2EditTitleLabel = document.createElement('h5');
+        osc2EditTitleLabel.innerHTML = 'Oscillator 2:'
+
+        // The label type
+        osc2TypeLabel = document.createElement('h5');
+        osc2TypeLabel.innerHTML = 'Type: ';
+        osc2TypeLabel.className = 'float-left';
+
+        // The label detune
+        osc2DetuneLabel = document.createElement('h5');
+        osc2DetuneLabel.innerHTML = 'Detune: ';
+        osc2DetuneLabel.className = 'float-left';
+
+        // Create osc 2
+        osc2EditContainerDiv.appendChild(osc2EditTitleLabel);
+        osc2EditContainerDiv.appendChild(osc2TypeLabel);
+        osc2EditContainerDiv.appendChild(osc2TypeSelect);
+        osc2EditContainerDiv.appendChild(osc2DetuneLabel);
+        osc2EditContainerDiv.appendChild(osc2DetuneSelect);
+        osc2EditContainerDiv.appendChild(osc2AttackLabel);
+        osc2EditContainerDiv.appendChild(osc2AttackSlider);
+        osc2EditContainerDiv.appendChild(osc2ReleaseLabel);
+        osc2EditContainerDiv.appendChild(osc2ReleaseSlider);
+
+        // Create wrapper for osc edits
+        var oscEditWrapper = document.createElement("div");
+        oscEditWrapper.className = 'osc-edit-wrapper';
 
         // Build the entire rack
         instrumentContainer.appendChild(sampleContainer);
@@ -14418,12 +15341,37 @@ generateSynthElement.generate = function (id, callback) {
         settingsPopupContainerDiv.appendChild(settingsPopupTitle);
         settingsPopupContainerDiv.appendChild(settingsPopupRow);
 
+        var osc1SettingsRow = settingsPopupRow.cloneNode(true);
+        osc1SettingsRow.innerHTML = "";
+        osc1SettingsRow.className = "osc-edit-row";
+        osc1SettingsRow.appendChild(osc1EditContainerDiv);
+
+        var osc2SettingsRow = settingsPopupRow.cloneNode(true);
+        osc2SettingsRow.innerHTML = "";
+        osc2SettingsRow.className = "osc-edit-row";
+        osc2SettingsRow.appendChild(osc2EditContainerDiv);
+
+
+        oscEditWrapper.appendChild(osc1SettingsRow);
+        oscEditWrapper.appendChild(osc2SettingsRow);
+
+        settingsPopupContainerDiv.appendChild(oscEditWrapper);
+
+        var waveformRow = settingsPopupRow.cloneNode(true);
+        waveformRow.innerHTML = "";
+        waveformRow.className = "waveform-row";
+        var waveformLabel = document.createElement("h5");
+        waveformLabel.innerHTML = "Waveform selector: (Waveform will appear once recorded)";
+        settingsPopupContainerDiv.appendChild(waveformRow);
+        waveformRow.appendChild(waveformLabel);
+
+        settingsPopupContainerDiv.appendChild(waveformRow);
+
         var recordingButtonRow = settingsPopupRow.cloneNode(true);
         recordingButtonRow.innerHTML = "";
         recordingButtonRow.appendChild(settingsPopupRecordBtn);
         recordingButtonRow.appendChild(settingsPopupClearBtn);
         settingsPopupContainerDiv.appendChild(recordingButtonRow);
-
 
         var buttonRow = settingsPopupRow.cloneNode(true);
         buttonRow.innerHTML = "";
@@ -14432,6 +15380,7 @@ generateSynthElement.generate = function (id, callback) {
         settingsPopupContainerDiv.appendChild(buttonRow);
 
         trackRemoveActionsContainer.appendChild(removeTrackIcon);
+        trackRemoveActionsContainer.appendChild(trackSelectedCheckboxBtn);
 
         sampleContainer.appendChild(volume);
         sampleContainer.appendChild(settingsIcon);
@@ -14470,6 +15419,16 @@ generateSynthElement.generate = function (id, callback) {
         settingsPopupElements.cancelBtn = $(settingsPopupCancelBtn);
         settingsPopupElements.icon  = $(settingsIcon);
         settingsPopupElements.popup = $(settingsPopup);
+        settingsPopupElements.osc1TypeSelect = $(osc1TypeSelect);
+        settingsPopupElements.osc2TypeSelect = $(osc2TypeSelect);
+        settingsPopupElements.osc1DetuneSelect = $(osc1DetuneSelect);
+        settingsPopupElements.osc2DetuneSelect = $(osc2DetuneSelect);
+        settingsPopupElements.osc1AttackSlider = $(osc1AttackSlider);
+        settingsPopupElements.osc2AttackSlider = $(osc2AttackSlider);
+        settingsPopupElements.osc1ReleaseSlider = $(osc1ReleaseSlider);
+        settingsPopupElements.osc2ReleaseSlider = $(osc2ReleaseSlider);
+        settingsPopupElements.waveformRow = waveformRow;
+
 
         // Set the element
         elements.volume   = $(volume);
@@ -14477,6 +15436,7 @@ generateSynthElement.generate = function (id, callback) {
         elements.id       = id;
         elements.settings = settingsPopupElements;
         elements.keyboard = keyboard;
+        elements.trackSelectedCheckboxBtn = $(trackSelectedCheckboxBtn);
 
         // Send the elements back
         callback(elements);
@@ -14485,7 +15445,7 @@ generateSynthElement.generate = function (id, callback) {
 
 module.exports = generateSynthElement;
 
-},{"../../../helpers/idgenerator":22,"jquery":1}],27:[function(require,module,exports){
+},{"../../../helpers/idgenerator":30,"jquery":7}],35:[function(require,module,exports){
 var Tone = require('tone');
 var deepClone = require('../../../helpers/deepclone');
 var arrangement = require('../../../model/arrangement');
@@ -14512,8 +15472,28 @@ function Synth (id) {
     // Initialse volume DOM element as false
     this.volumeDOM = false;
 
+    // Attack slider
+    this.osc1AttackSlider = false;
+    this.osc2AttackSlider = false;
+
+    // Release slider
+    this.osc1ReleaseSlider = false;
+    this.osc2ReleaseSlider = false;
+
     // The keyboard ui object
     this.keyboard = false;
+
+    // Playing
+    this.playing = false;
+
+    // Track selected flag
+    this.trackSelected = false;
+
+    // The recorded buffer waveform
+    this.waveform = false;
+
+    // The recorded buffer waveform
+    this.waveformRow = false;
 
     /**
      * Track struct
@@ -14530,17 +15510,72 @@ function Synth (id) {
         var track = {
             id: this.id,
             type: 'synth',
-            volume: 0
+            volume: 0,
+            audioBuffer: false,
+            bufferStarttime: 0,
+            bufferStoptime: 3,
+            bufferDuration: 3
         };
 
         return track;
     };
+
+    // Create osc one and two types
+    this.osc1Type = 'sawtooth';
+    this.osc2Type = 'triangle';
+
+    // Set detune values
+    this.osc1Detune = -10;
+    this.osc2Detune = 10;
+
+    // Create attack values and release
+    this.osc1Attack = 0;
+    this.osc2Attack = 0;
+    this.osc1Release = 0;
+    this.osc2Release = 0;
+
+    // Init gain nodes for osc
+    this.oscGain = null;
+    this.osc2Gain = null;
 
     // Init JSON struct of the track
     this.track = this.createTrackJSON();
 
     // Add the track to the arrangement
     arrangement.addTrack(deepClone(this.track));
+
+    // Ref to self
+    var self = this;
+
+    // Object to hold midi info
+    this.midi = false;
+
+    // Init Abuffer
+    this.audioBuffer = null;
+
+    // Init audio DOM holder
+    this.ai = null;
+
+    // Create audio context
+    this.context = new AudioContext();
+    this.oscillators = {};
+
+    // Init master volume fo the synth
+    this.masterVolume = this.context.createGain();
+    this.masterVolume.connect(this.context.destination);
+
+    // Init chunks array to hold data to create blob
+    this.chunks = [];
+
+    // Create source from audio context to hold AudioBuffer
+    this.source = this.context.createBufferSource();
+
+    // Create recording destination
+    this.recordDestination = this.context.createMediaStreamDestination();
+    this.mediaRecorder = new MediaRecorder(this.recordDestination.stream);
+
+    // init audiobuffer
+    this.audioBuffer = this.context.createBuffer(2, 22050, 44100);
 
     /**
      * Push track changes to the arrangement
@@ -14552,31 +15587,79 @@ function Synth (id) {
 
     };
 
-    var self = this;
-
-    // Object to hold midi info
-    this.midi = false;
-
-    // Create audio context
-    this.context = new AudioContext();
-    this.oscillators = {};
-
-    this.chunks = [];
-
-    this.recordDestination = this.context.createMediaStreamDestination();
-    this.mediaRecorder = new MediaRecorder(this.recordDestination.stream);
-
+    /**
+     * When media recorder receives data, push it to chunks array
+     *
+     */
     this.mediaRecorder.ondataavailable = function(evt) {
         // push each chunk (blobs) in an array
         self.chunks.push(evt.data);
     };
 
+    // Init new file reader for converting blob
+    this.fileReader = new FileReader();
+
+    // Loading for filereader
+    this.fileReader.onloadend = function () {
+
+        // Create audio buffer
+        self.createAudioBuffer(self.fileReader.result);
+
+        // reset the chunks
+        self.chunks = [];
+    };
+
+    /**
+     * When media recorder stops recording, create blob for audio
+     * and convert that into a buffer for the source
+     *
+     */
     this.mediaRecorder.onstop = function(evt) {
-        // Make blob out of our blobs, and open it.
-        var blob = new Blob(self.chunks, { 'type' : 'audio/ogg; codecs=opus' });
-        var ai = document.createElement("audio");
-        ai.src = URL.createObjectURL(blob);
-        document.getElementById(self.id).appendChild(ai);
+
+        // Make blob out of our blobs, and open it
+        var blob = new Blob(self.chunks, {'type' : 'audio/ogg; codecs=opus'});
+
+        // Read the blob into array buffer
+        self.fileReader.readAsArrayBuffer(blob);
+
+        // Create doc element
+        self.ai = document.createElement("audio");
+        self.ai.src = URL.createObjectURL(blob);
+
+        //document.getElementById(self.id).appendChild(self.ai);
+    };
+
+    /**
+     * Create audio buffer from buffer
+     *
+     * @param {ArrayBuffer} arrayBuffer  The array buffer converted from the blob
+     */
+    this.createAudioBuffer = function (arrayBuffer) {
+
+        // Decode the array buffer and covert to AudioBuffer
+        this.context.decodeAudioData(arrayBuffer).then(function(decodedData) {
+
+            // Set audio buffer
+            self.audioBuffer = decodedData;
+
+            // Reset the audio buffer source
+            self.resetAudioBufferSource();
+
+            // Render the waveform
+            self.renderWaveform(self.waveformRow);
+
+            // Add the watcher
+            self.addWaveformWatcher();
+
+            // Check if playing
+            if (self.playing) {
+                // Start the audio again
+                self.playing = false;
+                self.start();
+            }
+
+        });
+
     };
 
     /**
@@ -14586,10 +15669,14 @@ function Synth (id) {
      */
     this.onMIDIMessage = function (message) {
 
+        // Check if track is selected to play
+        if (!self.trackSelected) {
+            // Not selected, don't trigger notes
+            return this;
+        }
+
         // This gives us our [command/channel, note, velocity] data
         var data = message.data;
-
-console.log('MIDI data', data); // MIDI data [144, 63, 73]
 
         // Extract the info from the data
         var cmd = data[0] >> 4;
@@ -14739,14 +15826,99 @@ console.log('MIDI Access Object', midiAccess);
      * Note is being pressed
      */
     this.noteOn = function (frequency, velocity, note){
-        // call trigger
-        //player(midiNote, velocity);
-        self.oscillators[frequency] = self.context.createOscillator();
-        self.oscillators[frequency].frequency.value = frequency;
-        self.oscillators[frequency].connect(self.context.destination);
-        self.oscillators[frequency].connect(self.recordDestination);
-        self.oscillators[frequency].start(self.context.currentTime);
 
+        // Get current time audio context time
+        var now = this.context.currentTime;
+
+        // Get the attack values
+        var osc1AttackVal = now + this.osc1Attack;
+        var osc2AttackVal = now + this.osc2Attack;
+
+        // Create the oscilators
+        var osc = this.context.createOscillator(),
+            osc2 = this.context.createOscillator();
+
+        this.oscGain = this.context.createGain(),
+        this.osc2Gain = this.context.createGain();
+
+        this.oscGain.gain.value = 0.0;
+        this.osc2Gain.gain.value = 0.0;
+
+        // Set the frequency
+        osc.frequency.value = frequency;
+        osc2.frequency.value = frequency;
+
+        // Set the osc type
+        osc.type = this.osc1Type;
+        osc2.type = this.osc2Type;
+
+        // Set detune values
+        osc.detune.value = this.osc1Detune;
+        osc2.detune.value = this.osc2Detune;
+
+        // Connect them to the master volume gain node
+        osc.connect(this.oscGain);
+        osc2.connect(this.osc2Gain);
+
+        // Connect individual gain nodes to master gain
+        this.oscGain.connect(this.masterVolume);
+        this.osc2Gain.connect(this.masterVolume);
+
+        // Connect the out of context
+        this.masterVolume.connect(this.context.destination);
+
+        // Connect the recorder
+        this.masterVolume.connect(this.recordDestination);
+
+        // Set the frequencies
+        this.oscillators[frequency] = [osc, osc2];
+
+        // Set ramp up for attack
+        this.oscGain.gain.cancelScheduledValues(now);
+        this.oscGain.gain.setValueAtTime(this.oscGain.gain.value, now);
+        this.oscGain.gain.linearRampToValueAtTime(1 , osc1AttackVal);
+
+        // Set ramp up for attack
+        this.osc2Gain.gain.cancelScheduledValues(now);
+        this.osc2Gain.gain.setValueAtTime(this.osc2Gain.gain.value, now);
+        this.osc2Gain.gain.linearRampToValueAtTime(1 , osc2AttackVal);
+
+        // Start the context
+        osc.start(this.context.currentTime);
+        osc2.start(this.context.currentTime);
+
+        // Display the key on the keyboard canvas
+        var key = self.midiNoteToKeyboardIndex(note);
+        self.keyboard.toggle(self.keyboard.keys[key]);
+
+    }
+    /**
+     * Note is being released
+     */
+    this.noteOff = function (frequency, velocity, note){
+
+        var now = this.context.currentTime;
+
+        // Get the release values
+        var osc1ReleaseVal = now + this.osc1Release;
+        var osc2ReleaseVal = now + this.osc2Release;
+
+        // Cancel scheduled values
+        this.oscGain.gain.cancelScheduledValues(now);
+        this.osc2Gain.gain.cancelScheduledValues(now);
+
+        // Set the value
+        this.oscGain.gain.setValueAtTime(this.oscGain.gain.value, now);
+        this.osc2Gain.gain.setValueAtTime(this.osc2Gain.gain.value, now);
+
+        // Release the note
+        this.oscGain.gain.linearRampToValueAtTime(0.0, osc1ReleaseVal);
+        this.osc2Gain.gain.linearRampToValueAtTime(0.0, osc2ReleaseVal);
+
+        this.oscillators[frequency][0].stop(osc1ReleaseVal);
+        this.oscillators[frequency][1].stop(osc2ReleaseVal);
+
+        // Turn off display on keyboard
         var key = self.midiNoteToKeyboardIndex(note);
         self.keyboard.toggle(self.keyboard.keys[key]);
 
@@ -14763,39 +15935,54 @@ console.log('MIDI Access Object', midiAccess);
         return note - 48;
     };
 
-    /**
-     * Note is being released
-     */
-    this.noteOff = function (frequency, velocity, note){
-        // call release
-        //player(midiNote, velocity);
-        self.oscillators[frequency].stop(self.context.currentTime);
-        self.oscillators[frequency].stop(self.recordDestination.currentTime);
-        self.oscillators[frequency].disconnect();
-
-        var key = self.midiNoteToKeyboardIndex(note);
-        self.keyboard.toggle(self.keyboard.keys[key]);
-
-    }
 
     /**
      * Record midi input
      */
     this.startRecordMidi = function () {
-       this.mediaRecorder.start();
+        this.mediaRecorder.start();
     };
 
     /**
      * Record midi input
      */
     this.stopRecordMidi = function () {
-       this.mediaRecorder.stop();
+
+        // Stop recording
+        this.mediaRecorder.stop();
+
     };
 
     /**
      * Clear recording
      */
     this.clearRecording = function () {
+
+        // Check if playing
+        if (this.playing) {
+            // Playing but maintain state
+            this.stop();
+            this.playing = true;
+        }
+
+        // Init empty audio buffer
+        this.audioBuffer = this.context.createBuffer(2, 22050, 44100);
+
+        // set the audio source node
+        this.resetAudioBufferSource();
+
+        // Re-render the waveform
+        this.renderWaveform(this.waveformRow);
+
+        // Check if playing
+        if (this.playing) {
+            // Playing but maintain state
+            this.playing = false;
+            this.start();
+        }
+
+        // Implement fluent interface
+        return this;
     };
 
     // Check if MIDI is available
@@ -14807,7 +15994,103 @@ console.log('MIDI Access Object', midiAccess);
         alert("No MIDI support in your browser.");
     }
 
+    /**
+     * Re-/Renders the waveform in the popup
+     *
+     * @param  {DOM}       waveformRow  The html dom to be added to
+     * @return {Synth}                  Implement fluent interface
+     */
+    this.renderWaveform = function (waveformRow) {
 
+        // Check if one has been created
+        if (this.waveform != false) {
+            // One already present, destroy it
+            this.waveform.destroy();
+        }
+
+        // Create unique name for the waveform
+        var waveformName = "waveform-" + self.id;
+
+        // Add the waveform to widgets
+        nx.add(
+            "waveform",
+            {
+                w: 825,
+                h: 160,
+                name: waveformName,
+                parent: waveformRow
+            }
+        );
+
+        // Get the newly created waveform
+        for(widget in nx.widgets) {
+            if (nx.widgets.hasOwnProperty(widget)) {
+                if (widget == waveformName) {
+                    this.waveform = nx.widgets[widget];
+                    break;
+                }
+            }
+        }
+
+        // Set the parameters for the buffer
+        this.waveform.setBuffer(this.audioBuffer);
+        this.waveform.colors.fill = "#ffffff";
+        this.waveform.definition = 1;
+        this.waveform.select((this.track.bufferStarttime * 1000), (this.track.bufferStoptime * 1000));
+        this.waveform.init();
+
+        // implement fluent interface
+        return this;
+
+    };
+
+    /**
+     * Add a observer to the val object inside the waveform
+     *
+     * @return {Synth}  Implment fluent interface
+     */
+    this.addWaveformWatcher = function () {
+
+        // Add watcher
+        WatchJS.watch(self.waveform, "val", function (prop, action, newvalue) {
+
+            // Check if the property val is set and only set if not playing
+            if (prop == "val" && action == "set") {
+
+                // Set the new start, stop times and duration
+                self.track.bufferStarttime = (newvalue.starttime / 1000);
+                self.track.bufferStoptime = (newvalue.stoptime / 1000);
+                self.track.bufferDuration = ((newvalue.stoptime - newvalue.starttime) / 1000);
+
+                // Edit the loop start n stop time
+                self.source.loopEnd = self.track.bufferStoptime;
+                self.source.loopStart = self.track.bufferStarttime;
+
+            }
+
+        });
+
+        // Implement fluent interface
+        return this;
+
+    };
+
+    /**
+     * Reset the audio buffer source with buffer
+     * @return {Synth} Implement fluent interface
+     */
+    this.resetAudioBufferSource = function () {
+
+        // Recreate the source buffer
+        this.source = this.context.createBufferSource();
+        this.source.buffer = this.audioBuffer;
+        this.source.connect(this.context.destination);
+        this.source.loop = true;
+
+        return this;
+    };
+
+    // Implement fluent interface
     return this;
 }
 
@@ -14815,7 +16098,25 @@ console.log('MIDI Access Object', midiAccess);
  * Start the loop synth
  */
 Synth.prototype.start = function () {
-    // Start the recorded audio buffer
+
+    // Check if playing already
+    if (this.playing) {
+        return this;
+    }
+
+    // Set buffer loop stop and start time
+    this.source.loopEnd = this.track.bufferStoptime;
+    this.source.loopStart = this.track.bufferStarttime;
+
+    // Not playing, start the buffer now, with offset of starttime
+    this.source.start(
+        this.context.currentTime,
+        this.track.bufferStarttime
+    );
+
+    // Set playing to true
+    this.playing = true;
+
     // Start the drawing syncing on the keyboard
 };
 
@@ -14823,7 +16124,22 @@ Synth.prototype.start = function () {
  * Stop the loop synth
  */
 Synth.prototype.stop = function () {
-    // stop the recorded audio buffer
+
+    // Check if not playing
+    if (!this.playing) {
+        return this;
+    }
+
+    // Audio is playing, stop it
+    this.source.stop();
+
+    // Set flag
+    this.playing = false;
+
+    // Recreate buffer source node
+    this.resetAudioBufferSource();
+
+    // Stop the keyboard animation
 };
 
 /**
@@ -14843,6 +16159,13 @@ Synth.prototype.setSettingsClickHandler = function (settings) {
     // Flag for recording click
     var clicked = false;
 
+    // Assign the dom elements
+    this.osc1AttackSlider = settings.osc1AttackSlider;
+    this.osc2AttackSlider = settings.osc2AttackSlider;
+    this.osc1ReleaseSlider = settings.osc1ReleaseSlider;
+    this.osc2ReleaseSlider = settings.osc2ReleaseSlider;
+    this.waveformRow = settings.waveformRow;
+
     // Add the spinning animation to the settings icon on hover
     settings.icon.hover(
         function() {
@@ -14860,6 +16183,19 @@ Synth.prototype.setSettingsClickHandler = function (settings) {
 
         // Toggle the popup
         settings.popup.toggle(400, function () {
+
+            // Set the drop downs
+            settings.osc1TypeSelect.val(self.osc1Type);
+            settings.osc2TypeSelect.val(self.osc2Type);
+            settings.osc1DetuneSelect.val(self.osc1Detune);
+            settings.osc2DetuneSelect.val(self.osc2Detune);
+
+            // Render the waveform
+            self.renderWaveform(settings.waveformRow);
+
+            // Add the watcher
+            self.addWaveformWatcher();
+
         });
 
     });
@@ -14877,25 +16213,48 @@ Synth.prototype.setSettingsClickHandler = function (settings) {
     // On click for record
     settings.recordBtn.on('click', function (event) {
 
+        // Check if track is selected
+        if (!self.trackSelected) {
+            alert('Please select the track before recording! The selector box is next to the trash can');
+            return;
+        }
+
         // Check if clicked
         if (!clicked) {
             // Not clicked, record midi
             self.startRecordMidi();
             event.target.innerHTML = "Stop recording";
             clicked = true;
+
+            // Disable buttons
+            settings.clearBtn.prop('disabled', true);
+            settings.cancelBtn.prop('disabled', true);
+            settings.confirmBtn.prop('disabled', true);
+
         } else {
             // Is clicked, stop recording
             self.stopRecordMidi();
+            clicked = false;
+
+            // Enable/disable buttons
             event.target.disabled = true;
+            settings.clearBtn.prop('disabled', false);
+            settings.cancelBtn.prop('disabled', false);
+            settings.confirmBtn.prop('disabled', false);
+
         }
 
     });
 
-
     // On click for clear recording
     settings.clearBtn.on('click', function (event) {
 
+        // Clear the recording
         self.clearRecording();
+
+        // Reset the button
+        settings.recordBtn.html('Record');
+        settings.recordBtn.prop('disabled', false);
 
     });
 
@@ -14913,6 +16272,54 @@ Synth.prototype.setSettingsClickHandler = function (settings) {
         // Close the popup
         settings.popup.toggle(400);
 
+    });
+
+    // Select list handler for osc1 type
+    settings.osc1TypeSelect.change(function (event) {
+        // Get the new type and set it to class variable
+        self.osc1Type = settings.osc1TypeSelect.val();
+    });
+
+    // Select list handler for osc2 type
+    settings.osc2TypeSelect.change(function (event) {
+        // Get the new type and set it to class variable
+        self.osc2Type = settings.osc2TypeSelect.val();
+    });
+
+    // Select list handler for osc1 type
+    settings.osc1DetuneSelect.change(function (event) {
+        // Get the new type and set it to class variable
+        self.osc1Detune = parseInt(settings.osc1DetuneSelect.val());
+    });
+
+    // Select list handler for osc2 type
+    settings.osc2DetuneSelect.change(function (event) {
+        // Get the new type and set it to class variable
+        self.osc2Detune = parseInt(settings.osc2DetuneSelect.val());
+    });
+
+    // On input for osc1 attack slider
+    this.osc1AttackSlider.on('input', function (event) {
+        // Set the attack value
+        self.osc1Attack = parseFloat(event.target.value);
+    });
+
+    // On input for osc2 attack slider
+    this.osc2AttackSlider.on('input', function (event) {
+        // Set the attack value
+        self.osc2Attack = parseFloat(event.target.value);
+    });
+
+    // On input for osc2 release slider
+    this.osc1ReleaseSlider.on('input', function (event) {
+        // Set the attack value
+        self.osc1Release = parseFloat(event.target.value);
+    });
+
+    // On input for osc2 release slider
+    this.osc2ReleaseSlider.on('input', function (event) {
+        // Set the attack value
+        self.osc2Release = parseFloat(event.target.value);
     });
 
 };
@@ -14961,10 +16368,13 @@ Synth.prototype.setVolume = function (volume) {
     this.volumeDOM.on('input', function(event) {
 
         // Get the volume value in decibles
-        var db = parseInt(event.target.value);
+        var db = parseFloat(event.target.value);
 
         // Set the track volume
         self.track.volume = db;
+
+        // Set the master volume
+        self.masterVolume.gain.value = db;
 
         // Push changes of the track to the arrangement
         self.pushChanges();
@@ -14990,6 +16400,9 @@ Synth.prototype.setTrackJSON = function (track) {
 
         // Set the slider value
         this.volumeDOM.val(track.volume);
+
+        // Set the master volume
+        this.masterVolume.gain.value = track.volume;
 
     }
 
@@ -15028,9 +16441,28 @@ Synth.prototype.setKeyboard = function (keyboard) {
     this.keyboard = keyboard;
 };
 
+/**
+ * Track selected checkbox btn handler
+ *
+ * @param {object} trackSelectedCheckbox  The JQuery Checkbox item for this track
+ */
+Synth.prototype.setTrackSelectedClickHandler= function (trackSelectedCheckbox) {
+
+    // Ref to self
+    var self = this;
+
+    // On checkbox change
+    trackSelectedCheckbox.change(function(){
+
+        // If checked, set track selected to true
+        self.trackSelected = this.checked ? true : false;
+
+    });
+};
+
 module.exports = Synth;
 
-},{"../../../helpers/deepclone":21,"../../../helpers/trigger":32,"../../../model/arrangement":34,"tone":36}],28:[function(require,module,exports){
+},{"../../../helpers/deepclone":29,"../../../helpers/trigger":40,"../../../model/arrangement":42,"tone":44}],36:[function(require,module,exports){
 var nxloader = function () {
 };
 
@@ -15047,7 +16479,7 @@ nxloader.prototype.load = function () {
 
 module.exports = nxloader;
 
-},{}],29:[function(require,module,exports){
+},{}],37:[function(require,module,exports){
 /**
  * Create proxy object for as an observer
  *
@@ -15080,7 +16512,7 @@ function proxify(object, change, deepProxy) {
 
 module.exports = proxify;
 
-},{}],30:[function(require,module,exports){
+},{}],38:[function(require,module,exports){
 module.exports = {
     "727-CABASA":"727-CABASA.WAV",
     "727-HI-BONGO":"727-HI-BONGO.WAV",
@@ -15478,7 +16910,7 @@ module.exports = {
     "YAHAMA-AN200-40":"YAHAMA-AN200-40.wav"
 };
 
-},{}],31:[function(require,module,exports){
+},{}],39:[function(require,module,exports){
 var arrangement = require('../model/arrangement');
 var jsondiffpatch = require('jsondiffpatch');
 var WindowUpdater = require('../windowupdater');
@@ -15821,7 +17253,7 @@ sync.prototype.addChange = function (arrangement) {
 
 module.exports = sync;
 
-},{"../helpers/deepclone":21,"../model/arrangement":34,"../windowupdater":35,"jsondiffpatch":16,"underscore":19}],32:[function(require,module,exports){
+},{"../helpers/deepclone":29,"../model/arrangement":42,"../windowupdater":43,"jsondiffpatch":22,"underscore":27}],40:[function(require,module,exports){
 // Require tone
 var Tone = require('tone');
 
@@ -15839,7 +17271,9 @@ var trigger = function(instrument, note, duration) {
 
 module.exports = trigger;
 
-},{"tone":36}],33:[function(require,module,exports){
+},{"tone":44}],41:[function(require,module,exports){
+var Clipboard = require('clipboard');
+
 var $ = require('jquery');
 var Tone = require('tone');
 var InstrumentFactory = require('./helpers/instruments/InstrumentFactory');
@@ -15872,6 +17306,29 @@ var MasterControls = function (arrangement) {
 
     // Create instance of instrument factory
     this.instrumentFactory = new InstrumentFactory();
+
+    // Init share button on click
+    this.shareBtn = new Clipboard('#shareUrl');
+
+    // On copy success
+    this.shareBtn.on('success', function (e) {
+
+        // Change the text
+        $('#shareUrl').html('Copied to clipboard!');
+
+        // Set text to change back after timeout
+        setTimeout(function () {
+
+            // Change text back
+            $('#shareUrl').html('Share the URL ');
+
+            // Recreate icon
+            var shareIcon = document.createElement("i");
+            shareIcon.className = "fa fa-share-square-o";
+            $('#shareUrl').append(shareIcon);
+
+        }, 4000);
+    });
 
     /**
      * Add event listener for the bpm slider
@@ -16086,7 +17543,7 @@ MasterControls.prototype.updateBpm = function (bpm) {
 
 module.exports = MasterControls;
 
-},{"./helpers/instruments/InstrumentFactory":23,"jquery":1,"tone":36}],34:[function(require,module,exports){
+},{"./helpers/instruments/InstrumentFactory":31,"clipboard":2,"jquery":7,"tone":44}],42:[function(require,module,exports){
 var deepClone = require('../helpers/deepclone');
 
 /**
@@ -16199,7 +17656,7 @@ module.exports = {
     }
 };
 
-},{"../helpers/deepclone":21}],35:[function(require,module,exports){
+},{"../helpers/deepclone":29}],43:[function(require,module,exports){
 var $ = require('jquery');
 var deepClone = require('./helpers/deepclone');
 var _ = require('underscore')._;
@@ -16471,7 +17928,7 @@ WindowUpdater.prototype.initialise = function (arrangement) {
 
 module.exports = WindowUpdater;
 
-},{"./helpers/deepclone":21,"./helpers/instruments/InstrumentFactory":23,"jquery":1,"jsondiffpatch":16,"underscore":19}],36:[function(require,module,exports){
+},{"./helpers/deepclone":29,"./helpers/instruments/InstrumentFactory":31,"jquery":7,"jsondiffpatch":22,"underscore":27}],44:[function(require,module,exports){
 (function(root, factory){
 
 	//UMD
@@ -38686,4 +40143,4 @@ module.exports = WindowUpdater;
 	
 	return Tone;
 }));
-},{}]},{},[20]);
+},{}]},{},[28]);

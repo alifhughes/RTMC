@@ -1,3 +1,5 @@
+var Clipboard = require('clipboard');
+
 var $ = require('jquery');
 var Tone = require('tone');
 var InstrumentFactory = require('./helpers/instruments/InstrumentFactory');
@@ -30,6 +32,29 @@ var MasterControls = function (arrangement) {
 
     // Create instance of instrument factory
     this.instrumentFactory = new InstrumentFactory();
+
+    // Init share button on click
+    this.shareBtn = new Clipboard('#shareUrl');
+
+    // On copy success
+    this.shareBtn.on('success', function (e) {
+
+        // Change the text
+        $('#shareUrl').html('Copied to clipboard!');
+
+        // Set text to change back after timeout
+        setTimeout(function () {
+
+            // Change text back
+            $('#shareUrl').html('Share the URL ');
+
+            // Recreate icon
+            var shareIcon = document.createElement("i");
+            shareIcon.className = "fa fa-share-square-o";
+            $('#shareUrl').append(shareIcon);
+
+        }, 4000);
+    });
 
     /**
      * Add event listener for the bpm slider

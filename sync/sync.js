@@ -69,9 +69,13 @@ var Synchronise = function(socketIO) {
                 edits: []
             };
 
+            // Get the no of users on the doc
+            var noOfUsers = doc.registeredSockets.length;
+
             // Send the base doc with version number
             send({
                 doc: baseDoc,
+                userCount: noOfUsers,
                 version: 0
             });
 
@@ -119,7 +123,7 @@ var Synchronise = function(socketIO) {
      * @returns {object}    The copied object
      */
     var deepCopy = function(obj){
-      return JSON.parse(JSON.stringify(obj));
+        return JSON.parse(JSON.stringify(obj))
     };
 
     /**
@@ -235,8 +239,12 @@ var Synchronise = function(socketIO) {
         // apply the patch to the server shadow
         jsondiffpatch.patch(clientDoc.shadow.doc, diff);
 
+        // Get the user count
+        var noOfUsers = doc.registeredSockets.length;
+
         send({
             localVersion: clientDoc.shadow.localVersion,
+            userCount: noOfUsers,
             serverVersion: basedOnServerVersion,
             edits: clientDoc.edits
         });
@@ -263,7 +271,7 @@ var Synchronise = function(socketIO) {
         // Find the the arrangement and update it with copy passed in
         Arrangement.findByIdAndUpdate(
             doc._id,
-            { $set: deepCopy(doc) },
+            { $set: doc },
             function (err, result) {
                 // Check for error
                 if (err) {

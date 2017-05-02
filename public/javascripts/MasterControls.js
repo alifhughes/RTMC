@@ -1,5 +1,4 @@
 var Clipboard = require('clipboard');
-
 var $ = require('jquery');
 var Tone = require('tone');
 var InstrumentFactory = require('./helpers/instruments/InstrumentFactory');

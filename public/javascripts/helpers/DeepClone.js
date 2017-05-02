@@ -1,11 +1,11 @@
 /**
  * Utility function for deep object cloning
  *
- * @param   {object} obj  Object to be cloned
+ * @param   {object} object  Object to be cloned
  * @returns {object}      The deep-cloned object
  */
-function deepClone (object) {
-    return JSON.parse(JSON.stringify(object));
+function deepClone (obj) {
+    return JSON.parse(JSON.stringify(obj));
 };
 
 module.exports = deepClone;

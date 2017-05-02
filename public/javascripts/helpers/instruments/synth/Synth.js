@@ -32,6 +32,14 @@ function Synth (id) {
     this.osc1ReleaseSlider = false;
     this.osc2ReleaseSlider = false;
 
+    // Type select doms
+    this.osc1TypeSelect = false;
+    this.osc2TypeSelect = false;
+
+    // Detune select Doms
+    this.osc1DetuneSelect = false;
+    this.osc2DetuneSelect = false;
+
     // The keyboard ui object
     this.keyboard = false;
 
@@ -46,31 +54,6 @@ function Synth (id) {
 
     // The recorded buffer waveform
     this.waveformRow = false;
-
-    /**
-     * Track struct
-     * {
-     *    id: 'id',
-     *    type: 'synth',
-     *    volume: 60,
-     *    pattern: this.steps.matrix
-     * }
-     */
-    this.createTrackJSON = function () {
-
-        // JSON object container meta data of track
-        var track = {
-            id: this.id,
-            type: 'synth',
-            volume: 0,
-            audioBuffer: false,
-            bufferStarttime: 0,
-            bufferStoptime: 3,
-            bufferDuration: 3
-        };
-
-        return track;
-    };
 
     // Create osc one and two types
     this.osc1Type = 'sawtooth';
@@ -90,12 +73,6 @@ function Synth (id) {
     this.oscGain = null;
     this.osc2Gain = null;
 
-    // Init JSON struct of the track
-    this.track = this.createTrackJSON();
-
-    // Add the track to the arrangement
-    arrangement.addTrack(deepClone(this.track));
-
     // Ref to self
     var self = this;
 
@@ -112,8 +89,9 @@ function Synth (id) {
     this.context = new AudioContext();
     this.oscillators = {};
 
-    // Init master volume fo the synth
+    // Init master volume for the synth
     this.masterVolume = this.context.createGain();
+    this.masterVolume.gain.value = 0.2;
     this.masterVolume.connect(this.context.destination);
 
     // Init chunks array to hold data to create blob
@@ -129,29 +107,78 @@ function Synth (id) {
     // init audiobuffer
     this.audioBuffer = this.context.createBuffer(2, 22050, 44100);
 
+    // Init new file reader for converting blob
+    this.fileReader = new FileReader();
+
+    // Init empty array buffer
+    this.arrayBuffer = new ArrayBuffer(8);
+
+    /**
+     * Track struct
+     * {
+     *    id: 'id',
+     *    type: 'synth',
+     *    volume: 60,
+     *    pattern: this.steps.matrix
+     * }
+     */
+    this.createTrackJSON = function () {
+
+        // JSON object container meta data of track
+        var track = {
+            id: this.id,
+            type: 'synth',
+            volume: 0,
+            audioBufferChannel0Data: this.audioBuffer.getChannelData(0),
+            audioBufferChannel1Data: this.audioBuffer.getChannelData(1),
+            audioBufferLength: this.audioBuffer.length,
+            bufferStarttime: 0,
+            bufferStoptime: 3,
+            bufferDuration: 3,
+            osc1Type: 'sawtooth',
+            osc2Type: 'triangle',
+            osc1Detune: -10,
+            osc2Detune: 10,
+            osc1Attack: 0,
+            osc2Attack: 0,
+            osc1Release: 0,
+            osc2Release: 0
+        };
+
+        return track;
+    };
+
+    // Init JSON struct of the track
+    this.track = this.createTrackJSON();
+
+    // Add the track to the arrangement
+    arrangement.addTrack(deepClone(this.track));
+
     /**
      * Push track changes to the arrangement
      */
     this.pushChanges = function () {
-
         // replace the track in the arrangement with updated track
         arrangement.replaceTrack(deepClone(this.track));
-
     };
 
     /**
      * When media recorder receives data, push it to chunks array
      *
+     * @param {object} evt  The event
      */
     this.mediaRecorder.ondataavailable = function(evt) {
         // push each chunk (blobs) in an array
         self.chunks.push(evt.data);
     };
 
-    // Init new file reader for converting blob
-    this.fileReader = new FileReader();
-
-    // Loading for filereader
+    /**
+     * The filereaders onload end method,
+     * passes the filereader result (ArrayBuffer) to the createAudioBuffer
+     * function to turn it into an audio buffer. Resets the chunks array
+     * used to hold the buffer information.
+     *
+     */
     this.fileReader.onloadend = function () {
 
         // Create audio buffer
@@ -165,6 +192,7 @@ function Synth (id) {
      * When media recorder stops recording, create blob for audio
      * and convert that into a buffer for the source
      *
+     * @param {object} evt  The event
      */
     this.mediaRecorder.onstop = function(evt) {
 
@@ -175,24 +203,32 @@ function Synth (id) {
         self.fileReader.readAsArrayBuffer(blob);
 
         // Create doc element
-        self.ai = document.createElement("audio");
-        self.ai.src = URL.createObjectURL(blob);
-
+        //self.ai = document.createElement("audio");
+        //self.ai.src = URL.createObjectURL(blob);
         //document.getElementById(self.id).appendChild(self.ai);
     };
 
     /**
-     * Create audio buffer from buffer
+     * Create audio buffer from ArrayBuffer. Resets the class audio buffer
+     * Re-renders the waveform and resumes play with new buffer if track was
+     * playing.
      *
      * @param {ArrayBuffer} arrayBuffer  The array buffer converted from the blob
      */
     this.createAudioBuffer = function (arrayBuffer) {
+
+        this.track.arrayBuffer = arrayBuffer;
 
         // Decode the array buffer and covert to AudioBuffer
         this.context.decodeAudioData(arrayBuffer).then(function(decodedData) {
 
             // Set audio buffer
             self.audioBuffer = decodedData;
+
+            // Set the track variables
+            self.track.audioBufferChannel0Data = decodedData.getChannelData(0);
+            self.track.audioBufferChannel1Data = decodedData.getChannelData(1);
+            self.track.audioBufferLength = decodedData.length;
 
             // Reset the audio buffer source
             self.resetAudioBufferSource();
@@ -237,13 +273,6 @@ function Synth (id) {
         var note = data[1];
         var velocity = data[2];
         var frequency = self.midiNoteToFrequency(message.data[1]);
-        // with pressure and tilt off
-        // note off: 128, cmd: 8 
-        // note on: 144, cmd: 9
-        // pressure / tilt on
-        // pressure: 176, cmd 11: 
-        // bend: 224, cmd: 14
-        // log('MIDI data', data);
 
         // Handle the type of message
         switch(type){
@@ -255,10 +284,8 @@ function Synth (id) {
                 break;
         }
 
-        console.log('data', data, 'cmd', cmd, 'channel', channel);
-        self.logger('', 'key data', data);
+    };
 
-    }
     /**
      * Utility function to conver midi note to frequency
      *
@@ -270,22 +297,11 @@ function Synth (id) {
     }
 
     /**
-     * Log the info
-     *
-     */
-    this.logger = function (container, label, data){
-        console.log(label + " [channel: " + (data[0] & 0xf) + ", cmd: " + (data[0] >> 4) + ", type: " + (data[0] & 0xf0) + " , note: " + data[1] + " , velocity: " + data[2] + "]");
-        //container.textContent = messages;
-    }
-
-    /**
      * On success message for connecting MIDI
      *
      * @param {object} midiAccess  The access object to midi
      */
     this.onMIDISuccess = function (midiAccess) {
-
-console.log('MIDI Access Object', midiAccess);
 
         // this is our raw MIDI data, inputs, outputs, and sysex status
         self.midi = midiAccess;
@@ -303,15 +319,12 @@ console.log('MIDI Access Object', midiAccess);
         // listen for connect/disconnect message
         self.midi.onstatechange = self.onStateChange;
 
-        // Show ports
-        self.showMIDIPorts(self.midi);
     }
 
     /**
      * Recongises state change/disconnect
      */
     this.onStateChange = function (message){
-        self.showMIDIPorts(self.midi);
         var port = message.port, state = port.state, name = port.name, type = port.type;
         if(type == "input")
             console.log("name", name, "port", port, "state", state);
@@ -331,51 +344,21 @@ console.log('MIDI Access Object', midiAccess);
     }
 
     /**
-     * Display the information about the MIDI port to the user
-     *
-     * @param {object} midiAccess  The access object to the MIDI
-     */
-    this.showMIDIPorts = function (midiAccess){
-        /*
-        var inputs = midiAccess.inputs,
-            outputs = midiAccess.outputs, 
-            html;
-        html = '<h4>MIDI Inputs:</h4><div class="info">';
-        inputs.forEach(function(port){
-            html += '<p>' + port.name + '<p>';
-            html += '<p class="small">connection: ' + port.connection + '</p>';
-            html += '<p class="small">state: ' + port.state + '</p>';
-            html += '<p class="small">manufacturer: ' + port.manufacturer + '</p>';
-            if(port.version){
-                    html += '<p class="small">version: ' + port.version + '</p>';
-            }
-        });
-        deviceInfoInputs.innerHTML = html + '</div>';
-
-        html = '<h4>MIDI Outputs:</h4><div class="info">';
-        outputs.forEach(function(port){
-            html += '<p>' + port.name + '<br>';
-            html += '<p class="small">manufacturer: ' + port.manufacturer + '</p>';
-            if(port.version){
-                    html += '<p class="small">version: ' + port.version + '</p>';
-            }
-        });
-        deviceInfoOutputs.innerHTML = html + '</div>';
-        */
-    }
-
-    /**
-     * On failure for MIDI
+     * On failure for MIDI alert user to switch browser
      *
      * @param {error} e  The error for not connecting
      */
     this.onMIDIFailure = function (e) {
         // when we get a failed response, run this code
-        console.log("No access to MIDI devices or your browser doesn't support WebMIDI API. Please use WebMIDIAPIShim " + e);
+        alert("No access to MIDI devices or your browser doesn't support WebMIDI API.\nPlease use Chrome Canary for the MIDI capabailities.");
     }
 
     /**
-     * Note is being pressed
+     * Note is being pressed, create oscillators and start them.
+     *
+     * @param {int}      frequency The frequency of the MIDI note
+     * @param {velocity} velocity  The velocity of the MIDI note
+     * @param {note}     note      The MIDI note
      */
     this.noteOn = function (frequency, velocity, note){
 
@@ -487,7 +470,6 @@ console.log('MIDI Access Object', midiAccess);
         return note - 48;
     };
 
-
     /**
      * Record midi input
      */
@@ -499,14 +481,14 @@ console.log('MIDI Access Object', midiAccess);
      * Record midi input
      */
     this.stopRecordMidi = function () {
-
         // Stop recording
         this.mediaRecorder.stop();
-
     };
 
     /**
-     * Clear recording
+     * Clear recording. Stop playing if audio is playing but maintain state.
+     * Init an empty audio buffer and re-render waveform with empty buffer
+     * and start playing the source again to maintain that state.
      */
     this.clearRecording = function () {
 
@@ -533,8 +515,6 @@ console.log('MIDI Access Object', midiAccess);
             this.start();
         }
 
-        // Implement fluent interface
-        return this;
     };
 
     // Check if MIDI is available
@@ -639,7 +619,40 @@ console.log('MIDI Access Object', midiAccess);
         this.source.connect(this.context.destination);
         this.source.loop = true;
 
+        // Set the tracks audio buffer
+        this.track.audioBuffer = this.audioBuffer;
+
         return this;
+    };
+
+    /**
+     * Recreate the audio buffer from the channel data
+     * arrays and length
+     *
+     * @param {object} channel0Data  The channel 0 data as an object
+     * @param {object} channel1Data  The channel 0 data as an object
+     * @param {int}    length        The length of the audio buffer
+     * @return {AudioBuffer} AudioBuffer  The recreated AudioBuffer
+     */
+    this.recreateAudioBuffer = function (channel0Data, channel1Data, length) {
+
+        // Init empty buffer
+        var audioBuffer = this.context.createBuffer(2, length, 44100);
+
+        // Convert the objects to arrays
+        var channel0DataArray = Object.keys(channel0Data).map(function (key) { return channel0Data[key]; })
+        var channel1DataArray = Object.keys(channel1Data).map(function (key) { return channel1Data[key]; })
+
+        // Convert them to Float32Arrays
+        channel0DataArray = new Float32Array(channel0DataArray);
+        channel1DataArray = new Float32Array(channel1DataArray);
+
+        // Copy the data to the channel
+        audioBuffer.copyToChannel(channel0DataArray, 0);
+        audioBuffer.copyToChannel(channel1DataArray, 1);
+
+        return audioBuffer;
+
     };
 
     // Implement fluent interface
@@ -668,7 +681,6 @@ Synth.prototype.start = function () {
 
     // Set playing to true
     this.playing = true;
-
     // Start the drawing syncing on the keyboard
 };
 
@@ -716,6 +728,10 @@ Synth.prototype.setSettingsClickHandler = function (settings) {
     this.osc2AttackSlider = settings.osc2AttackSlider;
     this.osc1ReleaseSlider = settings.osc1ReleaseSlider;
     this.osc2ReleaseSlider = settings.osc2ReleaseSlider;
+    this.osc1TypeSelect = settings.osc1TypeSelect;
+    this.osc2TypeSelect = settings.osc2TypeSelect;
+    this.osc1DetuneSelect = settings.osc1DetuneSelect;
+    this.osc2DetuneSelect = settings.osc2DetuneSelect;
     this.waveformRow = settings.waveformRow;
 
     // Add the spinning animation to the settings icon on hover
@@ -742,6 +758,12 @@ Synth.prototype.setSettingsClickHandler = function (settings) {
             settings.osc1DetuneSelect.val(self.osc1Detune);
             settings.osc2DetuneSelect.val(self.osc2Detune);
 
+            // Set sliders
+            settings.osc1AttackSlider.val(self.osc1Attack);
+            settings.osc2AttackSlider.val(self.osc2Attack);
+            settings.osc1ReleaseSlider.val(self.osc1Release);
+            settings.osc2ReleaseSlider.val(self.osc2Release);
+
             // Render the waveform
             self.renderWaveform(settings.waveformRow);
 
@@ -755,12 +777,42 @@ Synth.prototype.setSettingsClickHandler = function (settings) {
     // On click handler for the settings icon
     settings.cancelBtn.on('click', function (event) {
 
-        // Set the original values back
+        // Set the original class variables back
+        self.osc1Type = trackSnapshot.osc1Type;
+        self.osc2Type = trackSnapshot.osc2Type;
+        self.osc1Detune = trackSnapshot.osc1Detune;
+        self.osc2Detune = trackSnapshot.osc2Detune;
+        self.osc1Attack = trackSnapshot.osc1Attack;
+        self.osc2Attack = trackSnapshot.osc2Attack;
+        self.osc1Release = trackSnapshot.osc1Release;
+        self.osc2Release = trackSnapshot.osc2Release;
+
+        // Reset the track json
+        self.track = deepClone(trackSnapshot);
+
+        // THIS DOESN'T WORK
+        // Reset buffer source
+        self.resetAudioBufferSource();
 
         // Toggle popup
         settings.popup.toggle(400);
 
     });
+
+    // On click handler for the settings icon
+    settings.confirmBtn.on('click', function (event) {
+
+        // Push changes
+        self.pushChanges();
+
+        // Overwrite the track snapshot
+        trackSnapshot = deepClone(self.track);
+
+        // Close the popup
+        settings.popup.toggle(400);
+
+    });
+
 
     // On click for record
     settings.recordBtn.on('click', function (event) {
@@ -810,42 +862,26 @@ Synth.prototype.setSettingsClickHandler = function (settings) {
 
     });
 
-    // On click handler for the settings icon
-    settings.confirmBtn.on('click', function (event) {
-
-        // Confirm choice of sample and push to other clients
-
-        // Push changes
-        self.pushChanges();
-
-        // Overwrite the track snapshot
-        trackSnapshot = deepClone(self.track);
-
-        // Close the popup
-        settings.popup.toggle(400);
-
-    });
-
     // Select list handler for osc1 type
-    settings.osc1TypeSelect.change(function (event) {
+    this.osc1TypeSelect.change(function (event) {
         // Get the new type and set it to class variable
         self.osc1Type = settings.osc1TypeSelect.val();
     });
 
     // Select list handler for osc2 type
-    settings.osc2TypeSelect.change(function (event) {
+    this.osc2TypeSelect.change(function (event) {
         // Get the new type and set it to class variable
         self.osc2Type = settings.osc2TypeSelect.val();
     });
 
     // Select list handler for osc1 type
-    settings.osc1DetuneSelect.change(function (event) {
+    this.osc1DetuneSelect.change(function (event) {
         // Get the new type and set it to class variable
         self.osc1Detune = parseInt(settings.osc1DetuneSelect.val());
     });
 
     // Select list handler for osc2 type
-    settings.osc2DetuneSelect.change(function (event) {
+    this.osc2DetuneSelect.change(function (event) {
         // Get the new type and set it to class variable
         self.osc2Detune = parseInt(settings.osc2DetuneSelect.val());
     });
@@ -958,6 +994,49 @@ Synth.prototype.setTrackJSON = function (track) {
 
     }
 
+    // Set the attack sliders
+    this.osc1AttackSlider.val(track.osc1Attack);
+    this.osc2AttackSlider.val(track.osc2Attack);
+
+    // Set the attack values
+    this.osc1Attack = track.osc1Attack;
+    this.osc2Attack = track.osc2Attack;
+
+    // Set the release sliders
+    this.osc1ReleaseSlider.val(track.osc1Release);
+    this.osc2ReleaseSlider.val(track.osc2Release);
+
+    // Set release values
+    this.osc1Release = track.osc1Release;
+    this.osc2Release = track.osc2Release;
+
+    // Set the osc type drop downs
+    this.osc1TypeSelect.val(track.osc1Type);
+    this.osc2TypeSelect.val(track.osc2Type);
+
+    // Set the osc types
+    this.osc1Type = track.osc1Type;
+    this.osc2Type = track.osc2Type;
+
+    // Set the osc detune drop downs
+    this.osc1DetuneSelect.val(track.osc1Detune);
+    this.osc2DetuneSelect.val(track.osc2Detune);
+
+    // Set detune vals
+    this.osc1Detune = track.osc1Detune;
+    this.osc2Detune = track.osc2Detune;
+
+    // Set the audio buffer
+    this.audioBuffer =
+        this.recreateAudioBuffer(
+                track.audioBufferChannel0Data,
+                track.audioBufferChannel1Data,
+                track.audioBufferLength
+        );
+
+    // Reset the audio buffer source
+    this.resetAudioBufferSource();
+
     // Set the track json
     this.track = deepClone(track);
 
@@ -998,7 +1077,7 @@ Synth.prototype.setKeyboard = function (keyboard) {
  *
  * @param {object} trackSelectedCheckbox  The JQuery Checkbox item for this track
  */
-Synth.prototype.setTrackSelectedClickHandler= function (trackSelectedCheckbox) {
+Synth.prototype.setTrackSelectedClickHandler = function (trackSelectedCheckbox) {
 
     // Ref to self
     var self = this;

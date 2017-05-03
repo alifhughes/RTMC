@@ -29,6 +29,17 @@ var MasterControls = function (arrangement) {
     // Reference to self
     var self = this;
 
+    // Own sequencer for tracking purposes
+    this.masterControlsSeq = new Tone.Sequence(function(time, col) {
+        // when the loop starts again, play the queued tracks
+        if (0 == self.masterControlsSeq.progress) {
+            self.triggerQueuedTracks();
+        }
+    }, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], '16n');
+
+    // Running array that keeps tracks that are queued to start
+    this.queuedToStartTracks = [];
+
     // Create instance of instrument factory
     this.instrumentFactory = new InstrumentFactory();
 
@@ -94,6 +105,8 @@ var MasterControls = function (arrangement) {
 
                 // Start the track
                 self.tracks[i].start();
+                self.masterControlsSeq.start();
+
             }
 
         } else {
@@ -103,6 +116,8 @@ var MasterControls = function (arrangement) {
 
                 // Start the track
                 self.tracks[i].stop();
+                self.masterControlsSeq.stop();
+
             }
 
         }
@@ -130,6 +145,10 @@ var MasterControls = function (arrangement) {
                 // Add it to the arrangement and reset the local copy of window's arrangment
                 arrangement.addTrack(instrumentContainer.seq.getTrackJSON());
                 self.windowUpdater.setArrangement(arrangement.getArrangement());
+
+                if (self.playing) {
+                    self.addTrackToQueue(instrumentContainer.seq);
+                }
 
             });
     });
@@ -186,6 +205,54 @@ var MasterControls = function (arrangement) {
 
     };
 
+    /**
+     * Start a single track that is playing by finding from id
+     *
+     * @param {string} id  The ID of track that needs to be started
+     */
+    this.startTrackPlaybackById = function (trackId) {
+
+        // Iterate all the tracks
+        for (var i = 0; i < this.tracks.length; i++) {
+
+            // Check if track matches one passed in
+            if (trackId == this.tracks[i].id) {
+                // Found track to stop
+                this.tracks[i].start();
+            }
+        }
+
+    };
+
+    /**
+     * Queue to start the track when back at start
+     *
+     * @param {Sequencer} seq  The sequencer track to start
+     */
+    this.addTrackToQueue = function (seq) {
+        //while progress != and playing is still true, start the track
+        this.queuedToStartTracks.push(seq);
+    };
+
+    /**
+     * Trigger the queued tracks to start
+     */
+    this.triggerQueuedTracks = function () {
+
+        // Iterate all the queued tracks
+        for (var i = 0; i < this.queuedToStartTracks.length; i++) {
+            // Check if still playing
+            if (this.playing) {
+                // start the track
+                this.queuedToStartTracks[i].start();
+            }
+        }
+
+        // Reset the array
+        this.queuedToStartTracks = [];
+
+    }
+
     // Return instance of self
     return this;
 };
@@ -199,6 +266,11 @@ var MasterControls = function (arrangement) {
 MasterControls.prototype.addTrack = function (track) {
     // Push track to list of tracks
     this.tracks.push(track);
+
+    // Check if playing
+    if (this.playing) {
+        this.addTrackToQueue(track);
+    }
 
     // Implement fluent interface
     return this;

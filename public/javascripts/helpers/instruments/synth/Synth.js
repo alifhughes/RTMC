@@ -2,6 +2,7 @@ var Tone = require('tone');
 var deepClone = require('../../../helpers/deepclone');
 var arrangement = require('../../../model/arrangement');
 var trigger = require('../../../helpers/trigger');
+var pako = require('pako');
 
 // Start the tone timer
 Tone.Transport.start();
@@ -124,13 +125,17 @@ function Synth (id) {
      */
     this.createTrackJSON = function () {
 
+        // Compress the audio data
+        var compressedChannel0Data = pako.deflate(JSON.stringify(this.audioBuffer.getChannelData(0)), { to: 'string'});
+        var compressedChannel1Data = pako.deflate(JSON.stringify(this.audioBuffer.getChannelData(1)), { to: 'string'});
+
         // JSON object container meta data of track
         var track = {
             id: this.id,
             type: 'synth',
             volume: 0,
-            audioBufferChannel0Data: this.audioBuffer.getChannelData(0),
-            audioBufferChannel1Data: this.audioBuffer.getChannelData(1),
+            audioBufferChannel0Data: compressedChannel0Data,
+            audioBufferChannel1Data: compressedChannel1Data,
             audioBufferLength: this.audioBuffer.length,
             bufferStarttime: 0,
             bufferStoptime: 3,
@@ -217,8 +222,6 @@ function Synth (id) {
      */
     this.createAudioBuffer = function (arrayBuffer) {
 
-        this.track.arrayBuffer = arrayBuffer;
-
         // Decode the array buffer and covert to AudioBuffer
         this.context.decodeAudioData(arrayBuffer).then(function(decodedData) {
 
@@ -226,8 +229,8 @@ function Synth (id) {
             self.audioBuffer = decodedData;
 
             // Set the track variables
-            self.track.audioBufferChannel0Data = decodedData.getChannelData(0);
-            self.track.audioBufferChannel1Data = decodedData.getChannelData(1);
+            self.track.audioBufferChannel0Data = pako.deflate(JSON.stringify(decodedData.getChannelData(0)), { to: 'string'});
+            self.track.audioBufferChannel1Data = pako.deflate(JSON.stringify(decodedData.getChannelData(1)), { to: 'string'});
             self.track.audioBufferLength = decodedData.length;
 
             // Reset the audio buffer source
@@ -325,7 +328,10 @@ function Synth (id) {
      * Recongises state change/disconnect
      */
     this.onStateChange = function (message){
-        var port = message.port, state = port.state, name = port.name, type = port.type;
+        var port = message.port,
+            state = port.state,
+            name = port.name,
+            type = port.type;
         if(type == "input")
             console.log("name", name, "port", port, "state", state);
 
@@ -629,8 +635,8 @@ function Synth (id) {
      * Recreate the audio buffer from the channel data
      * arrays and length
      *
-     * @param {object} channel0Data  The channel 0 data as an object
-     * @param {object} channel1Data  The channel 0 data as an object
+     * @param {string} channel0Data  The channel 0 data as an object
+     * @param {string} channel1Data  The channel 0 data as an object
      * @param {int}    length        The length of the audio buffer
      * @return {AudioBuffer} AudioBuffer  The recreated AudioBuffer
      */
@@ -639,11 +645,15 @@ function Synth (id) {
         // Init empty buffer
         var audioBuffer = this.context.createBuffer(2, length, 44100);
 
-        // Convert the objects to arrays
-        var channel0DataArray = Object.keys(channel0Data).map(function (key) { return channel0Data[key]; })
-        var channel1DataArray = Object.keys(channel1Data).map(function (key) { return channel1Data[key]; })
+        // Decompress the string and parse back into object
+        var channel0DataObj = JSON.parse(pako.inflate(channel0Data, { to: 'string'}));
+        var channel1DataObj = JSON.parse(pako.inflate(channel1Data, { to: 'string'}));
 
-        // Convert them to Float32Arrays
+        // Convert the objects to arrays
+        var channel0DataArray = Object.keys(channel0DataObj).map(function (key) { return channel0DataObj[key]; })
+        var channel1DataArray = Object.keys(channel1DataObj).map(function (key) { return channel1DataObj[key]; })
+
+        // Convert the arrays to Float32Arrays
         channel0DataArray = new Float32Array(channel0DataArray);
         channel1DataArray = new Float32Array(channel1DataArray);
 

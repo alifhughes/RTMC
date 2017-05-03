@@ -90,22 +90,20 @@ var MasterControls = function (arrangement) {
         if (self.playing == true) {
 
             // Loop all the tracks
-            self.tracks.forEach(function(track) {
+            for (var i = 0; i < self.tracks.length; i++) {
 
                 // Start the track
-                track.start();
-
-            });
+                self.tracks[i].start();
+            }
 
         } else {
 
             // Loop all the tracks
-            self.tracks.forEach(function(track) {
+            for (var i = 0; i < self.tracks.length; i++) {
 
                 // Start the track
-                track.stop();
-
-            });
+                self.tracks[i].stop();
+            }
 
         }
 

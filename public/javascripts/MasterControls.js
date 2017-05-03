@@ -167,6 +167,25 @@ var MasterControls = function (arrangement) {
 
     });
 
+    /**
+     * Stop a single track that is playing by finding from id
+     *
+     * @param {string} id  The ID of track that needs to be stopped
+     */
+    this.stopTrackPlaybackById = function (trackId) {
+
+        // Iterate all the tracks
+        for (var i = 0; i < this.tracks.length; i++) {
+
+            // Check if track matches one passed in
+            if (trackId == this.tracks[i].id) {
+                // Found track to stop
+                this.tracks[i].stop();
+            }
+        }
+
+    };
+
     // Return instance of self
     return this;
 };
@@ -192,6 +211,12 @@ MasterControls.prototype.addTrack = function (track) {
  * @return {MasterControls}         Instance of self
  */
 MasterControls.prototype.deleteTrackById = function (trackId) {
+
+    // Check if playing
+    if (this.playing) {
+        // Is playing, stop before deleting
+        this.stopTrackPlaybackById(trackId);
+    }
 
     // Iterate all the tracks
     for (var i = 0; i < this.tracks.length; i++) {

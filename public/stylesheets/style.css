@@ -274,9 +274,18 @@ input[type=checkbox] {
     margin-top: 10px;
 }
 
+.collaborator-count {
+    margin-left: 40px !important;
+    margin-right: 5px !important;
+}
+
 .bpm-input {
     width: 50px;
     border-radius: 5px;
+}
+
+.bpm-label {
+     margin-left: 5px !important;
 }
 
 #shareUrl {
@@ -479,7 +488,6 @@ input[type=checkbox] {
 }
 
 .control-bar p {
-    margin-left: 5px !important;
     margin-bottom: 0px !important;
     display:inline !important;
 }

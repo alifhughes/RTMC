@@ -23840,6 +23840,9 @@ var sync = function (WindowUpdater, socket, arrangementId) {
     // Set the socket
     this.socket = socket;
 
+    // User count
+    this.userCount = 0;
+
     // Class's instance of window updater
     this.windowUpdater = WindowUpdater;
 
@@ -23917,6 +23920,7 @@ var sync = function (WindowUpdater, socket, arrangementId) {
         this.doc.localCopy = deepClone(latestVersion.doc);
         this.doc.shadow = deepClone(latestVersion.doc);
         this.doc.serverVersion = latestVersion.version;
+        this.userCount = latestVersion.userCount;
 
         // Initialised this client
         this.initialised = true;
@@ -23926,9 +23930,13 @@ var sync = function (WindowUpdater, socket, arrangementId) {
 
         // Set the local arrangement to window updater
         this.windowUpdater.initialise(this.doc.localCopy);
+        this.windowUpdater.updateUserCount(this.userCount);
 
         // listen to incoming updates from the server
         this.socket.on('updated-document', this.syncWithServer.bind(this));
+
+        // Listen for people joining or leaving
+        this.socket.on('update-user-count', this.updateUserCount.bind(this));
 
         // listen to errors and reload
         this.socket.on('error', function(message){
@@ -24112,6 +24120,13 @@ var sync = function (WindowUpdater, socket, arrangementId) {
         this.scheduled = true;
         this.syncWithServer();
 
+    };
+
+    /**
+     * Update the user count
+     */
+    this.updateUserCount = function (userCount) {
+        this.windowUpdater.updateUserCount(userCount.userCount);
     };
 
     // Initialise 
@@ -24684,6 +24699,9 @@ var WindowUpdater = function (MasterControls) {
     // Initiliasation flag
     this.isInitialised = false;
 
+    // User count
+    this.userCount = 0;
+
     // Init instrument factory
     this.instrumentFactory = new InstrumentFactory();
 
@@ -24866,6 +24884,19 @@ WindowUpdater.prototype.update = function (arrangement) {
     // Implement fluent interface
     return this;
 
+};
+
+/**
+ * Update the user count on the window
+ *
+ * @param {int} userCount  The count of the users joined
+ */
+WindowUpdater.prototype.updateUserCount = function (userCount) {
+
+    // Check if user count has changed
+    if (!_.isEqual(this.userCount, userCount)) {
+        $('#userCounter').text(userCount);
+    }
 };
 
 /**

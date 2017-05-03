@@ -37,6 +37,9 @@ var WindowUpdater = function (MasterControls) {
     // Initiliasation flag
     this.isInitialised = false;
 
+    // User count
+    this.userCount = 0;
+
     // Init instrument factory
     this.instrumentFactory = new InstrumentFactory();
 
@@ -219,6 +222,19 @@ WindowUpdater.prototype.update = function (arrangement) {
     // Implement fluent interface
     return this;
 
+};
+
+/**
+ * Update the user count on the window
+ *
+ * @param {int} userCount  The count of the users joined
+ */
+WindowUpdater.prototype.updateUserCount = function (userCount) {
+
+    // Check if user count has changed
+    if (!_.isEqual(this.userCount, userCount)) {
+        $('#userCounter').text(userCount);
+    }
 };
 
 /**

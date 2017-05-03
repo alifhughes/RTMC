@@ -34,6 +34,9 @@ var sync = function (WindowUpdater, socket, arrangementId) {
     // Set the socket
     this.socket = socket;
 
+    // User count
+    this.userCount = 0;
+
     // Class's instance of window updater
     this.windowUpdater = WindowUpdater;
 
@@ -111,6 +114,7 @@ var sync = function (WindowUpdater, socket, arrangementId) {
         this.doc.localCopy = deepClone(latestVersion.doc);
         this.doc.shadow = deepClone(latestVersion.doc);
         this.doc.serverVersion = latestVersion.version;
+        this.userCount = latestVersion.userCount;
 
         // Initialised this client
         this.initialised = true;
@@ -120,9 +124,13 @@ var sync = function (WindowUpdater, socket, arrangementId) {
 
         // Set the local arrangement to window updater
         this.windowUpdater.initialise(this.doc.localCopy);
+        this.windowUpdater.updateUserCount(this.userCount);
 
         // listen to incoming updates from the server
         this.socket.on('updated-document', this.syncWithServer.bind(this));
+
+        // Listen for people joining or leaving
+        this.socket.on('update-user-count', this.updateUserCount.bind(this));
 
         // listen to errors and reload
         this.socket.on('error', function(message){
@@ -306,6 +314,13 @@ var sync = function (WindowUpdater, socket, arrangementId) {
         this.scheduled = true;
         this.syncWithServer();
 
+    };
+
+    /**
+     * Update the user count
+     */
+    this.updateUserCount = function (userCount) {
+        this.windowUpdater.updateUserCount(userCount.userCount);
     };
 
     // Initialise 

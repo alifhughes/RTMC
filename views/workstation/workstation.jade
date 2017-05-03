@@ -3,8 +3,10 @@ extends layout
 block content
   div.width-100.control-bar.dark-grey-background-colour
     i#start-stop.fa.fa-play-circle.fa-4x.white-colour(aria-hidden="true")
-    p.white-colour BPM:
+    p.bpm-label.white-colour BPM:
     input#bpm.bpm-input(type='number' value='120' min='60' max='200')
+    p.white-colour.collaborator-count Current number of collaborators:
+    p#userCounter.white-colour
     button.btn.btn-default#shareUrl(data-clipboard-text="#{path}") Share the URL 
       i.fa.fa-share-square-o(aria-hidden="true")
     if userRegistered

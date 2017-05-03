@@ -39,6 +39,11 @@ var Synchronise = function(socketIO) {
             // Push this socket onto registered sockets
             doc.registeredSockets.push(socket);
 
+            // Get user count and update clients with it
+            var noOfUsers = doc.registeredSockets.length;
+            socket.broadcast.emit('update-user-count', {userCount: noOfUsers});
+
+            // Callback
             callback();
 
           });
@@ -308,6 +313,12 @@ var Synchronise = function(socketIO) {
                     doc.registeredSockets = doc.registeredSockets.slice(index, index + 1);
                 }
             }
+
+            // Get the user count
+            var noOfUsers = doc.registeredSockets.length;
+
+            // Broadcast new user count to users
+            socket.broadcast.emit('update-user-count', {userCount: noOfUsers});
 
             // If it was the last connected socket save it to db
             if(doc.registeredSockets.length === 0){

@@ -24359,7 +24359,8 @@ MasterControls.prototype.addTrack = function (track) {
  * @return {MasterControls}         Instance of self
  */
 MasterControls.prototype.deleteTrackById = function (trackId) {
-
+console.log('trackId', trackId);
+console.log('this is exectuted \n', this.tracks);
     // Iterate all the tracks
     for (var i = 0; i < this.tracks.length; i++) {
 
@@ -24490,6 +24491,9 @@ module.exports = {
             // Check if current track is the track to delete
             if (trackId == this.arrangement.tracks[i].id) {
                 // Delete the track and exit the loop
+
+console.log(trackId, this.arrangement.tracks[i].id);
+
                 this.arrangement.tracks.splice(i, 1);
 
                 // Sync with client
@@ -24700,10 +24704,35 @@ var WindowUpdater = function (MasterControls) {
 
         } else if (tracks.length < this.arrangement.tracks.length) {
 
+            // Get the diff between the tracks
+            var diff = jsondiffpatch.diff(deepClone(tracks), deepClone(this.arrangement.tracks));
+console.log('diff', diff);
+
+            // Get the tracks to delete
+            var tracksToDelete = diff[Object.keys(diff)[0]];
+console.log('tracksToDelete', tracksToDelete);
+
+/*
             // Make a working copy of the tracks
             var tracksToDelete = deepClone(this.arrangement.tracks);
+console.log('tracksToDelete', tracksToDelete);
 
             // Loop through each track checking if their equal to exisiting tracks
+            for (var i = 0; i < this.arrangement.tracks.length; i++) {
+
+                // Loop through tracks passed in
+                for (var j = 0; j < tracks.length; j++) {
+
+                    // Check if tracks are the same
+                    if (this.arrangement.tracks[i].id == tracks[j].id) {
+console.log(this.arrangement.tracks[i].id, tracks[j].id);
+                        // Tracks match, remove them from the tracks to delete list
+                        tracksToDelete.splice(i, 1);
+                    }
+                }
+            }
+
+            /*
             this.arrangement.tracks.forEach(function (existingTrack, index) {
 
                 // Loop through tracks passed in
@@ -24718,6 +24747,9 @@ var WindowUpdater = function (MasterControls) {
 
                 });
             });
+            */
+
+console.log('updateTracks, tracksToDelete: \n', tracksToDelete);
 
             // Delete the tracks remaining tracks found in the class's
             // working copy of the tracks from the window

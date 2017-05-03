@@ -145,8 +145,8 @@ var Synchronise = function(socketIO) {
 
             // If there isnt one, send error
             if(!clientDoc){
-                console.log('error', 'Need to re-authenticate');
-                socket.emit('error', 'Need to re-authenticate.');
+                console.log('Need to re-authenticate');
+                //socket.emit('error', 'Need to re-authenticate.');
                 return;
             }
 
@@ -195,8 +195,8 @@ var Synchronise = function(socketIO) {
 
                 } else {
 
-                    console.log('error', 'patch rejected!!', edit.serverVersion, '->', clientDoc.shadow.serverVersion, ':',
-                                edit.localVersion, '->', clientDoc.shadow.localVersion);
+                    console.log('error', 'patch rejected!! edit.serverVersion: ', edit.serverVersion, '-> clientDoc.shadow.serverVersion: ', clientDoc.shadow.serverVersion, ': edit.localVersion',
+                                edit.localVersion, '-> clientDoc.shadow.localVersion: ', clientDoc.shadow.localVersion);
 
                 }
 
@@ -225,6 +225,7 @@ var Synchronise = function(socketIO) {
 
         // Check if diff is empty
         if (!_.isEmpty(diff)) {
+
             // Add the difference to the server's edit stack
             clientDoc.edits.push({
               serverVersion: basedOnServerVersion,

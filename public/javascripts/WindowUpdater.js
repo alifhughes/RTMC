@@ -151,29 +151,15 @@ var WindowUpdater = function (MasterControls) {
 
         } else if (tracks.length < this.arrangement.tracks.length) {
 
-            // Make a working copy of the tracks
-            var tracksToDelete = deepClone(this.arrangement.tracks);
+            // Get the diff between the tracks
+            var diff = jsondiffpatch.diff(deepClone(tracks), deepClone(this.arrangement.tracks));
 
-            // Loop through each track checking if their equal to exisiting tracks
-            this.arrangement.tracks.forEach(function (existingTrack, index) {
-
-                // Loop through tracks passed in
-                tracks.forEach(function (newTrack) {
-
-                    // Check if tracks are the same
-                    if (existingTrack.id == newTrack.id) {
-                        // Tracks match, delete it from working copy
-                        tracksToDelete.splice(index, 1);
-                        return;
-                    }
-
-                });
-            });
+            // Get the tracks to delete which is first value of the diff object
+            var tracksToDelete = diff[Object.keys(diff)[0]];
 
             // Delete the tracks remaining tracks found in the class's
             // working copy of the tracks from the window
             tracksToDelete.map(this.deleteTrack);
-
 
         } else {
             // No tracks added or deleted, an internal change to the tracks

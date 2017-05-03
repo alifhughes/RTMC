@@ -92,8 +92,8 @@ function Synth (id) {
 
     // Init master volume for the synth
     this.masterVolume = this.context.createGain();
-    this.masterVolume.gain.value = 0.2;
     this.masterVolume.connect(this.context.destination);
+    this.masterVolume.gain.value = 0.2;
 
     // Init chunks array to hold data to create blob
     this.chunks = [];

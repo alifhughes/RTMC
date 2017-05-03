@@ -35,11 +35,11 @@ generateSynthElement.generate = function (id, callback) {
         var volume = document.createElement("input");
         volume.className = 'volume-slider';
         volume.setAttribute('type', 'range');
-        volume.setAttribute('value', 0);
         volume.setAttribute('name', 'volume');
         volume.setAttribute('min', 0);
         volume.setAttribute('max', 0.5);
         volume.setAttribute('step', 0.01);
+        volume.setAttribute('value', 0.2);
 
         // Create settings button icon
         var settingsIcon = document.createElement("i");

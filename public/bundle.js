@@ -21912,11 +21912,11 @@ generateSynthElement.generate = function (id, callback) {
         var volume = document.createElement("input");
         volume.className = 'volume-slider';
         volume.setAttribute('type', 'range');
-        volume.setAttribute('value', 0);
         volume.setAttribute('name', 'volume');
         volume.setAttribute('min', 0);
         volume.setAttribute('max', 0.5);
         volume.setAttribute('step', 0.01);
+        volume.setAttribute('value', 0.2);
 
         // Create settings button icon
         var settingsIcon = document.createElement("i");
@@ -22344,8 +22344,8 @@ function Synth (id) {
 
     // Init master volume for the synth
     this.masterVolume = this.context.createGain();
-    this.masterVolume.gain.value = 0.2;
     this.masterVolume.connect(this.context.destination);
+    this.masterVolume.gain.value = 0.2;
 
     // Init chunks array to hold data to create blob
     this.chunks = [];
@@ -24359,8 +24359,7 @@ MasterControls.prototype.addTrack = function (track) {
  * @return {MasterControls}         Instance of self
  */
 MasterControls.prototype.deleteTrackById = function (trackId) {
-console.log('trackId', trackId);
-console.log('this is exectuted \n', this.tracks);
+
     // Iterate all the tracks
     for (var i = 0; i < this.tracks.length; i++) {
 
@@ -24706,55 +24705,13 @@ var WindowUpdater = function (MasterControls) {
 
             // Get the diff between the tracks
             var diff = jsondiffpatch.diff(deepClone(tracks), deepClone(this.arrangement.tracks));
-console.log('diff', diff);
 
-            // Get the tracks to delete
+            // Get the tracks to delete which is first value of the diff object
             var tracksToDelete = diff[Object.keys(diff)[0]];
-console.log('tracksToDelete', tracksToDelete);
-
-/*
-            // Make a working copy of the tracks
-            var tracksToDelete = deepClone(this.arrangement.tracks);
-console.log('tracksToDelete', tracksToDelete);
-
-            // Loop through each track checking if their equal to exisiting tracks
-            for (var i = 0; i < this.arrangement.tracks.length; i++) {
-
-                // Loop through tracks passed in
-                for (var j = 0; j < tracks.length; j++) {
-
-                    // Check if tracks are the same
-                    if (this.arrangement.tracks[i].id == tracks[j].id) {
-console.log(this.arrangement.tracks[i].id, tracks[j].id);
-                        // Tracks match, remove them from the tracks to delete list
-                        tracksToDelete.splice(i, 1);
-                    }
-                }
-            }
-
-            /*
-            this.arrangement.tracks.forEach(function (existingTrack, index) {
-
-                // Loop through tracks passed in
-                tracks.forEach(function (newTrack) {
-
-                    // Check if tracks are the same
-                    if (existingTrack.id == newTrack.id) {
-                        // Tracks match, delete it from working copy
-                        tracksToDelete.splice(index, 1);
-                        return;
-                    }
-
-                });
-            });
-            */
-
-console.log('updateTracks, tracksToDelete: \n', tracksToDelete);
 
             // Delete the tracks remaining tracks found in the class's
             // working copy of the tracks from the window
             tracksToDelete.map(this.deleteTrack);
-
 
         } else {
             // No tracks added or deleted, an internal change to the tracks

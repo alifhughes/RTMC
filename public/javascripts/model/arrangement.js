@@ -55,8 +55,6 @@ module.exports = {
             if (trackId == this.arrangement.tracks[i].id) {
                 // Delete the track and exit the loop
 
-console.log(trackId, this.arrangement.tracks[i].id);
-
                 this.arrangement.tracks.splice(i, 1);
 
                 // Sync with client

@@ -21956,19 +21956,19 @@ generateSynthElement.generate = function (id, callback) {
         // Create popup confirm and exit buttons
         var settingsPopupConfirmBtn = document.createElement("button");
         settingsPopupConfirmBtn.innerHTML = "Confirm";
-        settingsPopupConfirmBtn.className = "btn btn-default";
+        settingsPopupConfirmBtn.className = "btn btn-default synth-settings-popup-button";
 
         var settingsPopupCancelBtn = document.createElement("button");
         settingsPopupCancelBtn.innerHTML = "Cancel";
-        settingsPopupCancelBtn.className = "btn btn-default";
+        settingsPopupCancelBtn.className = "btn btn-default synth-settings-popup-button";
 
         var settingsPopupRecordBtn = document.createElement("button");
         settingsPopupRecordBtn.innerHTML = "Record";
-        settingsPopupRecordBtn.className = "btn btn-danger";
+        settingsPopupRecordBtn.className = "btn btn-danger synth-settings-popup-button";
 
         var settingsPopupClearBtn = document.createElement("button");
         settingsPopupClearBtn.innerHTML = "Clear recording";
-        settingsPopupClearBtn.className = "btn btn-default";
+        settingsPopupClearBtn.className = "btn btn-default synth-settings-popup-button";
 
         // Create a container div removing/clearing track actions
         var trackRemoveActionsContainer = document.createElement("div");
@@ -22173,12 +22173,14 @@ generateSynthElement.generate = function (id, callback) {
 
         var recordingButtonRow = settingsPopupRow.cloneNode(true);
         recordingButtonRow.innerHTML = "";
+        recordingButtonRow.className = recordingButtonRow.className + " synth-settings-popup-button-row";
         recordingButtonRow.appendChild(settingsPopupRecordBtn);
         recordingButtonRow.appendChild(settingsPopupClearBtn);
         settingsPopupContainerDiv.appendChild(recordingButtonRow);
 
         var buttonRow = settingsPopupRow.cloneNode(true);
         buttonRow.innerHTML = "";
+        buttonRow.className = buttonRow.className + " synth-settings-popup-button-row";
         buttonRow.appendChild(settingsPopupConfirmBtn);
         buttonRow.appendChild(settingsPopupCancelBtn);
         settingsPopupContainerDiv.appendChild(buttonRow);

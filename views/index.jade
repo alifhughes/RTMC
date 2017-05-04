@@ -2,10 +2,30 @@ extends layout
 
 block content
   div.base-background-colour.no-margin.height-20.padding-100
-    h1.centre-text.dark-grey-colour.no-margin= title
+    h1.centre-text.white-colour.no-margin= title
 
   div.light-grey-background-colour.no-margin.height-20
     div.container
       div.no-margin.padding-40.row
         a(href="\login").btn.btn-default.btn-lg.col-lg-2.col-lg-offset-3= buttonText1
         a(href="\signup").btn.btn-default.btn-lg.col-lg-2.col-lg-offset-2= buttonText2
+
+  div
+    div.container
+      div.no-margin.row
+        div.col-lg-12
+          h2.centre-text.dark-grey-colour.padding-30(style="text-decoration: underline;") What is Real-Time Music Collaborator about?
+        div.col-lg-12
+          h4.dark-grey-colour.padding-20.centre-text Real-Time Music Collaborator is a platform which allows you and your friends make songs together in real-time!
+            br
+            | Share the URL to a friend and see each others changes appear on your screen as they happen!
+          h5.dark-grey-colour.padding-20.centre-text(style="text-decoration: underline;") Prerequisite - Please use Google Chrome Canary browser for the MIDI capabilities!
+          h5.dark-grey-colour.padding-30.centre-text &#8226; Features a step-sequencer with a huge amount of samples to click and create patterns and MIDI capabilities to record melodies over the top!
+          img(src="img/main-screen.png")
+          h5.dark-grey-colour.padding-30.centre-text &#8226; Sample sound parameters are editable with EQ-3 and waveform selector
+          img.centre-text(src="img/sequencer-settings.png")
+          h5.dark-grey-colour.padding-30.centre-text &#8226; MIDI synthesiser has two editable ocsillators and once melody is recorded you can edit the waveform it creates
+          img(src="img/synth-settings.png")
+          h5.dark-grey-colour.padding-30.centre-text &#8226; Manage your created tracks in your user portal
+          img(src="img/user-portal.png")
+          h4.dark-grey-colour.padding-40.centre-text Login or sign-up and get creating with your friends today!

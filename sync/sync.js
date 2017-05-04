@@ -306,11 +306,11 @@ var Synchronise = function(socketIO) {
             var index = doc.registeredSockets.indexOf(socket);
 
             // Check if the current socket is listed from the doc and remove it
-            if (index >= 0) {
+            if (index > -1) {
                 if (doc.registeredSockets.length === 1) {
                     doc.registeredSockets = []
                 } else {
-                    doc.registeredSockets = doc.registeredSockets.slice(index, index + 1);
+                    doc.registeredSockets.splice(index, 1);
                 }
             }
 

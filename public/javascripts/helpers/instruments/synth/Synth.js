@@ -115,6 +115,40 @@ function Synth (id) {
     this.arrayBuffer = new ArrayBuffer(8);
 
     /**
+     * Encode the channel data to ogg and then compress it
+     *
+     * @param  {Float32Array} channelData  The channel data to be encoded and compressed
+     * @return {String}                    The encoded and compressed channel data
+     */
+    this.encodeAndCompressChannelData = function(channelData) {
+        return pako.deflate(JSON.stringify(Codec.encode(channelData)), { to: 'string'});
+    };
+
+    /**
+     * Uncompress the channel data, turn it to float32array and decode it
+     *
+     * @param {String} compressedChannelData  The compressed channel data
+     * @return {Array}  channelDataArry  the decompressed and decoded array
+     */
+    this.uncompressAndDecodeChannelData = function (compressedChannelData) {
+
+        // Decompress the string and parse back into object
+        var channelDataObj = JSON.parse(pako.inflate(compressedChannelData, { to: 'string'}));
+
+        // Convert the objects to arrays
+        var channelDataArray = Object.keys(channelDataObj).map(function (key) { return channelDataObj[key]; })
+
+        // Convert the arrays to Float32Arrays
+        channelDataArray = new Float32Array(channelDataArray);
+
+        // Decode the data
+        channelDataArray = Codec.decode(channelDataArray);
+
+        return channelDataArray;
+
+    };
+
+    /**
      * Track struct
      * {
      *    id: 'id',
@@ -126,8 +160,8 @@ function Synth (id) {
     this.createTrackJSON = function () {
 
         // Compress the audio data
-        var compressedChannel0Data = pako.deflate(JSON.stringify(this.audioBuffer.getChannelData(0)), { to: 'string'});
-        var compressedChannel1Data = pako.deflate(JSON.stringify(this.audioBuffer.getChannelData(1)), { to: 'string'});
+        var compressedChannel0Data = this.encodeAndCompressChannelData(this.audioBuffer.getChannelData(0));
+        var compressedChannel1Data = this.encodeAndCompressChannelData(this.audioBuffer.getChannelData(1));
 
         // JSON object container meta data of track
         var track = {
@@ -229,8 +263,8 @@ function Synth (id) {
             self.audioBuffer = decodedData;
 
             // Set the track variables
-            self.track.audioBufferChannel0Data = pako.deflate(JSON.stringify(decodedData.getChannelData(0)), { to: 'string'});
-            self.track.audioBufferChannel1Data = pako.deflate(JSON.stringify(decodedData.getChannelData(1)), { to: 'string'});
+            self.track.audioBufferChannel0Data = self.encodeAndCompressChannelData(decodedData.getChannelData(0));
+            self.track.audioBufferChannel1Data = self.encodeAndCompressChannelData(decodedData.getChannelData(1));
             self.track.audioBufferLength = decodedData.length;
 
             // Reset the audio buffer source
@@ -645,17 +679,9 @@ function Synth (id) {
         // Init empty buffer
         var audioBuffer = this.context.createBuffer(2, length, 44100);
 
-        // Decompress the string and parse back into object
-        var channel0DataObj = JSON.parse(pako.inflate(channel0Data, { to: 'string'}));
-        var channel1DataObj = JSON.parse(pako.inflate(channel1Data, { to: 'string'}));
-
-        // Convert the objects to arrays
-        var channel0DataArray = Object.keys(channel0DataObj).map(function (key) { return channel0DataObj[key]; })
-        var channel1DataArray = Object.keys(channel1DataObj).map(function (key) { return channel1DataObj[key]; })
-
-        // Convert the arrays to Float32Arrays
-        channel0DataArray = new Float32Array(channel0DataArray);
-        channel1DataArray = new Float32Array(channel1DataArray);
+        // Decompress and decode
+        var channel0DataArray = this.uncompressAndDecodeChannelData(channel0Data);
+        var channel1DataArray = this.uncompressAndDecodeChannelData(channel1Data);
 
         // Copy the data to the channel
         audioBuffer.copyToChannel(channel0DataArray, 0);

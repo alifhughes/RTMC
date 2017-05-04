@@ -42,7 +42,7 @@ function Sequencer (id) {
     this.eq3 = new Tone.EQ3().toMaster();
 
     // Create a player and connect it to the master output (your speakers)
-    this.source = new Tone.Player("../../audio/727-HM-CONGA.WAV", function () {
+    this.source = new Tone.Player("../../audio/727-HM-CONGA.mp3", function () {
 
         // Set the buffer
         self.setBuffer(self.source.buffer.get());
@@ -118,7 +118,7 @@ function Sequencer (id) {
             type: 'step-sequencer',
             volume: self.source.volume.value,
             pattern: [],
-            bufferName: '727-HM-CONGA.WAV',
+            bufferName: '727-HM-CONGA.mp3',
             bufferStarttime: 0,
             bufferStoptime: 3,
             bufferDuration: 3,

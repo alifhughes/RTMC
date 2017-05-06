@@ -22354,6 +22354,7 @@ function Synth (id) {
 
     // Create source from audio context to hold AudioBuffer
     this.source = this.context.createBufferSource();
+    this.source.connect(this.masterVolume);
 
     // Create recording destination
     this.recordDestination = this.context.createMediaStreamDestination();
@@ -22916,6 +22917,7 @@ function Synth (id) {
         this.source = this.context.createBufferSource();
         this.source.buffer = this.audioBuffer;
         this.source.connect(this.context.destination);
+        this.source.connect(this.masterVolume);
         this.source.loop = true;
 
         // Set the tracks audio buffer

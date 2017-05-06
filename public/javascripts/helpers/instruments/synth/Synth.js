@@ -259,8 +259,13 @@ function Synth (id) {
         // Decode the array buffer and covert to AudioBuffer
         this.context.decodeAudioData(arrayBuffer).then(function(decodedData) {
 
-            // Set audio buffer
-            self.audioBuffer = decodedData;
+            // Recreate the audio buffer
+            self.audioBuffer =
+                self.recreateAudioBuffer(
+                    self.encodeAndCompressChannelData(decodedData.getChannelData(0)),
+                    self.encodeAndCompressChannelData(decodedData.getChannelData(1)),
+                    decodedData.length
+                );
 
             // Set the track variables
             self.track.audioBufferChannel0Data = self.encodeAndCompressChannelData(decodedData.getChannelData(0));

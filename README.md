@@ -1,18 +1,24 @@
 # RTMC
+### What is Real-Time Music Collaborator about?
 
-### Colour pallete hex values (change location or remove once implace in CSS)
+Real-Time Music Collaborator is a platform which allows you and your friends make songs together in real-time!
 
-Blue (base colour)
-- 508fe0
+**Share the URL to a friend and see each others changes appear on your screen as they happen!**
 
-Orange (secondary colour)
-- ffbb4c
+##**Prerequisite - Please use Google Chrome Canary browser for the MIDI capabilities!**
 
-Dark grey
-- 1D2632
+- Features a step-sequencer with a huge amount of samples to click and create patterns and MIDI capabilities to record melodies over the top!
 
-Light grey
-- e9eff7
+![main-screen](public/img/main-screen.png)
 
-White
-- ffffff
+- Sample sound parameters are editable with EQ-3 and waveform selector
+
+![sequencer-settings](public/img/sequencer-settings.png)
+
+- MIDI synthesiser has two editable ocsillators and once melody is recorded you can edit the waveform it creates
+
+![synth-settings](public/img/synth-settings.png)
+
+- Manage your created tracks in your user portal
+
+![user-portal](public/img/user-portal.png)

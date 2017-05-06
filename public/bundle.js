@@ -23038,7 +23038,6 @@ Synth.prototype.setSettingsClickHandler = function (settings) {
 
         // Get clone of the object as it is
         trackSnapshot = deepClone(self.track);
-console.log('trackSnapshot', trackSnapshot);
 
         // Toggle the popup
         settings.popup.toggle(400, function () {
@@ -23388,13 +23387,6 @@ Synth.prototype.setTrackSelectedClickHandler = function (trackSelectedCheckbox) 
 
         // If checked, set track selected to true
         self.trackSelected = this.checked ? true : false;
-
-        // If checked, suspend the audio context
-        if (self.trackSelected) {
-            self.context.resume();
-        } else {
-            self.context.suspend();
-        }
 
     });
 };

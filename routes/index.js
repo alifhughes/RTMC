@@ -25,5 +25,14 @@ router.get('/', function(req, res, next) {
   );
 });
 
+// Terms and conditions route
+router.get('/ToC', function(req, res, next) {
+  res.render('ToC',
+      {
+          title: 'Terms And Conditions'
+      }
+  );
+});
+
 
 module.exports = router;

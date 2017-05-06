@@ -585,14 +585,14 @@ function Synth (id) {
 
         // Add the waveform to widgets
         nx.add(
-            "waveform",
-            {
-                w: 825,
-                h: 160,
-                name: waveformName,
-                parent: waveformRow
-            }
-        );
+                "waveform",
+                {
+                    w: 825,
+                    h: 160,
+                    name: waveformName,
+                    parent: waveformRow
+                }
+              );
 
         // Get the newly created waveform
         for(widget in nx.widgets) {
@@ -711,9 +711,9 @@ Synth.prototype.start = function () {
 
     // Not playing, start the buffer now, with offset of starttime
     this.source.start(
-        this.context.currentTime,
-        this.track.bufferStarttime
-    );
+            this.context.currentTime,
+            this.track.bufferStarttime
+            );
 
     // Set playing to true
     this.playing = true;
@@ -772,18 +772,19 @@ Synth.prototype.setSettingsClickHandler = function (settings) {
 
     // Add the spinning animation to the settings icon on hover
     settings.icon.hover(
-        function() {
-            settings.icon.addClass('fa-spin');
-        }, function() {
-            settings.icon.removeClass('fa-spin');
-        }
-    );
+            function() {
+                settings.icon.addClass('fa-spin');
+            }, function() {
+                settings.icon.removeClass('fa-spin');
+            }
+            );
 
     // On click handler for the settings icon
     settings.icon.on('click', function (event) {
 
         // Get clone of the object as it is
         trackSnapshot = deepClone(self.track);
+console.log('trackSnapshot', trackSnapshot);
 
         // Toggle the popup
         settings.popup.toggle(400, function () {
@@ -837,6 +838,16 @@ Synth.prototype.setSettingsClickHandler = function (settings) {
 
     // On click handler for the settings icon
     settings.confirmBtn.on('click', function (event) {
+
+        // Set the track params to be synced
+        self.track.osc1Type = self.osc1Type;
+        self.track.osc2Type = self.osc2Type;
+        self.track.osc1Detune = self.osc1Detune;
+        self.track.osc2Detune = self.osc2Detune;
+        self.track.osc1Attack = self.osc1Attack;
+        self.track.osc2Attack = self.osc2Attack;
+        self.track.osc1Release = self.osc1Release;
+        self.track.osc2Release = self.osc2Release;
 
         // Push changes
         self.pushChanges();
@@ -1068,7 +1079,7 @@ Synth.prototype.setTrackJSON = function (track) {
                 track.audioBufferChannel0Data,
                 track.audioBufferChannel1Data,
                 track.audioBufferLength
-        );
+                );
 
     // Reset the audio buffer source
     this.resetAudioBufferSource();
@@ -1123,6 +1134,13 @@ Synth.prototype.setTrackSelectedClickHandler = function (trackSelectedCheckbox) 
 
         // If checked, set track selected to true
         self.trackSelected = this.checked ? true : false;
+
+        // If checked, suspend the audio context
+        if (self.trackSelected) {
+            self.context.resume();
+        } else {
+            self.context.suspend();
+        }
 
     });
 };

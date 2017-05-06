@@ -47,6 +47,9 @@ var sync = function (WindowUpdater, socket, arrangementId) {
     jsondiffpatch = jsondiffpatch.create({
         objectHash: function(obj) {
             return obj.id || JSON.stringify(obj);
+        },
+        textDiff: {
+            minLength: 10000000000000
         }
     });
 

@@ -22417,9 +22417,6 @@ function Synth (id) {
         var compressedChannel0Data = this.encodeAndCompressChannelData(this.audioBuffer.getChannelData(0));
         var compressedChannel1Data = this.encodeAndCompressChannelData(this.audioBuffer.getChannelData(1));
 
-console.log('compressedChannel1Data size: \n', compressedChannel1Data.length * 8);
-console.log('pure size: \n', JSON.stringify(this.audioBuffer.getChannelData(0)).length * 8);
-
         // JSON object container meta data of track
         var track = {
             id: this.id,
@@ -22932,7 +22929,6 @@ console.log('pure size: \n', JSON.stringify(this.audioBuffer.getChannelData(0)).
      * @return {AudioBuffer} AudioBuffer  The recreated AudioBuffer
      */
     this.recreateAudioBuffer = function (channel0Data, channel1Data, length) {
-console.log('channel0Data', channel0Data.length * 8);
 
         // Init empty buffer
         var audioBuffer = this.context.createBuffer(2, length, 44100);
@@ -23885,6 +23881,9 @@ var sync = function (WindowUpdater, socket, arrangementId) {
     jsondiffpatch = jsondiffpatch.create({
         objectHash: function(obj) {
             return obj.id || JSON.stringify(obj);
+        },
+        textDiff: {
+            minLength: 10000000000000
         }
     });
 
@@ -24018,6 +24017,8 @@ var sync = function (WindowUpdater, socket, arrangementId) {
             edit.serverVersion == this.doc.serverVersion) {
             // Versions match
 
+console.log(edit.diff.hasOwnProperty('tracks'));
+console.log('edit', edit);
             // Patch the shadow
             jsondiffpatch.patch(this.doc.shadow, edit.diff);
 

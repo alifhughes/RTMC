@@ -1,11 +1,11 @@
 # RTMC
 ### What is Real-Time Music Collaborator about?
 
-Real-Time Music Collaborator is a platform which allows you and your friends make songs together in real-time!
+##### Real-Time Music Collaborator is a platform which allows you and your friends make songs together in real-time!
 
-**Share the URL to a friend and see each others changes appear on your screen as they happen!**
+##### Share the URL to a friend and see each others changes appear on your screen as they happen!
 
-##**Prerequisite - Please use Google Chrome Canary browser for the MIDI capabilities!**
+**Prerequisite - Please use Google Chrome Canary browser for the MIDI capabilities!**
 
 - Features a step-sequencer with a huge amount of samples to click and create patterns and MIDI capabilities to record melodies over the top!
 

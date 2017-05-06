@@ -24017,8 +24017,6 @@ var sync = function (WindowUpdater, socket, arrangementId) {
             edit.serverVersion == this.doc.serverVersion) {
             // Versions match
 
-console.log(edit.diff.hasOwnProperty('tracks'));
-console.log('edit', edit);
             // Patch the shadow
             jsondiffpatch.patch(this.doc.shadow, edit.diff);
 

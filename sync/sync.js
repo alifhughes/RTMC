@@ -154,7 +154,7 @@ var Synchronise = function(socketIO) {
             // If there isnt one, send error
             if(!clientDoc){
                 console.log('Need to re-authenticate');
-                //socket.emit('error', 'Need to re-authenticate.');
+                socket.emit('error', 'Need to re-authenticate.');
                 return;
             }
 

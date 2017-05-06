@@ -20815,6 +20815,9 @@ if ('localhost' === window.location.hostname) {
     var socket = io.connect('http://137.74.165.127:3000');
 }
 
+// Get the user id from hidden input
+var userId = document.getElementById('userId').value;
+
 // Init the master controls
 var masterControls = new MasterControls(arrangement);
 
@@ -20822,7 +20825,7 @@ var masterControls = new MasterControls(arrangement);
 var windowUpdater = new WindowUpdater(masterControls);
 
 // Create new instance of sync
-var sync = new Sync(windowUpdater, socket, arrangementId);
+var sync = new Sync(windowUpdater, socket, arrangementId, userId);
 
 
 },{"./helpers/nxloader":52,"./helpers/sync":55,"./mastercontrols":57,"./model/arrangement":58,"./windowupdater":59}],45:[function(require,module,exports){
@@ -23862,7 +23865,7 @@ var _ = require('underscore')._;
  * @param   {string}           arrangementId  The ID of the arrangement that it is syncing with
  * @returns {sync}                            Instance of self
  */
-var sync = function (WindowUpdater, socket, arrangementId) {
+var sync = function (WindowUpdater, socket, arrangementId, userId) {
 
     // Init a document that gets passed between server and client
     this.doc = {
@@ -23951,6 +23954,11 @@ var sync = function (WindowUpdater, socket, arrangementId) {
 
         // Request the latest document
         this.socket.emit('get-latest-document', arrangementId, this.initLocalVersion.bind(this));
+
+        // If the user id is set, add the user to collaborators of the document
+        if (false != userId) {
+            this.socket.emit('add-user-to-collaborators', arrangementId, userId);
+        }
 
     };
 

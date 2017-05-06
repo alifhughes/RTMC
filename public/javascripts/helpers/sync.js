@@ -11,7 +11,7 @@ var _ = require('underscore')._;
  * @param   {string}           arrangementId  The ID of the arrangement that it is syncing with
  * @returns {sync}                            Instance of self
  */
-var sync = function (WindowUpdater, socket, arrangementId) {
+var sync = function (WindowUpdater, socket, arrangementId, userId) {
 
     // Init a document that gets passed between server and client
     this.doc = {
@@ -100,6 +100,11 @@ var sync = function (WindowUpdater, socket, arrangementId) {
 
         // Request the latest document
         this.socket.emit('get-latest-document', arrangementId, this.initLocalVersion.bind(this));
+
+        // If the user id is set, add the user to collaborators of the document
+        if (false != userId) {
+            this.socket.emit('add-user-to-collaborators', arrangementId, userId);
+        }
 
     };
 

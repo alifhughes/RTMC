@@ -10,15 +10,15 @@ exports.render = function(req, res) {
         res.redirect('/');
     }
 
+    var tracks = [];
+    var collabTracks = [];
+
     // Find the user's details logged in
     User.findById(req.user.id)
         .then(function(userDetailsDoc) {
 
             // Find the arrangements that this user is owner of
             Arrangement.find({ownerId: userDetailsDoc._id}, function (err, arrangementDetailsDoc) {
-
-                    // Init tracks array
-                    var tracks = [];
 
                     // Add track details to array
                     arrangementDetailsDoc.map(function (track) {
@@ -34,17 +34,35 @@ exports.render = function(req, res) {
                     // Reverse track to get newest first
                     tracks.reverse();
 
-                    // Create array to send back to view
-                    res.render(
-                        'portal/main',
-                        {
-                            title: 'Portal',
-                            firstName: userDetailsDoc.firstName,
-                            lastName: userDetailsDoc.lastName,
-                            userTracks: tracks
-                        }
-                    );
-                });
+                    Arrangement.find({contributors: userDetailsDoc._id}, function (err, collabArrangementDetailsDoc) {
+
+                        // Add track details to array
+                        collabArrangementDetailsDoc.map(function (track) {
+
+                            collabTracks.push({
+                                id : track._id,
+                                name: track.name,
+                                bpm: track.bpm
+                            });
+
+                        });
+
+                        // Reverse track to get newest first
+                        collabTracks.reverse();
+
+                        // Create array to send back to view
+                        res.render(
+                            'portal/main',
+                            {
+                                title: 'Portal',
+                                firstName: userDetailsDoc.firstName,
+                                lastName: userDetailsDoc.lastName,
+                                userTracks: tracks,
+                                collabTracks: collabTracks
+                            }
+                        );
+                    });
+              });
         });
 };
 

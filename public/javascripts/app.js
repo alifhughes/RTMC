@@ -24,6 +24,9 @@ if ('localhost' === window.location.hostname) {
     var socket = io.connect('http://137.74.165.127:3000');
 }
 
+// Get the user id from hidden input
+var userId = document.getElementById('userId').value;
+
 // Init the master controls
 var masterControls = new MasterControls(arrangement);
 
@@ -31,5 +34,5 @@ var masterControls = new MasterControls(arrangement);
 var windowUpdater = new WindowUpdater(masterControls);
 
 // Create new instance of sync
-var sync = new Sync(windowUpdater, socket, arrangementId);
+var sync = new Sync(windowUpdater, socket, arrangementId, userId);
 

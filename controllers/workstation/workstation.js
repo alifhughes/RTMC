@@ -10,10 +10,12 @@ exports.render = function(req, res) {
 
     // User registered
     var userRegistered = false;
+    var userId = false;
 
     // Check if user is logged in
     if (req.user) {
         userRegistered = true;
+        userId = req.user._id;
     }
 
     // Get full url for sharing
@@ -32,7 +34,8 @@ exports.render = function(req, res) {
             {
                 title: doc.name,
                 userRegistered: userRegistered,
-                path: fullUrl
+                path: fullUrl,
+                userId: userId
             }
         )
     });

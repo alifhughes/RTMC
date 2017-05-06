@@ -34,7 +34,31 @@ block content
                     form.delete-arrangement-form(action='/portal/#{track.id}/delete', method='POST')
                        a.delete-arrangement-a Delete
 
-    else
+    if collabTracks.length > 0
+        h4.no-margin.portal-user-names Arrangements you've collaborated on:
+        div.container
+          div.row
+            table.col-lg-12
+              tr
+                th Name of track
+                th BPM of track
+                th
+              for track in collabTracks
+                tr
+                  td
+                    a(href="/workstation/arrangement/#{track.id}")
+                      p #{track.name}
+                  td
+                    a(href="/workstation/arrangement/#{track.id}")
+                      if track.bpm
+                        p #{track.bpm}
+                      else
+                        p -
+                  td
+                    form.delete-arrangement-form(action='/portal/#{track.id}/delete', method='POST')
+                       a.delete-arrangement-a Delete
+
+     if (collabTracks.length == 0 && userTracks.length == 0)
         h4.no-margin.portal-user-names No arrangements yet!
           br
           | Click 'Create a new arrangement' to get started!

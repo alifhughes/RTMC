@@ -37,8 +37,10 @@ var Synchronise = function(socketIO) {
      * @param {function} callback
      */
     var registerSocketFor = function(id, socket, callback){
+
         // Get the document the socket requested to work on
         getDoc(id, function(doc) {
+
             // Push this socket onto registered sockets
             doc.registeredSockets.push(socket);
 
@@ -50,6 +52,33 @@ var Synchronise = function(socketIO) {
             callback();
 
           });
+    };
+
+    /**
+     * Add user to the list of collaborators for the docs
+     *
+     * @param {string} arrangementId  The arrangementId
+     * @param {string} userId         The user id
+     */
+    var addUserToCollaborators = function (arrangementId, userId) {
+
+        // Get the document the socket requested to work on
+        getDoc(arrangementId, function(doc) {
+
+            // Check if user id is owner id
+            if (doc.ownerId == userId) {
+                return;
+            }
+
+            // Check if id is already in array
+            if(doc.contributors.indexOf(userId) > 0) {
+                return;
+            }
+
+            // Add the user to the contributors
+            doc.contributors.push(userId);
+
+        });
     };
 
     /**
@@ -116,7 +145,9 @@ var Synchronise = function(socketIO) {
                 allDocuments[id] = {
                     registeredSockets: [],
                     clientVersions: {},
-                    serverCopy: doc
+                    serverCopy: doc,
+                    ownerId: doc.ownerId,
+                    contributors: doc.contributors
                 };
 
                 callback(allDocuments[id]);
@@ -334,6 +365,11 @@ var Synchronise = function(socketIO) {
      * Handle in coming connections
      */
     var socketHandler = function(socket) {
+
+        // Get the latest document
+        socket.on('add-user-to-collaborators', function(arrangementId, userId) {
+            addUserToCollaborators(arrangementId, userId);
+        });
 
         // Get the latest document
         socket.on('get-latest-document', function(docId, send) {

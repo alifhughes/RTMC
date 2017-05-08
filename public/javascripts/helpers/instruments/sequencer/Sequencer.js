@@ -697,5 +697,14 @@ Sequencer.prototype.getId = function () {
     return this.track.id;
 };
 
+/**
+ * Get the type of the track
+ *
+ * @returns {string} type  The track type
+ */
+Sequencer.prototype.getTrackType = function () {
+    return this.track.type;
+};
+
 
 module.exports = Sequencer;

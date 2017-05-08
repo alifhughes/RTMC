@@ -21874,6 +21874,15 @@ Sequencer.prototype.getId = function () {
     return this.track.id;
 };
 
+/**
+ * Get the type of the track
+ *
+ * @returns {string} type  The track type
+ */
+Sequencer.prototype.getTrackType = function () {
+    return this.track.type;
+};
+
 
 module.exports = Sequencer;
 
@@ -22730,6 +22739,7 @@ function Synth (id) {
         self.keyboard.toggle(self.keyboard.keys[key]);
 
     }
+
     /**
      * Note is being released
      */
@@ -23036,12 +23046,12 @@ Synth.prototype.setSettingsClickHandler = function (settings) {
 
     // Add the spinning animation to the settings icon on hover
     settings.icon.hover(
-            function() {
-                settings.icon.addClass('fa-spin');
-            }, function() {
-                settings.icon.removeClass('fa-spin');
-            }
-            );
+        function() {
+            settings.icon.addClass('fa-spin');
+        }, function() {
+            settings.icon.removeClass('fa-spin');
+        }
+    );
 
     // On click handler for the settings icon
     settings.icon.on('click', function (event) {
@@ -23399,6 +23409,22 @@ Synth.prototype.setTrackSelectedClickHandler = function (trackSelectedCheckbox) 
         self.trackSelected = this.checked ? true : false;
 
     });
+};
+
+/**
+ * Get the type of the track
+ *
+ * @returns {string} type  The track type
+ */
+Synth.prototype.getTrackType = function () {
+    return this.track.type;
+};
+
+/**
+ * Close the audio context
+ */
+Synth.prototype.closeAudioContext = function () {
+    this.context.close();
 };
 
 module.exports = Synth;
@@ -24264,6 +24290,9 @@ var MasterControls = function (arrangement) {
     // Play back bool
     this.playing = false;
 
+    // Counter for number of synth tracks
+    this.synthTracksCount = 0;
+
     // Reference to self
     var self = this;
 
@@ -24369,6 +24398,18 @@ var MasterControls = function (arrangement) {
 
         // Get the selected instrument from the drop down
         var instrument = $('#instruments').val();
+
+        // Check the track type
+        if ('synth' == instrument) {
+            // Check how many synth tracks there are
+            if (self.synthTracksCount == 3) {
+                alert('Maximum number of synth tracks reached');
+                return;
+            } else {
+                // Increment the synth tracks
+                self.synthTracksCount++;
+            }
+        }
 
         // Create the instrument selected
         self.instrumentFactory.createInstrument(instrument, false)
@@ -24502,6 +24543,7 @@ var MasterControls = function (arrangement) {
  * @retun {MasterControls}        Instance of self
  */
 MasterControls.prototype.addTrack = function (track) {
+
     // Push track to list of tracks
     this.tracks.push(track);
 
@@ -24533,6 +24575,15 @@ MasterControls.prototype.deleteTrackById = function (trackId) {
 
         // Check if current track is the track to delete
         if (this.tracks[i].id == trackId) {
+
+            // Check if the track is a synth
+            if ('synth' == this.tracks[i].getTrackType()) {
+                // Release the web audio
+                this.tracks[i].closeAudioContext();
+                this.synthTracksCount--;
+                console.log('YO');
+            }
+
             // Delete the track and exit the loop
             this.tracks.splice(i, 1);
             break;
@@ -24597,6 +24648,15 @@ MasterControls.prototype.updateBpm = function (bpm) {
 
     // Implement fluent interface
     return this;
+};
+
+/**
+ * Update the synth count
+ */
+MasterControls.prototype.updateSynthCount = function () {
+    if (this.synthTracksCount != 3) {
+        this.synthTracksCount++;
+    }
 };
 
 module.exports = MasterControls;
@@ -24806,6 +24866,11 @@ var WindowUpdater = function (MasterControls) {
         var type = track.type;
         var id = track.id;
 
+        // Check if synth being added
+        if ('synth' == type) {
+            self.masterControls.updateSynthCount();
+        }
+
         // Create the instrument selected
         self.instrumentFactory.createInstrument(type, id).then(function(instrumentContainer) {
 
@@ -24885,10 +24950,38 @@ var WindowUpdater = function (MasterControls) {
         } else {
             // No tracks added or deleted, an internal change to the tracks
 
+            /*
+
             // Loop through each track checking if their equal to exisiting tracks
-            this.arrangement.tracks.forEach(function (existingTrack) {
+            for (var i = 0; i < this.arrangement.tracks.length; i++) {
 
                 // Loop through tracks passed in
+                for (var j = 0; j < tracks.length; j++) {
+
+                    // Check if tracks are the same
+                    if (this.arrangement.tracks[i].id != tracks[j].id) {
+                        // Not the same, skip
+                        return;
+                    }
+
+                    // Tracks are the same, check if objects are equal
+                    if (!_.isEqual(this.arrangement.tracks[i], tracks[j])) {
+                        // Tracks are different
+                        // Get the track, object
+                        var trackToUpdate =
+                            self.masterControls.getTrackById(tracks[j].id);
+
+                        // Set the new track json
+                        trackToUpdate.setTrackJSON(tracks[j]);
+                    }
+
+                }
+            }
+            */
+
+
+            this.arrangement.tracks.forEach(function (existingTrack) {
+
                 tracks.forEach(function (newTrack) {
 
                     // Check if tracks are the same
@@ -24909,6 +25002,7 @@ var WindowUpdater = function (MasterControls) {
                     }
                 });
             });
+
         }
 
     };

@@ -26,6 +26,9 @@ var MasterControls = function (arrangement) {
     // Play back bool
     this.playing = false;
 
+    // Counter for number of synth tracks
+    this.synthTracksCount = 0;
+
     // Reference to self
     var self = this;
 
@@ -131,6 +134,18 @@ var MasterControls = function (arrangement) {
 
         // Get the selected instrument from the drop down
         var instrument = $('#instruments').val();
+
+        // Check the track type
+        if ('synth' == instrument) {
+            // Check how many synth tracks there are
+            if (self.synthTracksCount == 3) {
+                alert('Maximum number of synth tracks reached');
+                return;
+            } else {
+                // Increment the synth tracks
+                self.synthTracksCount++;
+            }
+        }
 
         // Create the instrument selected
         self.instrumentFactory.createInstrument(instrument, false)
@@ -264,6 +279,7 @@ var MasterControls = function (arrangement) {
  * @retun {MasterControls}        Instance of self
  */
 MasterControls.prototype.addTrack = function (track) {
+
     // Push track to list of tracks
     this.tracks.push(track);
 
@@ -295,6 +311,15 @@ MasterControls.prototype.deleteTrackById = function (trackId) {
 
         // Check if current track is the track to delete
         if (this.tracks[i].id == trackId) {
+
+            // Check if the track is a synth
+            if ('synth' == this.tracks[i].getTrackType()) {
+                // Release the web audio
+                this.tracks[i].closeAudioContext();
+                this.synthTracksCount--;
+                console.log('YO');
+            }
+
             // Delete the track and exit the loop
             this.tracks.splice(i, 1);
             break;
@@ -359,6 +384,15 @@ MasterControls.prototype.updateBpm = function (bpm) {
 
     // Implement fluent interface
     return this;
+};
+
+/**
+ * Update the synth count
+ */
+MasterControls.prototype.updateSynthCount = function () {
+    if (this.synthTracksCount != 3) {
+        this.synthTracksCount++;
+    }
 };
 
 module.exports = MasterControls;

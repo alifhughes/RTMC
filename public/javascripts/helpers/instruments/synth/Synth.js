@@ -473,6 +473,7 @@ function Synth (id) {
         self.keyboard.toggle(self.keyboard.keys[key]);
 
     }
+
     /**
      * Note is being released
      */
@@ -779,12 +780,12 @@ Synth.prototype.setSettingsClickHandler = function (settings) {
 
     // Add the spinning animation to the settings icon on hover
     settings.icon.hover(
-            function() {
-                settings.icon.addClass('fa-spin');
-            }, function() {
-                settings.icon.removeClass('fa-spin');
-            }
-            );
+        function() {
+            settings.icon.addClass('fa-spin');
+        }, function() {
+            settings.icon.removeClass('fa-spin');
+        }
+    );
 
     // On click handler for the settings icon
     settings.icon.on('click', function (event) {
@@ -1142,6 +1143,22 @@ Synth.prototype.setTrackSelectedClickHandler = function (trackSelectedCheckbox) 
         self.trackSelected = this.checked ? true : false;
 
     });
+};
+
+/**
+ * Get the type of the track
+ *
+ * @returns {string} type  The track type
+ */
+Synth.prototype.getTrackType = function () {
+    return this.track.type;
+};
+
+/**
+ * Close the audio context
+ */
+Synth.prototype.closeAudioContext = function () {
+    this.context.close();
 };
 
 module.exports = Synth;

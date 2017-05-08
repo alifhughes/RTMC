@@ -88,6 +88,11 @@ var WindowUpdater = function (MasterControls) {
         var type = track.type;
         var id = track.id;
 
+        // Check if synth being added
+        if ('synth' == type) {
+            self.masterControls.updateSynthCount();
+        }
+
         // Create the instrument selected
         self.instrumentFactory.createInstrument(type, id).then(function(instrumentContainer) {
 
@@ -191,6 +196,7 @@ var WindowUpdater = function (MasterControls) {
                     }
                 });
             });
+
         }
 
     };

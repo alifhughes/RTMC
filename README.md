@@ -5,6 +5,8 @@
 
 ##### Share the URL to a friend and see each others changes appear on your screen as they happen!
 
+### Try it out for real [here!](http://137.74.165.127:3000/)
+
 **Prerequisite - Please use Google Chrome Canary browser for the MIDI capabilities!**
 
 - Features a step-sequencer with a huge amount of samples to click and create patterns and MIDI capabilities to record melodies over the top!

@@ -1161,4 +1161,17 @@ Synth.prototype.closeAudioContext = function () {
     this.context.close();
 };
 
+/**
+ * Get the audio buffer
+ *
+ * @return {Promise}  A promise which resolves with the AudioBuffer
+ */
+Synth.prototype.getAudioBuffer = function () {
+    // Ref to self
+    var self = this;
+    return new Promise(function (resolve, reject) {
+        resolve(self.audioBuffer);
+    });
+};
+
 module.exports = Synth;

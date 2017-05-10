@@ -2,6 +2,7 @@ var Clipboard = require('clipboard');
 var $ = require('jquery');
 var Tone = require('tone');
 var InstrumentFactory = require('./helpers/instruments/InstrumentFactory');
+var exportToWav = require('./helpers/exportToWav.js');
 
 /**
  * Constructor, it controls:
@@ -67,6 +68,104 @@ var MasterControls = function (arrangement) {
             $('#shareUrl').append(shareIcon);
 
         }, 4000);
+    });
+
+    /**
+     * Add event listener for the export button
+     */
+    $('#exportToWav').on('click', function (event) {
+
+        // Disable the button
+        $(this).prop('disabled', true);
+
+        // Give user feedback
+        $(this).html('Exporting, please wait..');
+
+        // Show the loading overlay
+        $('#loadOverlay').show();
+
+        // Check if playing
+        if (self.playing) {
+            // Stop the playback
+            $('#start-stop').click();
+        }
+
+        // Disable playback
+        $('#start-stop').prop('disabled', true);
+
+        // Init empty array to hold the audio buffers
+        var audioBuffers = [];
+
+        // Iterate all the tracks
+        for (var i = 0; i < self.tracks.length; i++) {
+
+            // Get all of the audio buffers from the tracks
+            self.tracks[i].getAudioBuffer().then(function (trackAudioBuffer) {
+                audioBuffers.push(trackAudioBuffer);
+
+                // Check if last AudioBuffer has been resolved
+                if (audioBuffers.length == self.tracks.length) {
+                    // Resolved, return the AudioBuffers array
+                    return audioBuffers;
+                } else {
+                    return false;
+                }
+
+            }).then(function (allAudioBuffers) {
+
+                // Check the return value
+                if (allAudioBuffers != false) {
+                    // Value isn't false, all audiobuffers returned
+                    var wav = exportToWav(allAudioBuffers, Tone.context);
+
+                    // Create anchor
+                    var anchor = document.createElement('a')
+                    document.body.appendChild(anchor)
+                    anchor.style = 'display: none'
+                    var blob = new window.Blob([ new DataView(wav) ], {
+                      type: 'audio/wav'
+                    })
+
+                    var url = window.URL.createObjectURL(blob)
+                    anchor.href = url
+                    anchor.download = 'audio.wav'
+                    anchor.click()
+                    window.URL.revokeObjectURL(url)
+
+                    // Hide the overlay
+                    $('#loadOverlay').hide();
+
+                    // Disable the button
+                    $('#exportToWav').prop('disabled', false);
+
+                    // Give user feedback
+                    $('#exportToWav').html('Export to .wav file ');
+
+                    // Recreate icon
+                    var downloadIcon = document.createElement("i");
+                    downloadIcon.className = "fa fa-download";
+                    $('#exportToWav').append(downloadIcon);
+
+                }
+            });
+        }
+
+        /**
+         * - Disable the button with feedback
+         *      - spinning wheel or something
+         * - Get all the audio buffers from the arrangment
+         *      - loop through all the tracks and get the buffers
+         * - initiate new web worker
+         * - add an event watcher so knows when it is done
+         * - pass the buffers to the web worker as a message
+         *      - the web worker should take the audio buffers
+         *      - merge the buffers
+         *      - export it to wav
+         *      - return it
+         *           - on the finish message
+         * - wait until its done
+         *      - either make the download button appear or make the button on click download it again
+         */
     });
 
     /**
@@ -317,7 +416,6 @@ MasterControls.prototype.deleteTrackById = function (trackId) {
                 // Release the web audio
                 this.tracks[i].closeAudioContext();
                 this.synthTracksCount--;
-                console.log('YO');
             }
 
             // Delete the track and exit the loop

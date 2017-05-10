@@ -272,6 +272,8 @@ WindowUpdater.prototype.initialise = function (arrangement) {
     // Set the local copy of arrangement
     this.arrangement = deepClone(arrangement);
 
+    // Hide the loading overlay
+    $('#loadOverlay').hide();
 
 };
 

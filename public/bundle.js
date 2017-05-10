@@ -1,4 +1,100 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+module.exports = audioBufferToWav
+function audioBufferToWav (buffer, opt) {
+  opt = opt || {}
+
+  var numChannels = buffer.numberOfChannels
+  var sampleRate = buffer.sampleRate
+  var format = opt.float32 ? 3 : 1
+  var bitDepth = format === 3 ? 32 : 16
+
+  var result
+  if (numChannels === 2) {
+    result = interleave(buffer.getChannelData(0), buffer.getChannelData(1))
+  } else {
+    result = buffer.getChannelData(0)
+  }
+
+  return encodeWAV(result, format, sampleRate, numChannels, bitDepth)
+}
+
+function encodeWAV (samples, format, sampleRate, numChannels, bitDepth) {
+  var bytesPerSample = bitDepth / 8
+  var blockAlign = numChannels * bytesPerSample
+
+  var buffer = new ArrayBuffer(44 + samples.length * bytesPerSample)
+  var view = new DataView(buffer)
+
+  /* RIFF identifier */
+  writeString(view, 0, 'RIFF')
+  /* RIFF chunk length */
+  view.setUint32(4, 36 + samples.length * bytesPerSample, true)
+  /* RIFF type */
+  writeString(view, 8, 'WAVE')
+  /* format chunk identifier */
+  writeString(view, 12, 'fmt ')
+  /* format chunk length */
+  view.setUint32(16, 16, true)
+  /* sample format (raw) */
+  view.setUint16(20, format, true)
+  /* channel count */
+  view.setUint16(22, numChannels, true)
+  /* sample rate */
+  view.setUint32(24, sampleRate, true)
+  /* byte rate (sample rate * block align) */
+  view.setUint32(28, sampleRate * blockAlign, true)
+  /* block align (channel count * bytes per sample) */
+  view.setUint16(32, blockAlign, true)
+  /* bits per sample */
+  view.setUint16(34, bitDepth, true)
+  /* data chunk identifier */
+  writeString(view, 36, 'data')
+  /* data chunk length */
+  view.setUint32(40, samples.length * bytesPerSample, true)
+  if (format === 1) { // Raw PCM
+    floatTo16BitPCM(view, 44, samples)
+  } else {
+    writeFloat32(view, 44, samples)
+  }
+
+  return buffer
+}
+
+function interleave (inputL, inputR) {
+  var length = inputL.length + inputR.length
+  var result = new Float32Array(length)
+
+  var index = 0
+  var inputIndex = 0
+
+  while (index < length) {
+    result[index++] = inputL[inputIndex]
+    result[index++] = inputR[inputIndex]
+    inputIndex++
+  }
+  return result
+}
+
+function writeFloat32 (output, offset, input) {
+  for (var i = 0; i < input.length; i++, offset += 4) {
+    output.setFloat32(offset, input[i], true)
+  }
+}
+
+function floatTo16BitPCM (output, offset, input) {
+  for (var i = 0; i < input.length; i++, offset += 2) {
+    var s = Math.max(-1, Math.min(1, input[i]))
+    output.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true)
+  }
+}
+
+function writeString (view, offset, string) {
+  for (var i = 0; i < string.length; i++) {
+    view.setUint8(offset + i, string.charCodeAt(i))
+  }
+}
+
+},{}],2:[function(require,module,exports){
 (function (global, factory) {
     if (typeof define === "function" && define.amd) {
         define(['module', 'select'], factory);
@@ -227,7 +323,7 @@
 
     module.exports = ClipboardAction;
 });
-},{"select":41}],2:[function(require,module,exports){
+},{"select":43}],3:[function(require,module,exports){
 (function (global, factory) {
     if (typeof define === "function" && define.amd) {
         define(['module', './clipboard-action', 'tiny-emitter', 'good-listener'], factory);
@@ -427,7 +523,7 @@
 
     module.exports = Clipboard;
 });
-},{"./clipboard-action":1,"good-listener":6,"tiny-emitter":42}],3:[function(require,module,exports){
+},{"./clipboard-action":2,"good-listener":7,"tiny-emitter":44}],4:[function(require,module,exports){
 var DOCUMENT_NODE_TYPE = 9;
 
 /**
@@ -459,7 +555,7 @@ function closest (element, selector) {
 
 module.exports = closest;
 
-},{}],4:[function(require,module,exports){
+},{}],5:[function(require,module,exports){
 var closest = require('./closest');
 
 /**
@@ -505,7 +601,7 @@ function listener(element, selector, type, callback) {
 
 module.exports = delegate;
 
-},{"./closest":3}],5:[function(require,module,exports){
+},{"./closest":4}],6:[function(require,module,exports){
 /**
  * Check if argument is a HTML element.
  *
@@ -556,7 +652,7 @@ exports.fn = function(value) {
     return type === '[object Function]';
 };
 
-},{}],6:[function(require,module,exports){
+},{}],7:[function(require,module,exports){
 var is = require('./is');
 var delegate = require('delegate');
 
@@ -653,7 +749,7 @@ function listenSelector(selector, type, callback) {
 
 module.exports = listen;
 
-},{"./is":5,"delegate":4}],7:[function(require,module,exports){
+},{"./is":6,"delegate":5}],8:[function(require,module,exports){
 /*!
  * jQuery JavaScript Library v3.2.1
  * https://jquery.com/
@@ -10908,7 +11004,7 @@ if ( !noGlobal ) {
 return jQuery;
 } );
 
-},{}],8:[function(require,module,exports){
+},{}],9:[function(require,module,exports){
 
 var isArray = (typeof Array.isArray === 'function') ?
   // use native function
@@ -10950,7 +11046,7 @@ function clone(arg) {
 
 module.exports = clone;
 
-},{}],9:[function(require,module,exports){
+},{}],10:[function(require,module,exports){
 
 var Pipe = require('../pipe').Pipe;
 
@@ -11001,7 +11097,7 @@ Context.prototype.push = function(child, name) {
 
 exports.Context = Context;
 
-},{"../pipe":23}],10:[function(require,module,exports){
+},{"../pipe":24}],11:[function(require,module,exports){
 var Context = require('./context').Context;
 var defaultClone = require('../clone');
 
@@ -11029,7 +11125,7 @@ DiffContext.prototype.setResult = function(result) {
 
 exports.DiffContext = DiffContext;
 
-},{"../clone":8,"./context":9}],11:[function(require,module,exports){
+},{"../clone":9,"./context":10}],12:[function(require,module,exports){
 var Context = require('./context').Context;
 
 var PatchContext = function PatchContext(left, delta) {
@@ -11042,7 +11138,7 @@ PatchContext.prototype = new Context();
 
 exports.PatchContext = PatchContext;
 
-},{"./context":9}],12:[function(require,module,exports){
+},{"./context":10}],13:[function(require,module,exports){
 var Context = require('./context').Context;
 
 var ReverseContext = function ReverseContext(delta) {
@@ -11054,7 +11150,7 @@ ReverseContext.prototype = new Context();
 
 exports.ReverseContext = ReverseContext;
 
-},{"./context":9}],13:[function(require,module,exports){
+},{"./context":10}],14:[function(require,module,exports){
 // use as 2nd parameter for JSON.parse to revive Date instances
 module.exports = function dateReviver(key, value) {
   var parts;
@@ -11067,7 +11163,7 @@ module.exports = function dateReviver(key, value) {
   return value;
 };
 
-},{}],14:[function(require,module,exports){
+},{}],15:[function(require,module,exports){
 var Processor = require('./processor').Processor;
 var Pipe = require('./pipe').Pipe;
 var DiffContext = require('./contexts/diff').DiffContext;
@@ -11136,11 +11232,11 @@ DiffPatcher.prototype.clone = function(value) {
 
 exports.DiffPatcher = DiffPatcher;
 
-},{"./clone":8,"./contexts/diff":10,"./contexts/patch":11,"./contexts/reverse":12,"./filters/arrays":16,"./filters/dates":17,"./filters/nested":19,"./filters/texts":20,"./filters/trivial":21,"./pipe":23,"./processor":24}],15:[function(require,module,exports){
+},{"./clone":9,"./contexts/diff":11,"./contexts/patch":12,"./contexts/reverse":13,"./filters/arrays":17,"./filters/dates":18,"./filters/nested":20,"./filters/texts":21,"./filters/trivial":22,"./pipe":24,"./processor":25}],16:[function(require,module,exports){
 
 exports.isBrowser = typeof window !== 'undefined';
 
-},{}],16:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 var DiffContext = require('../contexts/diff').DiffContext;
 var PatchContext = require('../contexts/patch').PatchContext;
 var ReverseContext = require('../contexts/reverse').ReverseContext;
@@ -11580,7 +11676,7 @@ exports.collectChildrenPatchFilter = collectChildrenPatchFilter;
 exports.reverseFilter = reverseFilter;
 exports.collectChildrenReverseFilter = collectChildrenReverseFilter;
 
-},{"../contexts/diff":10,"../contexts/patch":11,"../contexts/reverse":12,"./lcs":18}],17:[function(require,module,exports){
+},{"../contexts/diff":11,"../contexts/patch":12,"../contexts/reverse":13,"./lcs":19}],18:[function(require,module,exports){
 var diffFilter = function datesDiffFilter(context) {
   if (context.left instanceof Date) {
     if (context.right instanceof Date) {
@@ -11601,7 +11697,7 @@ diffFilter.filterName = 'dates';
 
 exports.diffFilter = diffFilter;
 
-},{}],18:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
 /*
 
 LCS implementation that supports arrays or strings
@@ -11677,7 +11773,7 @@ var get = function(array1, array2, match, context) {
 
 exports.get = get;
 
-},{}],19:[function(require,module,exports){
+},{}],20:[function(require,module,exports){
 var DiffContext = require('../contexts/diff').DiffContext;
 var PatchContext = require('../contexts/patch').PatchContext;
 var ReverseContext = require('../contexts/reverse').ReverseContext;
@@ -11821,7 +11917,7 @@ exports.collectChildrenPatchFilter = collectChildrenPatchFilter;
 exports.reverseFilter = reverseFilter;
 exports.collectChildrenReverseFilter = collectChildrenReverseFilter;
 
-},{"../contexts/diff":10,"../contexts/patch":11,"../contexts/reverse":12}],20:[function(require,module,exports){
+},{"../contexts/diff":11,"../contexts/patch":12,"../contexts/reverse":13}],21:[function(require,module,exports){
 /* global diff_match_patch */
 var TEXT_DIFF = 2;
 var DEFAULT_MIN_LENGTH = 60;
@@ -11959,7 +12055,7 @@ exports.diffFilter = diffFilter;
 exports.patchFilter = patchFilter;
 exports.reverseFilter = reverseFilter;
 
-},{}],21:[function(require,module,exports){
+},{}],22:[function(require,module,exports){
 var isArray = (typeof Array.isArray === 'function') ?
   // use native function
   Array.isArray :
@@ -12078,7 +12174,7 @@ exports.diffFilter = diffFilter;
 exports.patchFilter = patchFilter;
 exports.reverseFilter = reverseFilter;
 
-},{}],22:[function(require,module,exports){
+},{}],23:[function(require,module,exports){
 
 var environment = require('./environment');
 
@@ -12145,7 +12241,7 @@ if (environment.isBrowser) {
   exports.console = formatters.console;
 }
 
-},{"./date-reviver":13,"./diffpatcher":14,"./environment":15}],23:[function(require,module,exports){
+},{"./date-reviver":14,"./diffpatcher":15,"./environment":16}],24:[function(require,module,exports){
 var Pipe = function Pipe(name) {
   this.name = name;
   this.filters = [];
@@ -12259,7 +12355,7 @@ Pipe.prototype.shouldHaveResult = function(should) {
 
 exports.Pipe = Pipe;
 
-},{}],24:[function(require,module,exports){
+},{}],25:[function(require,module,exports){
 
 var Processor = function Processor(options){
   this.selfOptions = options || {};
@@ -12321,7 +12417,37 @@ Processor.prototype.process = function(input, pipe) {
 
 exports.Processor = Processor;
 
-},{}],25:[function(require,module,exports){
+},{}],26:[function(require,module,exports){
+module.exports = mergeBuffers;
+
+function mergeBuffers(buffers, ac) {
+  var maxChannels = 0;
+  var maxDuration = 0;
+  for (var i = 0; i < buffers.length; i++) {
+    if (buffers[i].numberOfChannels > maxChannels) {
+      maxChannels = buffers[i].numberOfChannels;
+    }
+    if (buffers[i].duration > maxDuration) {
+      maxDuration = buffers[i].duration;
+    }
+  }
+  var out = ac.createBuffer(maxChannels,
+                                 ac.sampleRate * maxDuration,
+                                 ac.sampleRate);
+
+  for (var j = 0; j < buffers.length; j++) {
+    for (var srcChannel = 0; srcChannel < buffers[j].numberOfChannels; srcChannel++) {
+      var outt = out.getChannelData(srcChannel);
+      var inn = buffers[j].getChannelData(srcChannel);
+      for (var i = 0; i < inn.length; i++) {
+        outt[i] += inn[i];
+      }
+      out.getChannelData(srcChannel).set(outt, 0);
+    }
+  }
+  return out;
+}
+},{}],27:[function(require,module,exports){
 // Top level file is just a mixin of submodules & constants
 'use strict';
 
@@ -12337,7 +12463,7 @@ assign(pako, deflate, inflate, constants);
 
 module.exports = pako;
 
-},{"./lib/deflate":26,"./lib/inflate":27,"./lib/utils/common":28,"./lib/zlib/constants":31}],26:[function(require,module,exports){
+},{"./lib/deflate":28,"./lib/inflate":29,"./lib/utils/common":30,"./lib/zlib/constants":33}],28:[function(require,module,exports){
 'use strict';
 
 
@@ -12739,7 +12865,7 @@ exports.deflate = deflate;
 exports.deflateRaw = deflateRaw;
 exports.gzip = gzip;
 
-},{"./utils/common":28,"./utils/strings":29,"./zlib/deflate":33,"./zlib/messages":38,"./zlib/zstream":40}],27:[function(require,module,exports){
+},{"./utils/common":30,"./utils/strings":31,"./zlib/deflate":35,"./zlib/messages":40,"./zlib/zstream":42}],29:[function(require,module,exports){
 'use strict';
 
 
@@ -13159,7 +13285,7 @@ exports.inflate = inflate;
 exports.inflateRaw = inflateRaw;
 exports.ungzip  = inflate;
 
-},{"./utils/common":28,"./utils/strings":29,"./zlib/constants":31,"./zlib/gzheader":34,"./zlib/inflate":36,"./zlib/messages":38,"./zlib/zstream":40}],28:[function(require,module,exports){
+},{"./utils/common":30,"./utils/strings":31,"./zlib/constants":33,"./zlib/gzheader":36,"./zlib/inflate":38,"./zlib/messages":40,"./zlib/zstream":42}],30:[function(require,module,exports){
 'use strict';
 
 
@@ -13263,7 +13389,7 @@ exports.setTyped = function (on) {
 
 exports.setTyped(TYPED_OK);
 
-},{}],29:[function(require,module,exports){
+},{}],31:[function(require,module,exports){
 // String encode/decode helpers
 'use strict';
 
@@ -13450,7 +13576,7 @@ exports.utf8border = function (buf, max) {
   return (pos + _utf8len[buf[pos]] > max) ? pos : max;
 };
 
-},{"./common":28}],30:[function(require,module,exports){
+},{"./common":30}],32:[function(require,module,exports){
 'use strict';
 
 // Note: adler32 takes 12% for level 0 and 2% for level 6.
@@ -13503,7 +13629,7 @@ function adler32(adler, buf, len, pos) {
 
 module.exports = adler32;
 
-},{}],31:[function(require,module,exports){
+},{}],33:[function(require,module,exports){
 'use strict';
 
 // (C) 1995-2013 Jean-loup Gailly and Mark Adler
@@ -13573,7 +13699,7 @@ module.exports = {
   //Z_NULL:                 null // Use -1 or null inline, depending on var type
 };
 
-},{}],32:[function(require,module,exports){
+},{}],34:[function(require,module,exports){
 'use strict';
 
 // Note: we can't get significant speed boost here.
@@ -13634,7 +13760,7 @@ function crc32(crc, buf, len, pos) {
 
 module.exports = crc32;
 
-},{}],33:[function(require,module,exports){
+},{}],35:[function(require,module,exports){
 'use strict';
 
 // (C) 1995-2013 Jean-loup Gailly and Mark Adler
@@ -15510,7 +15636,7 @@ exports.deflatePrime = deflatePrime;
 exports.deflateTune = deflateTune;
 */
 
-},{"../utils/common":28,"./adler32":30,"./crc32":32,"./messages":38,"./trees":39}],34:[function(require,module,exports){
+},{"../utils/common":30,"./adler32":32,"./crc32":34,"./messages":40,"./trees":41}],36:[function(require,module,exports){
 'use strict';
 
 // (C) 1995-2013 Jean-loup Gailly and Mark Adler
@@ -15570,7 +15696,7 @@ function GZheader() {
 
 module.exports = GZheader;
 
-},{}],35:[function(require,module,exports){
+},{}],37:[function(require,module,exports){
 'use strict';
 
 // (C) 1995-2013 Jean-loup Gailly and Mark Adler
@@ -15917,7 +16043,7 @@ module.exports = function inflate_fast(strm, start) {
   return;
 };
 
-},{}],36:[function(require,module,exports){
+},{}],38:[function(require,module,exports){
 'use strict';
 
 // (C) 1995-2013 Jean-loup Gailly and Mark Adler
@@ -17475,7 +17601,7 @@ exports.inflateSyncPoint = inflateSyncPoint;
 exports.inflateUndermine = inflateUndermine;
 */
 
-},{"../utils/common":28,"./adler32":30,"./crc32":32,"./inffast":35,"./inftrees":37}],37:[function(require,module,exports){
+},{"../utils/common":30,"./adler32":32,"./crc32":34,"./inffast":37,"./inftrees":39}],39:[function(require,module,exports){
 'use strict';
 
 // (C) 1995-2013 Jean-loup Gailly and Mark Adler
@@ -17820,7 +17946,7 @@ module.exports = function inflate_table(type, lens, lens_index, codes, table, ta
   return 0;
 };
 
-},{"../utils/common":28}],38:[function(require,module,exports){
+},{"../utils/common":30}],40:[function(require,module,exports){
 'use strict';
 
 // (C) 1995-2013 Jean-loup Gailly and Mark Adler
@@ -17854,7 +17980,7 @@ module.exports = {
   '-6':   'incompatible version' /* Z_VERSION_ERROR (-6) */
 };
 
-},{}],39:[function(require,module,exports){
+},{}],41:[function(require,module,exports){
 'use strict';
 
 // (C) 1995-2013 Jean-loup Gailly and Mark Adler
@@ -19076,7 +19202,7 @@ exports._tr_flush_block  = _tr_flush_block;
 exports._tr_tally = _tr_tally;
 exports._tr_align = _tr_align;
 
-},{"../utils/common":28}],40:[function(require,module,exports){
+},{"../utils/common":30}],42:[function(require,module,exports){
 'use strict';
 
 // (C) 1995-2013 Jean-loup Gailly and Mark Adler
@@ -19125,7 +19251,7 @@ function ZStream() {
 
 module.exports = ZStream;
 
-},{}],41:[function(require,module,exports){
+},{}],43:[function(require,module,exports){
 function select(element) {
     var selectedText;
 
@@ -19170,7 +19296,7 @@ function select(element) {
 
 module.exports = select;
 
-},{}],42:[function(require,module,exports){
+},{}],44:[function(require,module,exports){
 function E () {
   // Keep this empty so it's easier to inherit from
   // (via https://github.com/lipsmack from https://github.com/scottcorgan/tiny-emitter/issues/3)
@@ -19238,7 +19364,7 @@ E.prototype = {
 
 module.exports = E;
 
-},{}],43:[function(require,module,exports){
+},{}],45:[function(require,module,exports){
 //     Underscore.js 1.8.3
 //     http://underscorejs.org
 //     (c) 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
@@ -20788,7 +20914,7 @@ module.exports = E;
   }
 }.call(this));
 
-},{}],44:[function(require,module,exports){
+},{}],46:[function(require,module,exports){
 var Sync = require('./helpers/sync');
 var NXLoader = require('./helpers/nxloader');
 var arrangement = require('./model/arrangement');
@@ -20828,7 +20954,7 @@ var windowUpdater = new WindowUpdater(masterControls);
 var sync = new Sync(windowUpdater, socket, arrangementId, userId);
 
 
-},{"./helpers/nxloader":52,"./helpers/sync":55,"./mastercontrols":57,"./model/arrangement":58,"./windowupdater":59}],45:[function(require,module,exports){
+},{"./helpers/nxloader":55,"./helpers/sync":58,"./mastercontrols":60,"./model/arrangement":61,"./windowupdater":62}],47:[function(require,module,exports){
 /**
  * Utility function for deep object cloning
  *
@@ -20841,7 +20967,56 @@ function deepClone (obj) {
 
 module.exports = deepClone;
 
-},{}],46:[function(require,module,exports){
+},{}],48:[function(require,module,exports){
+var toWav = require('audiobuffer-to-wav')
+var mergeBuffers = require('merge-audio-buffers');
+
+/**
+ * Layer the audio buffer channel data and conver it to wav
+ *
+ * @param  {array}        allAudioBuffers  An array holding all array buffers
+ * @param  {AudioContext} audioContext     The audio context
+ * @return {ArrayBuffer}  wav              The array buffer of the layered Audiobuffers
+ */
+var exportToWav = function (allAudioBuffers, audioContext) {
+
+    // Init long buffer
+    var longestBufferLength = 0;
+    var layeredAudioBuffer = mergeBuffers(allAudioBuffers, audioContext);
+
+    /*
+    // Iterate the buffers
+    for (var i = 0; i < allAudioBuffers.length; i++) {
+
+        // Check if length of buffer is longer than longest so far
+        if (allAudioBuffers[i].length > longestBufferLength) {
+            // Is bigger, reset the longest length
+            longestBufferLength = allAudioBuffers[i].length;
+        }
+
+    }
+
+    // Create new audio buffer
+    var layeredAudioBuffer = audioContext.createBuffer(allAudioBuffers.length, longestBufferLength, audioContext.sampleRate);
+
+    // Iterate the buffers
+    for (var i = 0; i < allAudioBuffers.length; i++) {
+        // Copy the channel data
+        layeredAudioBuffer.copyToChannel(allAudioBuffers[i].getChannelData(0), i);
+    console.log(allAudioBuffers[i].getChannelData(0));
+    }
+    */
+
+    // Encode the buffers to wav
+    var wav = toWav(layeredAudioBuffer)
+
+    // Return the wav
+    return wav;
+};
+
+module.exports = exportToWav;
+
+},{"audiobuffer-to-wav":1,"merge-audio-buffers":26}],49:[function(require,module,exports){
 function guid() {
   return s4() + s4() + '-' + s4() + '-' + s4() + '-' +
     s4() + '-' + s4() + s4() + s4();
@@ -20855,7 +21030,7 @@ function s4() {
 
 module.exports = guid;
 
-},{}],47:[function(require,module,exports){
+},{}],50:[function(require,module,exports){
 var generateSequencerElement = require('./sequencer/GenerateSequencerElement');
 var generateSynthElement = require('./synth/GenerateSynthElement');
 var Sequencer = require('./sequencer/sequencer');
@@ -20967,7 +21142,7 @@ instrumentFactory.prototype.createInstrument = function (instrument, id) {
 
 module.exports = instrumentFactory;
 
-},{"./sequencer/GenerateSequencerElement":48,"./sequencer/sequencer":49,"./synth/GenerateSynthElement":50,"./synth/synth":51}],48:[function(require,module,exports){
+},{"./sequencer/GenerateSequencerElement":51,"./sequencer/sequencer":52,"./synth/GenerateSynthElement":53,"./synth/synth":54}],51:[function(require,module,exports){
 var $ = require('jquery');
 var guid = require('../../../helpers/idgenerator');
 var samplesObject = require('../../../helpers/samplelist');
@@ -21174,7 +21349,7 @@ generateSequencerElement.generate = function (id, callback) {
 
 module.exports = generateSequencerElement;
 
-},{"../../../helpers/idgenerator":46,"../../../helpers/samplelist":54,"jquery":7}],49:[function(require,module,exports){
+},{"../../../helpers/idgenerator":49,"../../../helpers/samplelist":57,"jquery":8}],52:[function(require,module,exports){
 var Tone = require('tone');
 var proxify = require('../../../helpers/proxify');
 var deepClone = require('../../../helpers/deepclone');
@@ -21218,6 +21393,9 @@ function Sequencer (id) {
     // Init a eq for the sample
     this.eq3 = new Tone.EQ3().toMaster();
 
+    // Set col
+    this.currentColumn = {};
+
     // Create a player and connect it to the master output (your speakers)
     this.source = new Tone.Player("../../audio/727-HM-CONGA.mp3", function () {
 
@@ -21256,6 +21434,9 @@ function Sequencer (id) {
 
         // Jump to the current cell to highlight the block
         self.steps.jumpToCol(col);
+
+        // Set the currentStep
+        self.currentColumn.col = col;
 
         // If cell has value, play the note
         if (1 === column[0]) {
@@ -21545,6 +21726,32 @@ function Sequencer (id) {
 
         // Implement fluent interface
         return this;
+
+    };
+
+    /**
+     * Add a watcher for the loop progress
+     */
+    this.addProgressWatcher = function (callback) {
+
+        // Watch the current column value
+        WatchJS.watch(self.currentColumn, "col", function (prop, action, newvalue, oldvalue) {
+            // When it is at the end, call the callback function
+            if (newvalue == 15) {
+                callback();
+            }
+        });
+
+    };
+
+    /**
+     * Add a watcher for the loop progress
+     */
+    this.removeProgressWatcher = function () {
+
+        // Watch the current column value
+        WatchJS.unwatch(self.currentColumn, "col", function (prop, action, newvalue, oldvalue) {
+        });
 
     };
 
@@ -21883,10 +22090,109 @@ Sequencer.prototype.getTrackType = function () {
     return this.track.type;
 };
 
+/**
+ * Get the audio buffer of the sequence
+ *
+ * @returns {Promise}   A promise which resolves with the AudioBuffer
+ */
+Sequencer.prototype.getAudioBuffer = function () {
+
+    // Ref to self
+    var self = this;
+
+    return new Promise(function (resolve, reject) {
+
+        // Get the audio context
+        var context = Tone.context;
+
+        // Init chunks array for data
+        var chunks = [];
+
+        // Create recording destination and media recorder
+        var recordDestination = context.createMediaStreamDestination();
+        var mediaRecorder = new MediaRecorder(recordDestination.stream);
+
+        // Init new file reader for converting blob
+        var fileReader = new FileReader();
+
+        // Connected the recorder
+        self.source.connect(recordDestination);
+
+        /**
+         * Create audio buffer from ArrayBuffer. Resets the class audio buffer
+         * Re-renders the waveform and resumes play with new buffer if track was
+         * playing.
+         *
+         * @param {ArrayBuffer} arrayBuffer  The array buffer converted from the blob
+         */
+        var createAudioBuffer = function (arrayBuffer) {
+
+            // Decode the array buffer and covert to AudioBuffer
+            return context.decodeAudioData(arrayBuffer).then(function(decodedData) {
+                // Resolve with the audioBuffer
+                resolve(decodedData);
+            });
+
+        };
+
+        /**
+         * The filereaders onload end method,
+         * passes the filereader result (ArrayBuffer) to the createAudioBuffer
+         * function to turn it into an audio buffer. Resets the chunks array
+         * used to hold the buffer information.
+         */
+        fileReader.onloadend = function () {
+            // Create audio buffer
+            createAudioBuffer(fileReader.result);
+        };
+
+        /**
+         * When media recorder receives data, push it to chunks array
+         *
+         * @param {object} evt  The event
+         */
+        mediaRecorder.ondataavailable = function(evt) {
+            // push each chunk (blobs) in an array
+            chunks.push(evt.data);
+        };
+
+        /**
+         * When media recorder stops recording, create blob for audio
+         * and convert that into a buffer for the source
+         *
+         * @param {object} evt  The event
+         */
+        mediaRecorder.onstop = function(evt) {
+
+            // Make blob out of our blobs, and open it
+            var blob = new Blob(chunks, {'type' : 'audio/ogg; codecs=opus'});
+
+            // Read the blob into array buffer
+            fileReader.readAsArrayBuffer(blob);
+
+        };
+
+        // Play it through once
+        mediaRecorder.start();
+        self.start();
+
+        // Create the add progress watcher
+        self.addProgressWatcher(function () {
+            // Check if media recorder is started
+            if (mediaRecorder.state !== 'inactive') {
+                // Stop the seq
+                self.stop();
+                mediaRecorder.stop();
+                self.removeProgressWatcher();
+            }
+        });
+
+    });
+};
 
 module.exports = Sequencer;
 
-},{"../../../helpers/deepclone":45,"../../../helpers/proxify":53,"../../../model/arrangement":58,"tone":60}],50:[function(require,module,exports){
+},{"../../../helpers/deepclone":47,"../../../helpers/proxify":56,"../../../model/arrangement":61,"tone":63}],53:[function(require,module,exports){
 var $ = require('jquery');
 var guid = require('../../../helpers/idgenerator');
 
@@ -22263,7 +22569,7 @@ generateSynthElement.generate = function (id, callback) {
 
 module.exports = generateSynthElement;
 
-},{"../../../helpers/idgenerator":46,"jquery":7}],51:[function(require,module,exports){
+},{"../../../helpers/idgenerator":49,"jquery":8}],54:[function(require,module,exports){
 var Tone = require('tone');
 var deepClone = require('../../../helpers/deepclone');
 var arrangement = require('../../../model/arrangement');
@@ -23427,9 +23733,22 @@ Synth.prototype.closeAudioContext = function () {
     this.context.close();
 };
 
+/**
+ * Get the audio buffer
+ *
+ * @return {Promise}  A promise which resolves with the AudioBuffer
+ */
+Synth.prototype.getAudioBuffer = function () {
+    // Ref to self
+    var self = this;
+    return new Promise(function (resolve, reject) {
+        resolve(self.audioBuffer);
+    });
+};
+
 module.exports = Synth;
 
-},{"../../../helpers/deepclone":45,"../../../helpers/trigger":56,"../../../model/arrangement":58,"pako":25,"tone":60}],52:[function(require,module,exports){
+},{"../../../helpers/deepclone":47,"../../../helpers/trigger":59,"../../../model/arrangement":61,"pako":27,"tone":63}],55:[function(require,module,exports){
 var nxloader = function () {
 };
 
@@ -23446,7 +23765,7 @@ nxloader.prototype.load = function () {
 
 module.exports = nxloader;
 
-},{}],53:[function(require,module,exports){
+},{}],56:[function(require,module,exports){
 /**
  * Create proxy object for as an observer
  *
@@ -23479,7 +23798,7 @@ function proxify(object, change, deepProxy) {
 
 module.exports = proxify;
 
-},{}],54:[function(require,module,exports){
+},{}],57:[function(require,module,exports){
 module.exports = {
     "727-CABASA":"727-CABASA.mp3",
     "727-HI-BONGO":"727-HI-BONGO.mp3",
@@ -23877,7 +24196,7 @@ module.exports = {
     "YAHAMA-AN200-40":"YAHAMA-AN200-40.mp3"
 };
 
-},{}],55:[function(require,module,exports){
+},{}],58:[function(require,module,exports){
 var arrangement = require('../model/arrangement');
 var jsondiffpatch = require('jsondiffpatch');
 var WindowUpdater = require('../windowupdater');
@@ -24243,7 +24562,7 @@ sync.prototype.addChange = function (arrangement) {
 
 module.exports = sync;
 
-},{"../helpers/deepclone":45,"../model/arrangement":58,"../windowupdater":59,"jsondiffpatch":22,"underscore":43}],56:[function(require,module,exports){
+},{"../helpers/deepclone":47,"../model/arrangement":61,"../windowupdater":62,"jsondiffpatch":23,"underscore":45}],59:[function(require,module,exports){
 // Require tone
 var Tone = require('tone');
 
@@ -24261,11 +24580,12 @@ var trigger = function(instrument, note, duration) {
 
 module.exports = trigger;
 
-},{"tone":60}],57:[function(require,module,exports){
+},{"tone":63}],60:[function(require,module,exports){
 var Clipboard = require('clipboard');
 var $ = require('jquery');
 var Tone = require('tone');
 var InstrumentFactory = require('./helpers/instruments/InstrumentFactory');
+var exportToWav = require('./helpers/exportToWav.js');
 
 /**
  * Constructor, it controls:
@@ -24331,6 +24651,104 @@ var MasterControls = function (arrangement) {
             $('#shareUrl').append(shareIcon);
 
         }, 4000);
+    });
+
+    /**
+     * Add event listener for the export button
+     */
+    $('#exportToWav').on('click', function (event) {
+
+        // Disable the button
+        $(this).prop('disabled', true);
+
+        // Give user feedback
+        $(this).html('Exporting, please wait..');
+
+        // Show the loading overlay
+        $('#loadOverlay').show();
+
+        // Check if playing
+        if (self.playing) {
+            // Stop the playback
+            $('#start-stop').click();
+        }
+
+        // Disable playback
+        $('#start-stop').prop('disabled', true);
+
+        // Init empty array to hold the audio buffers
+        var audioBuffers = [];
+
+        // Iterate all the tracks
+        for (var i = 0; i < self.tracks.length; i++) {
+
+            // Get all of the audio buffers from the tracks
+            self.tracks[i].getAudioBuffer().then(function (trackAudioBuffer) {
+                audioBuffers.push(trackAudioBuffer);
+
+                // Check if last AudioBuffer has been resolved
+                if (audioBuffers.length == self.tracks.length) {
+                    // Resolved, return the AudioBuffers array
+                    return audioBuffers;
+                } else {
+                    return false;
+                }
+
+            }).then(function (allAudioBuffers) {
+
+                // Check the return value
+                if (allAudioBuffers != false) {
+                    // Value isn't false, all audiobuffers returned
+                    var wav = exportToWav(allAudioBuffers, Tone.context);
+
+                    // Create anchor
+                    var anchor = document.createElement('a')
+                    document.body.appendChild(anchor)
+                    anchor.style = 'display: none'
+                    var blob = new window.Blob([ new DataView(wav) ], {
+                      type: 'audio/wav'
+                    })
+
+                    var url = window.URL.createObjectURL(blob)
+                    anchor.href = url
+                    anchor.download = 'audio.wav'
+                    anchor.click()
+                    window.URL.revokeObjectURL(url)
+
+                    // Hide the overlay
+                    $('#loadOverlay').hide();
+
+                    // Disable the button
+                    $('#exportToWav').prop('disabled', false);
+
+                    // Give user feedback
+                    $('#exportToWav').html('Export to .wav file ');
+
+                    // Recreate icon
+                    var downloadIcon = document.createElement("i");
+                    downloadIcon.className = "fa fa-download";
+                    $('#exportToWav').append(downloadIcon);
+
+                }
+            });
+        }
+
+        /**
+         * - Disable the button with feedback
+         *      - spinning wheel or something
+         * - Get all the audio buffers from the arrangment
+         *      - loop through all the tracks and get the buffers
+         * - initiate new web worker
+         * - add an event watcher so knows when it is done
+         * - pass the buffers to the web worker as a message
+         *      - the web worker should take the audio buffers
+         *      - merge the buffers
+         *      - export it to wav
+         *      - return it
+         *           - on the finish message
+         * - wait until its done
+         *      - either make the download button appear or make the button on click download it again
+         */
     });
 
     /**
@@ -24581,7 +24999,6 @@ MasterControls.prototype.deleteTrackById = function (trackId) {
                 // Release the web audio
                 this.tracks[i].closeAudioContext();
                 this.synthTracksCount--;
-                console.log('YO');
             }
 
             // Delete the track and exit the loop
@@ -24661,7 +25078,7 @@ MasterControls.prototype.updateSynthCount = function () {
 
 module.exports = MasterControls;
 
-},{"./helpers/instruments/InstrumentFactory":47,"clipboard":2,"jquery":7,"tone":60}],58:[function(require,module,exports){
+},{"./helpers/exportToWav.js":48,"./helpers/instruments/InstrumentFactory":50,"clipboard":3,"jquery":8,"tone":63}],61:[function(require,module,exports){
 var deepClone = require('../helpers/deepclone');
 
 /**
@@ -24775,7 +25192,7 @@ module.exports = {
     }
 };
 
-},{"../helpers/deepclone":45}],59:[function(require,module,exports){
+},{"../helpers/deepclone":47}],62:[function(require,module,exports){
 var $ = require('jquery');
 var deepClone = require('./helpers/deepclone');
 var _ = require('underscore')._;
@@ -24950,38 +25367,10 @@ var WindowUpdater = function (MasterControls) {
         } else {
             // No tracks added or deleted, an internal change to the tracks
 
-            /*
-
             // Loop through each track checking if their equal to exisiting tracks
-            for (var i = 0; i < this.arrangement.tracks.length; i++) {
-
-                // Loop through tracks passed in
-                for (var j = 0; j < tracks.length; j++) {
-
-                    // Check if tracks are the same
-                    if (this.arrangement.tracks[i].id != tracks[j].id) {
-                        // Not the same, skip
-                        return;
-                    }
-
-                    // Tracks are the same, check if objects are equal
-                    if (!_.isEqual(this.arrangement.tracks[i], tracks[j])) {
-                        // Tracks are different
-                        // Get the track, object
-                        var trackToUpdate =
-                            self.masterControls.getTrackById(tracks[j].id);
-
-                        // Set the new track json
-                        trackToUpdate.setTrackJSON(tracks[j]);
-                    }
-
-                }
-            }
-            */
-
-
             this.arrangement.tracks.forEach(function (existingTrack) {
 
+                // Loop through tracks passed in
                 tracks.forEach(function (newTrack) {
 
                     // Check if tracks are the same
@@ -25078,12 +25467,14 @@ WindowUpdater.prototype.initialise = function (arrangement) {
     // Set the local copy of arrangement
     this.arrangement = deepClone(arrangement);
 
+    // Hide the loading overlay
+    $('#loadOverlay').hide();
 
 };
 
 module.exports = WindowUpdater;
 
-},{"./helpers/deepclone":45,"./helpers/instruments/InstrumentFactory":47,"jquery":7,"jsondiffpatch":22,"underscore":43}],60:[function(require,module,exports){
+},{"./helpers/deepclone":47,"./helpers/instruments/InstrumentFactory":50,"jquery":8,"jsondiffpatch":23,"underscore":45}],63:[function(require,module,exports){
 (function(root, factory){
 
 	//UMD
@@ -47298,4 +47689,4 @@ module.exports = WindowUpdater;
 	
 	return Tone;
 }));
-},{}]},{},[44]);
+},{}]},{},[46]);

@@ -41,6 +41,9 @@ function Sequencer (id) {
     // Init a eq for the sample
     this.eq3 = new Tone.EQ3().toMaster();
 
+    // Set col
+    this.currentColumn = {};
+
     // Create a player and connect it to the master output (your speakers)
     this.source = new Tone.Player("../../audio/727-HM-CONGA.mp3", function () {
 
@@ -79,6 +82,9 @@ function Sequencer (id) {
 
         // Jump to the current cell to highlight the block
         self.steps.jumpToCol(col);
+
+        // Set the currentStep
+        self.currentColumn.col = col;
 
         // If cell has value, play the note
         if (1 === column[0]) {
@@ -368,6 +374,32 @@ function Sequencer (id) {
 
         // Implement fluent interface
         return this;
+
+    };
+
+    /**
+     * Add a watcher for the loop progress
+     */
+    this.addProgressWatcher = function (callback) {
+
+        // Watch the current column value
+        WatchJS.watch(self.currentColumn, "col", function (prop, action, newvalue, oldvalue) {
+            // When it is at the end, call the callback function
+            if (newvalue == 15) {
+                callback();
+            }
+        });
+
+    };
+
+    /**
+     * Add a watcher for the loop progress
+     */
+    this.removeProgressWatcher = function () {
+
+        // Watch the current column value
+        WatchJS.unwatch(self.currentColumn, "col", function (prop, action, newvalue, oldvalue) {
+        });
 
     };
 
@@ -706,5 +738,104 @@ Sequencer.prototype.getTrackType = function () {
     return this.track.type;
 };
 
+/**
+ * Get the audio buffer of the sequence
+ *
+ * @returns {Promise}   A promise which resolves with the AudioBuffer
+ */
+Sequencer.prototype.getAudioBuffer = function () {
+
+    // Ref to self
+    var self = this;
+
+    return new Promise(function (resolve, reject) {
+
+        // Get the audio context
+        var context = Tone.context;
+
+        // Init chunks array for data
+        var chunks = [];
+
+        // Create recording destination and media recorder
+        var recordDestination = context.createMediaStreamDestination();
+        var mediaRecorder = new MediaRecorder(recordDestination.stream);
+
+        // Init new file reader for converting blob
+        var fileReader = new FileReader();
+
+        // Connected the recorder
+        self.source.connect(recordDestination);
+
+        /**
+         * Create audio buffer from ArrayBuffer. Resets the class audio buffer
+         * Re-renders the waveform and resumes play with new buffer if track was
+         * playing.
+         *
+         * @param {ArrayBuffer} arrayBuffer  The array buffer converted from the blob
+         */
+        var createAudioBuffer = function (arrayBuffer) {
+
+            // Decode the array buffer and covert to AudioBuffer
+            return context.decodeAudioData(arrayBuffer).then(function(decodedData) {
+                // Resolve with the audioBuffer
+                resolve(decodedData);
+            });
+
+        };
+
+        /**
+         * The filereaders onload end method,
+         * passes the filereader result (ArrayBuffer) to the createAudioBuffer
+         * function to turn it into an audio buffer. Resets the chunks array
+         * used to hold the buffer information.
+         */
+        fileReader.onloadend = function () {
+            // Create audio buffer
+            createAudioBuffer(fileReader.result);
+        };
+
+        /**
+         * When media recorder receives data, push it to chunks array
+         *
+         * @param {object} evt  The event
+         */
+        mediaRecorder.ondataavailable = function(evt) {
+            // push each chunk (blobs) in an array
+            chunks.push(evt.data);
+        };
+
+        /**
+         * When media recorder stops recording, create blob for audio
+         * and convert that into a buffer for the source
+         *
+         * @param {object} evt  The event
+         */
+        mediaRecorder.onstop = function(evt) {
+
+            // Make blob out of our blobs, and open it
+            var blob = new Blob(chunks, {'type' : 'audio/ogg; codecs=opus'});
+
+            // Read the blob into array buffer
+            fileReader.readAsArrayBuffer(blob);
+
+        };
+
+        // Play it through once
+        mediaRecorder.start();
+        self.start();
+
+        // Create the add progress watcher
+        self.addProgressWatcher(function () {
+            // Check if media recorder is started
+            if (mediaRecorder.state !== 'inactive') {
+                // Stop the seq
+                self.stop();
+                mediaRecorder.stop();
+                self.removeProgressWatcher();
+            }
+        });
+
+    });
+};
 
 module.exports = Sequencer;

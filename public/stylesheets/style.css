@@ -319,6 +319,11 @@ input[type=checkbox] {
     position: absolute;
 }
 
+#lengthToggle {
+    right: 600px;
+    position: absolute;
+}
+
 .btn-workstation-back {
     right: 10px;
     position: absolute;

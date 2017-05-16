@@ -58,6 +58,9 @@ function Sequencer (id) {
     // Initialse volume DOM element as false
     this.volumeDOM = false;
 
+    // Init the steps array and value
+    this.seqStepsArray = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+
     /**
      * Sets the buffer - called from onload callback of player
      * And sets the waveform
@@ -74,38 +77,50 @@ function Sequencer (id) {
         return this;
     };
 
-    // Sequence notes
-    this.seq = new Tone.Sequence(function(time, col) {
+    /**
+     * Init a new tone sequence with length passed in
+     *
+     * @param  {array}         seqStepsArray  The events array
+     * @return {Tone.Sequence}                The tone sequence
+     */
+    this.initToneSequence = function (seqStepsArray) {
 
-        // Get the array of columns from the matrix
-        var column = self.steps.matrix[col];
+        // Create new tone sequence
+        return new Tone.Sequence(function(time, col) {
 
-        // Jump to the current cell to highlight the block
-        self.steps.jumpToCol(col);
+            // Get the array of columns from the matrix
+            var column = self.steps.matrix[col];
 
-        // Set the currentStep
-        self.currentColumn.col = col;
+            // Jump to the current cell to highlight the block
+            self.steps.jumpToCol(col);
 
-        // If cell has value, play the note
-        if (1 === column[0]) {
+            // Set the currentStep
+            self.currentColumn.col = col;
 
-            // Try to play the buffer
-            try {
+            // If cell has value, play the note
+            if (1 === column[0]) {
 
-                // Play immediately, at the start time and for the duration
-                self.source.start(
-                    0,
-                    parseFloat(self.track.bufferStarttime),
-                    parseFloat(self.track.bufferDuration)
-                );
+                // Try to play the buffer
+                try {
 
+                    // Play immediately, at the start time and for the duration
+                    self.source.start(
+                        0,
+                        parseFloat(self.track.bufferStarttime),
+                        parseFloat(self.track.bufferDuration)
+                    );
+
+                }
+                catch (e) {
+                    // Siliently fail in the hopes it would have loaded next time it plays
+                }
             }
-            catch (e) {
-                // Siliently fail in the hopes it would have loaded next time it plays
-            }
-        }
 
-    }, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], '16n');
+        }, seqStepsArray, '16n');
+    };
+
+    // init the sequencer
+    this.seq = this.initToneSequence(this.seqStepsArray);
 
     /**
      * Track struct
@@ -170,10 +185,8 @@ function Sequencer (id) {
      * Push track changes to the arrangement
      */
     this.pushChanges = function () {
-
         // replace the track in the arrangement with updated track
         arrangement.replaceTrack(deepClone(this.track));
-
     };
 
     /**
@@ -379,14 +392,24 @@ function Sequencer (id) {
 
     /**
      * Add a watcher for the loop progress
+     *
+     * @param {function} callback  The callback function to be executed
      */
     this.addProgressWatcher = function (callback) {
 
         // Watch the current column value
         WatchJS.watch(self.currentColumn, "col", function (prop, action, newvalue, oldvalue) {
-            // When it is at the end, call the callback function
-            if (newvalue == 15) {
-                callback();
+            // Check the length of the track
+            if (32 == self.track.pattern.length) {
+                // When it is at the end, call the callback
+                if (newvalue == 31) {
+                    callback();
+                }
+            } else {
+                // When it is at the end, call the callback function
+                if (newvalue == 15) {
+                    callback();
+                }
             }
         });
 
@@ -411,6 +434,24 @@ function Sequencer (id) {
      */
     this.getSamplePath = function (bufferName) {
         return this.baseURL + bufferName;
+    };
+
+    /**
+     * Changes the value of the seq array and seq note
+     *
+     * @param {int} length  The desired length of the array
+     */
+    this.setSeqArray = function (length) {
+
+        // Check the length
+        if (32 == length) {
+            // Reset the size of the array
+            this.seqStepsArray = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+                                   16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31];
+        } else {
+            // Reset the size of the array
+            this.seqStepsArray = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+        }
     };
 
     return this;
@@ -676,6 +717,20 @@ Sequencer.prototype.setTrackJSON = function (track) {
     this.eq3.mid.value = track.eqMidVal;
     this.eq3.high.value = track.eqHighVal;
 
+    // Check if different lengths
+    if (this.track.pattern.length != track.pattern.length) {
+        // Lengths have changed
+
+        // Check the length
+        if (32 == track.pattern.length) {
+            // Length the track, dont push the changes
+            this.lengthenTrack(false);
+        } else {
+            // shorten the track
+            this.shortenTrack(false);
+        }
+    }
+
     // Set the track json
     this.track = deepClone(track);
 
@@ -836,6 +891,76 @@ Sequencer.prototype.getAudioBuffer = function () {
         });
 
     });
+};
+
+/**
+ * Lengthen the track
+ *
+ * @param {bool} sync  Whether you want to sync the track with other clients
+ *                     whilst performing this function
+ */
+Sequencer.prototype.lengthenTrack = function (sync) {
+
+    // Check if playing
+    if ('started' == this.seq.state) {
+        // Is playing, stop it
+        this.stop();
+    }
+
+    // Reset the properties of the matrix
+    this.steps.col = 32;
+    this.steps.row = 1;
+    this.steps.init();
+    this.steps.draw();
+
+    // Reset the sequencer array and note value
+    this.setSeqArray(32);
+
+    // Reset the steps class variable
+    this.setMatrix(this.steps);
+
+    // Create new sequence
+    this.seq = this.initToneSequence(this.seqStepsArray);
+
+    // Check if sync is true
+    if (sync) {
+        // Push the change
+        this.pushChanges();
+    }
+};
+
+/**
+ * Shorten the track
+ */
+Sequencer.prototype.shortenTrack = function (sync) {
+
+    // Check if playing
+    if ('started' == this.seq.state) {
+        // Is playing, stop it
+        this.stop();
+    }
+
+    // Reset the properties of the matrix
+    this.steps.col = 16;
+    this.steps.row = 1;
+    this.steps.init();
+    this.steps.draw();
+
+    // Reset the sequencer array and note value
+    this.setSeqArray(16);
+
+    // Reset the steps class variable
+    this.setMatrix(this.steps);
+
+    // Create new sequence
+    this.seq = this.initToneSequence(this.seqStepsArray);
+
+    // Check if sync is true
+    if (sync) {
+        // Push the change
+        this.pushChanges();
+    }
+
 };
 
 module.exports = Sequencer;

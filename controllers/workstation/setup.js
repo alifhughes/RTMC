@@ -23,6 +23,7 @@ exports.create = function(req, res, next) {
     newArrangement.name    = projectName;
     newArrangement.type    = 'arrangement';
     newArrangement.bpm     = 120;
+    newArrangement.stepsLength = 16;
 
     // Save entry
     newArrangement.save(function(err) {

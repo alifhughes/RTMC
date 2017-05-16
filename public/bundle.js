@@ -21410,6 +21410,9 @@ function Sequencer (id) {
     // Initialse volume DOM element as false
     this.volumeDOM = false;
 
+    // Init the steps array and value
+    this.seqStepsArray = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+
     /**
      * Sets the buffer - called from onload callback of player
      * And sets the waveform
@@ -21426,38 +21429,50 @@ function Sequencer (id) {
         return this;
     };
 
-    // Sequence notes
-    this.seq = new Tone.Sequence(function(time, col) {
+    /**
+     * Init a new tone sequence with length passed in
+     *
+     * @param  {array}         seqStepsArray  The events array
+     * @return {Tone.Sequence}                The tone sequence
+     */
+    this.initToneSequence = function (seqStepsArray) {
 
-        // Get the array of columns from the matrix
-        var column = self.steps.matrix[col];
+        // Create new tone sequence
+        return new Tone.Sequence(function(time, col) {
 
-        // Jump to the current cell to highlight the block
-        self.steps.jumpToCol(col);
+            // Get the array of columns from the matrix
+            var column = self.steps.matrix[col];
 
-        // Set the currentStep
-        self.currentColumn.col = col;
+            // Jump to the current cell to highlight the block
+            self.steps.jumpToCol(col);
 
-        // If cell has value, play the note
-        if (1 === column[0]) {
+            // Set the currentStep
+            self.currentColumn.col = col;
 
-            // Try to play the buffer
-            try {
+            // If cell has value, play the note
+            if (1 === column[0]) {
 
-                // Play immediately, at the start time and for the duration
-                self.source.start(
-                    0,
-                    parseFloat(self.track.bufferStarttime),
-                    parseFloat(self.track.bufferDuration)
-                );
+                // Try to play the buffer
+                try {
 
+                    // Play immediately, at the start time and for the duration
+                    self.source.start(
+                        0,
+                        parseFloat(self.track.bufferStarttime),
+                        parseFloat(self.track.bufferDuration)
+                    );
+
+                }
+                catch (e) {
+                    // Siliently fail in the hopes it would have loaded next time it plays
+                }
             }
-            catch (e) {
-                // Siliently fail in the hopes it would have loaded next time it plays
-            }
-        }
 
-    }, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], '16n');
+        }, seqStepsArray, '16n');
+    };
+
+    // init the sequencer
+    this.seq = this.initToneSequence(this.seqStepsArray);
 
     /**
      * Track struct
@@ -21522,10 +21537,8 @@ function Sequencer (id) {
      * Push track changes to the arrangement
      */
     this.pushChanges = function () {
-
         // replace the track in the arrangement with updated track
         arrangement.replaceTrack(deepClone(this.track));
-
     };
 
     /**
@@ -21731,14 +21744,24 @@ function Sequencer (id) {
 
     /**
      * Add a watcher for the loop progress
+     *
+     * @param {function} callback  The callback function to be executed
      */
     this.addProgressWatcher = function (callback) {
 
         // Watch the current column value
         WatchJS.watch(self.currentColumn, "col", function (prop, action, newvalue, oldvalue) {
-            // When it is at the end, call the callback function
-            if (newvalue == 15) {
-                callback();
+            // Check the length of the track
+            if (32 == self.track.pattern.length) {
+                // When it is at the end, call the callback
+                if (newvalue == 31) {
+                    callback();
+                }
+            } else {
+                // When it is at the end, call the callback function
+                if (newvalue == 15) {
+                    callback();
+                }
             }
         });
 
@@ -21763,6 +21786,24 @@ function Sequencer (id) {
      */
     this.getSamplePath = function (bufferName) {
         return this.baseURL + bufferName;
+    };
+
+    /**
+     * Changes the value of the seq array and seq note
+     *
+     * @param {int} length  The desired length of the array
+     */
+    this.setSeqArray = function (length) {
+
+        // Check the length
+        if (32 == length) {
+            // Reset the size of the array
+            this.seqStepsArray = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+                                   16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31];
+        } else {
+            // Reset the size of the array
+            this.seqStepsArray = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+        }
     };
 
     return this;
@@ -22028,6 +22069,20 @@ Sequencer.prototype.setTrackJSON = function (track) {
     this.eq3.mid.value = track.eqMidVal;
     this.eq3.high.value = track.eqHighVal;
 
+    // Check if different lengths
+    if (this.track.pattern.length != track.pattern.length) {
+        // Lengths have changed
+
+        // Check the length
+        if (32 == track.pattern.length) {
+            // Length the track, dont push the changes
+            this.lengthenTrack(false);
+        } else {
+            // shorten the track
+            this.shortenTrack(false);
+        }
+    }
+
     // Set the track json
     this.track = deepClone(track);
 
@@ -22188,6 +22243,76 @@ Sequencer.prototype.getAudioBuffer = function () {
         });
 
     });
+};
+
+/**
+ * Lengthen the track
+ *
+ * @param {bool} sync  Whether you want to sync the track with other clients
+ *                     whilst performing this function
+ */
+Sequencer.prototype.lengthenTrack = function (sync) {
+
+    // Check if playing
+    if ('started' == this.seq.state) {
+        // Is playing, stop it
+        this.stop();
+    }
+
+    // Reset the properties of the matrix
+    this.steps.col = 32;
+    this.steps.row = 1;
+    this.steps.init();
+    this.steps.draw();
+
+    // Reset the sequencer array and note value
+    this.setSeqArray(32);
+
+    // Reset the steps class variable
+    this.setMatrix(this.steps);
+
+    // Create new sequence
+    this.seq = this.initToneSequence(this.seqStepsArray);
+
+    // Check if sync is true
+    if (sync) {
+        // Push the change
+        this.pushChanges();
+    }
+};
+
+/**
+ * Shorten the track
+ */
+Sequencer.prototype.shortenTrack = function (sync) {
+
+    // Check if playing
+    if ('started' == this.seq.state) {
+        // Is playing, stop it
+        this.stop();
+    }
+
+    // Reset the properties of the matrix
+    this.steps.col = 16;
+    this.steps.row = 1;
+    this.steps.init();
+    this.steps.draw();
+
+    // Reset the sequencer array and note value
+    this.setSeqArray(16);
+
+    // Reset the steps class variable
+    this.setMatrix(this.steps);
+
+    // Create new sequence
+    this.seq = this.initToneSequence(this.seqStepsArray);
+
+    // Check if sync is true
+    if (sync) {
+        // Push the change
+        this.pushChanges();
+    }
+
 };
 
 module.exports = Sequencer;
@@ -24340,7 +24465,8 @@ var sync = function (WindowUpdater, socket, arrangementId, userId) {
         this.socket.on('update-user-count', this.updateUserCount.bind(this));
 
         // listen to errors and reload
-        this.socket.on('error', function(message){
+        this.socket.on('no-client-doc', function(message){
+            alert('Error has occourred, window is going to refresh');
             window.location.reload();
         });
     };
@@ -24616,13 +24742,28 @@ var MasterControls = function (arrangement) {
     // Reference to self
     var self = this;
 
+    // Array for 16 steps
+    this.seqStepsArray = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+
+    // class variable for length of steps
+    this.stepsLength = 16;
+
+    /**
+     * Init the tone sequencer of the length specified by array size
+     *
+     * @return {Tone.Sequence}                 The Tone sequence
+     */
+    this.initToneSequencer = function () {
+        return new Tone.Sequence(function(time, col) {
+            // when the loop starts again, play the queued tracks
+            if (0 == self.masterControlsSeq.progress) {
+                self.triggerQueuedTracks();
+            }
+        }, self.seqStepsArray, '16n');
+    };
+
     // Own sequencer for tracking purposes
-    this.masterControlsSeq = new Tone.Sequence(function(time, col) {
-        // when the loop starts again, play the queued tracks
-        if (0 == self.masterControlsSeq.progress) {
-            self.triggerQueuedTracks();
-        }
-    }, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], '16n');
+    this.masterControlsSeq = this.initToneSequencer();
 
     // Running array that keeps tracks that are queued to start
     this.queuedToStartTracks = [];
@@ -24733,23 +24874,45 @@ var MasterControls = function (arrangement) {
             });
         }
 
-        /**
-         * - Disable the button with feedback
-         *      - spinning wheel or something
-         * - Get all the audio buffers from the arrangment
-         *      - loop through all the tracks and get the buffers
-         * - initiate new web worker
-         * - add an event watcher so knows when it is done
-         * - pass the buffers to the web worker as a message
-         *      - the web worker should take the audio buffers
-         *      - merge the buffers
-         *      - export it to wav
-         *      - return it
-         *           - on the finish message
-         * - wait until its done
-         *      - either make the download button appear or make the button on click download it again
-         */
     });
+
+    /**
+     * Toggle button event handler for the length
+     */
+    $('#lengthToggle').on('click', function (event) {
+
+        // Disable the button
+        $(this).prop('disabled', true);
+
+        // Give user feedback
+        $(this).html('Loading, please wait..');
+
+        // Show the loading overlay
+        $('#loadOverlay').show();
+
+        // Check if playing
+        if (self.playing) {
+            // Stop the playback
+            $('#start-stop').click();
+        }
+
+        // Disable playback
+        $('#start-stop').prop('disabled', true);
+
+        // Toggle the track lengths
+        self.windowUpdater.toggleLength(self.tracks);
+
+        // Disable the button
+        $(this).prop('disabled', false);
+
+        // Hide the loading overlay
+        $('#loadOverlay').hide();
+
+        // Reenable playback
+        $('#start-stop').prop('disabled', false);
+
+    });
+
 
     /**
      * Add event listener for the bpm slider
@@ -24804,9 +24967,7 @@ var MasterControls = function (arrangement) {
                 self.masterControlsSeq.stop();
 
             }
-
         }
-
     });
 
     /**
@@ -24839,11 +25000,22 @@ var MasterControls = function (arrangement) {
                 // Initialise track locally
                 instrumentContainer.seq.setInitialised();
 
+                // Check the no of steps
+                if (32 == self.stepsLength && 'step-sequencer' == instrument) {
+                    //Lengthen the track, dont push changes
+                    instrumentContainer.seq.lengthenTrack(false);
+                } else if (16 == self.stepsLength && 'step-sequencer' == instrument) {
+                    //shorten the track, don't push the changes
+                    instrumentContainer.seq.shortenTrack(false);
+                }
+
                 // Add it to the arrangement and reset the local copy of window's arrangment
                 arrangement.addTrack(instrumentContainer.seq.getTrackJSON());
                 self.windowUpdater.setArrangement(arrangement.getArrangement());
 
+                // Check if plying
                 if (self.playing) {
+                    // Is playing, queue the instrument to start
                     self.addTrackToQueue(instrumentContainer.seq);
                 }
 
@@ -24950,6 +25122,42 @@ var MasterControls = function (arrangement) {
 
     }
 
+    /**
+     * Changes the value of the seq array and seq note
+     */
+    this.setSeqArray = function () {
+
+        // Check the length of the array as it is
+        if (16 == this.stepsLength) {
+            // Reset the size of the array and note value
+            this.seqStepsArray = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+        } else {
+            // Reset the size of the array and note value
+            this.seqStepsArray = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+                                   16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31];
+        }
+    };
+
+    /**
+     * Toggle the text of the button depending on the length of the track
+     */
+    this.toggleTrackLengthBtnText = function () {
+        // Check the length
+        if (16 == this.stepsLength) {
+            $('#lengthToggle').html('Extend length of steps');
+        } else {
+            $('#lengthToggle').html('Shorten length of steps');
+        }
+    };
+
+    /**
+     * Set the arrangement steps length
+     */
+    this.setArrangementStepsLength = function () {
+        // Set the arrangement
+        arrangement.setStepsLength(this.stepsLength);
+    };
+
     // Return instance of self
     return this;
 };
@@ -25050,6 +25258,15 @@ MasterControls.prototype.getTrackById = function (id) {
 };
 
 /**
+ * Get all the tracks
+ *
+ * @returns {array} this.tracks  The track objects
+ */
+MasterControls.prototype.getTracks = function () {
+    return this.tracks;
+};
+
+/**
  * Update the Tone bpm value when syncing with server
  *
  * @param  {int}            bpm  The newly updated bpm of track
@@ -25074,6 +25291,36 @@ MasterControls.prototype.updateSynthCount = function () {
     if (this.synthTracksCount != 3) {
         this.synthTracksCount++;
     }
+};
+
+/**
+ * Set the steps length, toggle the text in the button
+ *
+ * @param {int} stepsLength The length of steps
+ */
+MasterControls.prototype.setStepsLength = function (stepsLength) {
+
+    // Check if playing
+    if (this.playing) {
+        // Stop the playback
+        $('#start-stop').click();
+    }
+
+    // Set the length
+    this.stepsLength = stepsLength;
+
+    // Toggle the text
+    this.toggleTrackLengthBtnText();
+
+    // Set the seq array
+    this.setSeqArray();
+
+    // reinit the master controls seq
+    this.masterControlsSeq = this.initToneSequencer();
+
+    // Set arrangement steps length
+    this.setArrangementStepsLength();
+
 };
 
 module.exports = MasterControls;
@@ -25156,6 +25403,17 @@ module.exports = {
         // Get the bpm of the arrangement
         return this.arrangement.bpm;
     },
+    setStepsLength: function (stepsLength) {
+
+        // Set the stepsLength of the arrangement
+        this.arrangement.stepsLength = stepsLength;
+
+        this.syncClientToServer();
+    },
+    getStepsLength: function () {
+        // Get the stepsLength of the arrangement
+        return this.arrangement.stepsLength;
+    },
     replaceTrack: function (track) {
 
         // Reference to self
@@ -25220,6 +25478,7 @@ var WindowUpdater = function (MasterControls) {
         bpm: 120,
         type: "arrangement",
         name: "",
+        stepsLength: 16,
         ownerId: "",
         __v: 0,
         tracks: [],
@@ -25293,6 +25552,16 @@ var WindowUpdater = function (MasterControls) {
 
             // Push the sequence on to the sequences
             instrumentContainer.seq.setTrackJSON(track);
+
+            // Check the length of the arrangement and track
+            if (32 == self.arrangement.stepsLength && 0 == track.pattern.length) {
+                // Track length isn't set, set it
+                instrumentContainer.seq.lengthenTrack();
+            } else if (16 == self.arrangement.stepsLength && 0 == track.pattern.length) {
+                // Track length isn't set, set it
+                instrumentContainer.seq.shortenTrack();
+            }
+
             self.masterControls.addTrack(instrumentContainer.seq);
 
         });
@@ -25325,6 +25594,7 @@ var WindowUpdater = function (MasterControls) {
         });
 
         // Remove it from the list of sequeces in the master controls
+        // // Is playing, queue the instrument to start
         self.masterControls.deleteTrackById(deletedTrackId);
 
     };
@@ -25391,11 +25661,8 @@ var WindowUpdater = function (MasterControls) {
                     }
                 });
             });
-
         }
-
     };
-
 };
 
 /**
@@ -25411,14 +25678,30 @@ WindowUpdater.prototype.update = function (arrangement) {
         this.updateBpm(arrangement.bpm);
     }
 
+    // Check if arrangement length has changed
+    if (!_.isEqual(this.arrangement.stepsLength, arrangement.stepsLength)) {
+        // Set the master controls steps length
+        this.masterControls.setStepsLength(arrangement.stepsLength);
+    }
+
     // Check tracks diff
     if (!_.isEqual(this.arrangement.tracks, arrangement.tracks)) {
         // Update tracks
         this.updateTracks(arrangement.tracks);
     }
 
+    // Check if the length has changed but the tracks haven't
+    if (!_.isEqual(this.arrangement.stepsLength, arrangement.stepsLength)
+        && _.isEqual(this.arrangement.tracks, arrangement.tracks)) {
+        // BUG FIX
+        // - tracks aren't reconginsing when the other client
+        //   changes the length
+        this.toggleLength(this.masterControls.getTracks());
+    }
+
     // Reset the local copy of arrangement
     this.arrangement = deepClone(arrangement);
+
 
     // Implement fluent interface
     return this;
@@ -25436,6 +25719,50 @@ WindowUpdater.prototype.updateUserCount = function (userCount) {
     if (!_.isEqual(this.userCount, userCount)) {
         $('#userCounter').text(userCount);
     }
+};
+
+/**
+ * Toggle the length arrangement
+ *
+ * @param {array} tracks  All the tracks of the arragnement
+ */
+WindowUpdater.prototype.toggleLength = function (tracks) {
+
+    // Init string for method name
+    var methodName = '';
+
+    // Check the length of the arrangement
+    if (this.arrangement.stepsLength == 16) {
+        // Set the method name depending on length
+        methodName = 'lengthenTrack';
+
+        // Set the length
+        this.arrangement.stepsLength = 32;
+
+    } else {
+        methodName = 'shortenTrack';
+
+        // Set the length
+        this.arrangement.stepsLength = 16;
+    }
+
+    // Loop through all the tracks
+    for (var i = 0; i < tracks.length; i++) {
+
+        // Check the track type
+        if ('step-sequencer' != tracks[i].getTrackType()) {
+            // Not a step sequencer, skip
+            continue;
+        }
+
+        // Call the method on the track, and push the changes
+        tracks[i][methodName](true);
+
+    }
+
+    // Set the master controls steps length
+    this.masterControls.setStepsLength(this.arrangement.stepsLength);
+
 };
 
 /**
@@ -25466,6 +25793,9 @@ WindowUpdater.prototype.initialise = function (arrangement) {
 
     // Set the local copy of arrangement
     this.arrangement = deepClone(arrangement);
+
+    // Set the master controls steps length
+    this.masterControls.setStepsLength(this.arrangement.stepsLength);
 
     // Hide the loading overlay
     $('#loadOverlay').hide();

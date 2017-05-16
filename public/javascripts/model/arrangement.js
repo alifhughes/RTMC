@@ -75,6 +75,17 @@ module.exports = {
         // Get the bpm of the arrangement
         return this.arrangement.bpm;
     },
+    setStepsLength: function (stepsLength) {
+
+        // Set the stepsLength of the arrangement
+        this.arrangement.stepsLength = stepsLength;
+
+        this.syncClientToServer();
+    },
+    getStepsLength: function () {
+        // Get the stepsLength of the arrangement
+        return this.arrangement.stepsLength;
+    },
     replaceTrack: function (track) {
 
         // Reference to self

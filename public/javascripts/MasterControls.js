@@ -33,13 +33,28 @@ var MasterControls = function (arrangement) {
     // Reference to self
     var self = this;
 
+    // Array for 16 steps
+    this.seqStepsArray = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+
+    // class variable for length of steps
+    this.stepsLength = 16;
+
+    /**
+     * Init the tone sequencer of the length specified by array size
+     *
+     * @return {Tone.Sequence}                 The Tone sequence
+     */
+    this.initToneSequencer = function () {
+        return new Tone.Sequence(function(time, col) {
+            // when the loop starts again, play the queued tracks
+            if (0 == self.masterControlsSeq.progress) {
+                self.triggerQueuedTracks();
+            }
+        }, self.seqStepsArray, '16n');
+    };
+
     // Own sequencer for tracking purposes
-    this.masterControlsSeq = new Tone.Sequence(function(time, col) {
-        // when the loop starts again, play the queued tracks
-        if (0 == self.masterControlsSeq.progress) {
-            self.triggerQueuedTracks();
-        }
-    }, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], '16n');
+    this.masterControlsSeq = this.initToneSequencer();
 
     // Running array that keeps tracks that are queued to start
     this.queuedToStartTracks = [];
@@ -150,23 +165,45 @@ var MasterControls = function (arrangement) {
             });
         }
 
-        /**
-         * - Disable the button with feedback
-         *      - spinning wheel or something
-         * - Get all the audio buffers from the arrangment
-         *      - loop through all the tracks and get the buffers
-         * - initiate new web worker
-         * - add an event watcher so knows when it is done
-         * - pass the buffers to the web worker as a message
-         *      - the web worker should take the audio buffers
-         *      - merge the buffers
-         *      - export it to wav
-         *      - return it
-         *           - on the finish message
-         * - wait until its done
-         *      - either make the download button appear or make the button on click download it again
-         */
     });
+
+    /**
+     * Toggle button event handler for the length
+     */
+    $('#lengthToggle').on('click', function (event) {
+
+        // Disable the button
+        $(this).prop('disabled', true);
+
+        // Give user feedback
+        $(this).html('Loading, please wait..');
+
+        // Show the loading overlay
+        $('#loadOverlay').show();
+
+        // Check if playing
+        if (self.playing) {
+            // Stop the playback
+            $('#start-stop').click();
+        }
+
+        // Disable playback
+        $('#start-stop').prop('disabled', true);
+
+        // Toggle the track lengths
+        self.windowUpdater.toggleLength(self.tracks);
+
+        // Disable the button
+        $(this).prop('disabled', false);
+
+        // Hide the loading overlay
+        $('#loadOverlay').hide();
+
+        // Reenable playback
+        $('#start-stop').prop('disabled', false);
+
+    });
+
 
     /**
      * Add event listener for the bpm slider
@@ -221,9 +258,7 @@ var MasterControls = function (arrangement) {
                 self.masterControlsSeq.stop();
 
             }
-
         }
-
     });
 
     /**
@@ -256,11 +291,22 @@ var MasterControls = function (arrangement) {
                 // Initialise track locally
                 instrumentContainer.seq.setInitialised();
 
+                // Check the no of steps
+                if (32 == self.stepsLength && 'step-sequencer' == instrument) {
+                    //Lengthen the track, dont push changes
+                    instrumentContainer.seq.lengthenTrack(false);
+                } else if (16 == self.stepsLength && 'step-sequencer' == instrument) {
+                    //shorten the track, don't push the changes
+                    instrumentContainer.seq.shortenTrack(false);
+                }
+
                 // Add it to the arrangement and reset the local copy of window's arrangment
                 arrangement.addTrack(instrumentContainer.seq.getTrackJSON());
                 self.windowUpdater.setArrangement(arrangement.getArrangement());
 
+                // Check if plying
                 if (self.playing) {
+                    // Is playing, queue the instrument to start
                     self.addTrackToQueue(instrumentContainer.seq);
                 }
 
@@ -367,6 +413,42 @@ var MasterControls = function (arrangement) {
 
     }
 
+    /**
+     * Changes the value of the seq array and seq note
+     */
+    this.setSeqArray = function () {
+
+        // Check the length of the array as it is
+        if (16 == this.stepsLength) {
+            // Reset the size of the array and note value
+            this.seqStepsArray = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+        } else {
+            // Reset the size of the array and note value
+            this.seqStepsArray = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+                                   16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31];
+        }
+    };
+
+    /**
+     * Toggle the text of the button depending on the length of the track
+     */
+    this.toggleTrackLengthBtnText = function () {
+        // Check the length
+        if (16 == this.stepsLength) {
+            $('#lengthToggle').html('Extend length of steps');
+        } else {
+            $('#lengthToggle').html('Shorten length of steps');
+        }
+    };
+
+    /**
+     * Set the arrangement steps length
+     */
+    this.setArrangementStepsLength = function () {
+        // Set the arrangement
+        arrangement.setStepsLength(this.stepsLength);
+    };
+
     // Return instance of self
     return this;
 };
@@ -467,6 +549,15 @@ MasterControls.prototype.getTrackById = function (id) {
 };
 
 /**
+ * Get all the tracks
+ *
+ * @returns {array} this.tracks  The track objects
+ */
+MasterControls.prototype.getTracks = function () {
+    return this.tracks;
+};
+
+/**
  * Update the Tone bpm value when syncing with server
  *
  * @param  {int}            bpm  The newly updated bpm of track
@@ -491,6 +582,36 @@ MasterControls.prototype.updateSynthCount = function () {
     if (this.synthTracksCount != 3) {
         this.synthTracksCount++;
     }
+};
+
+/**
+ * Set the steps length, toggle the text in the button
+ *
+ * @param {int} stepsLength The length of steps
+ */
+MasterControls.prototype.setStepsLength = function (stepsLength) {
+
+    // Check if playing
+    if (this.playing) {
+        // Stop the playback
+        $('#start-stop').click();
+    }
+
+    // Set the length
+    this.stepsLength = stepsLength;
+
+    // Toggle the text
+    this.toggleTrackLengthBtnText();
+
+    // Set the seq array
+    this.setSeqArray();
+
+    // reinit the master controls seq
+    this.masterControlsSeq = this.initToneSequencer();
+
+    // Set arrangement steps length
+    this.setArrangementStepsLength();
+
 };
 
 module.exports = MasterControls;

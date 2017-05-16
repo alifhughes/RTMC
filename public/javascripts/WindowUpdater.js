@@ -25,6 +25,7 @@ var WindowUpdater = function (MasterControls) {
         bpm: 120,
         type: "arrangement",
         name: "",
+        stepsLength: 16,
         ownerId: "",
         __v: 0,
         tracks: [],
@@ -98,6 +99,16 @@ var WindowUpdater = function (MasterControls) {
 
             // Push the sequence on to the sequences
             instrumentContainer.seq.setTrackJSON(track);
+
+            // Check the length of the arrangement and track
+            if (32 == self.arrangement.stepsLength && 0 == track.pattern.length) {
+                // Track length isn't set, set it
+                instrumentContainer.seq.lengthenTrack();
+            } else if (16 == self.arrangement.stepsLength && 0 == track.pattern.length) {
+                // Track length isn't set, set it
+                instrumentContainer.seq.shortenTrack();
+            }
+
             self.masterControls.addTrack(instrumentContainer.seq);
 
         });
@@ -130,6 +141,7 @@ var WindowUpdater = function (MasterControls) {
         });
 
         // Remove it from the list of sequeces in the master controls
+        // // Is playing, queue the instrument to start
         self.masterControls.deleteTrackById(deletedTrackId);
 
     };
@@ -196,11 +208,8 @@ var WindowUpdater = function (MasterControls) {
                     }
                 });
             });
-
         }
-
     };
-
 };
 
 /**
@@ -216,14 +225,30 @@ WindowUpdater.prototype.update = function (arrangement) {
         this.updateBpm(arrangement.bpm);
     }
 
+    // Check if arrangement length has changed
+    if (!_.isEqual(this.arrangement.stepsLength, arrangement.stepsLength)) {
+        // Set the master controls steps length
+        this.masterControls.setStepsLength(arrangement.stepsLength);
+    }
+
     // Check tracks diff
     if (!_.isEqual(this.arrangement.tracks, arrangement.tracks)) {
         // Update tracks
         this.updateTracks(arrangement.tracks);
     }
 
+    // Check if the length has changed but the tracks haven't
+    if (!_.isEqual(this.arrangement.stepsLength, arrangement.stepsLength)
+        && _.isEqual(this.arrangement.tracks, arrangement.tracks)) {
+        // BUG FIX
+        // - tracks aren't reconginsing when the other client
+        //   changes the length
+        this.toggleLength(this.masterControls.getTracks());
+    }
+
     // Reset the local copy of arrangement
     this.arrangement = deepClone(arrangement);
+
 
     // Implement fluent interface
     return this;
@@ -241,6 +266,50 @@ WindowUpdater.prototype.updateUserCount = function (userCount) {
     if (!_.isEqual(this.userCount, userCount)) {
         $('#userCounter').text(userCount);
     }
+};
+
+/**
+ * Toggle the length arrangement
+ *
+ * @param {array} tracks  All the tracks of the arragnement
+ */
+WindowUpdater.prototype.toggleLength = function (tracks) {
+
+    // Init string for method name
+    var methodName = '';
+
+    // Check the length of the arrangement
+    if (this.arrangement.stepsLength == 16) {
+        // Set the method name depending on length
+        methodName = 'lengthenTrack';
+
+        // Set the length
+        this.arrangement.stepsLength = 32;
+
+    } else {
+        methodName = 'shortenTrack';
+
+        // Set the length
+        this.arrangement.stepsLength = 16;
+    }
+
+    // Loop through all the tracks
+    for (var i = 0; i < tracks.length; i++) {
+
+        // Check the track type
+        if ('step-sequencer' != tracks[i].getTrackType()) {
+            // Not a step sequencer, skip
+            continue;
+        }
+
+        // Call the method on the track, and push the changes
+        tracks[i][methodName](true);
+
+    }
+
+    // Set the master controls steps length
+    this.masterControls.setStepsLength(this.arrangement.stepsLength);
+
 };
 
 /**
@@ -271,6 +340,9 @@ WindowUpdater.prototype.initialise = function (arrangement) {
 
     // Set the local copy of arrangement
     this.arrangement = deepClone(arrangement);
+
+    // Set the master controls steps length
+    this.masterControls.setStepsLength(this.arrangement.stepsLength);
 
     // Hide the loading overlay
     $('#loadOverlay').hide();

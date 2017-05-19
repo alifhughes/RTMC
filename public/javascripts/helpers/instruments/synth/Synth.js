@@ -3,6 +3,7 @@ var deepClone = require('../../../helpers/deepclone');
 var arrangement = require('../../../model/arrangement');
 var trigger = require('../../../helpers/trigger');
 var pako = require('pako');
+var MasterPlaybackControl = require('../../../helpers/MasterPlaybackControl');
 
 // Start the tone timer
 Tone.Transport.start();
@@ -114,6 +115,9 @@ function Synth (id) {
 
     // Init empty array buffer
     this.arrayBuffer = new ArrayBuffer(8);
+
+    // Init new instance of master control playback
+    this.masterPlaybackControl = new MasterPlaybackControl();
 
     /**
      * Encode the channel data to ogg and then compress it
@@ -236,6 +240,9 @@ function Synth (id) {
      */
     this.mediaRecorder.onstop = function(evt) {
 
+        // Show the loading screen
+        self.masterPlaybackControl.showLoadingOverlay();
+
         // Make blob out of our blobs, and open it
         var blob = new Blob(self.chunks, {'type' : 'audio/ogg; codecs=opus'});
 
@@ -285,9 +292,14 @@ function Synth (id) {
             // Check if playing
             if (self.playing) {
                 // Start the audio again
-                self.playing = false;
-                self.start();
+                //self.playing = false;
+                //self.start();
+                self.masterPlaybackControl.startPlayback();
+
             }
+
+            // Hide loading overlay
+            self.masterPlaybackControl.hideLoadingOverlay();
 
         });
 
@@ -542,7 +554,8 @@ function Synth (id) {
         // Check if playing
         if (this.playing) {
             // Playing but maintain state
-            this.stop();
+            //this.stop();
+            this.masterPlaybackControl.stopPlayback();
             this.playing = true;
         }
 
@@ -558,8 +571,9 @@ function Synth (id) {
         // Check if playing
         if (this.playing) {
             // Playing but maintain state
-            this.playing = false;
-            this.start();
+            //this.playing = false;
+            //this.start();
+            this.masterPlaybackControl.startPlayback();
         }
 
     };
@@ -725,7 +739,7 @@ Synth.prototype.start = function () {
 
     // Set playing to true
     this.playing = true;
-    // Start the drawing syncing on the keyboard
+
 };
 
 /**
@@ -747,7 +761,6 @@ Synth.prototype.stop = function () {
     // Recreate buffer source node
     this.resetAudioBufferSource();
 
-    // Stop the keyboard animation
 };
 
 /**
@@ -879,6 +892,12 @@ Synth.prototype.setSettingsClickHandler = function (settings) {
 
         // Check if clicked
         if (!clicked) {
+            // Check if this is playing
+            if (self.playing) {
+                // Is playing, stop before recording
+                self.stop();
+            }
+
             // Not clicked, record midi
             self.startRecordMidi();
             event.target.innerHTML = "Stop recording";
@@ -1080,16 +1099,43 @@ Synth.prototype.setTrackJSON = function (track) {
     this.osc1Detune = track.osc1Detune;
     this.osc2Detune = track.osc2Detune;
 
-    // Set the audio buffer
-    this.audioBuffer =
-        this.recreateAudioBuffer(
-                track.audioBufferChannel0Data,
-                track.audioBufferChannel1Data,
-                track.audioBufferLength
-                );
+    // Check if the audio buffer has been changed
+    if (this.track.audioBufferLength != track.audioBufferLength
+        || this.track.audioBufferChannel0Data != track.audioBufferChannel0Data
+        || this.track.audioBufferChannel1Data != track.audioBufferChannel1Data)
+    {
+        // New audio buffer is available
 
-    // Reset the audio buffer source
-    this.resetAudioBufferSource();
+        // Check if initialised
+        if (this.isInitialised && true == this.playing) {
+            // Is initialised, and playing
+
+            // Stop the playback
+            this.masterPlaybackControl.stopPlayback();
+
+            // Tell the user what is happening
+            alert('A new audio track is being synchronised, please wait!');
+
+        }
+
+        // Set the audio buffer
+        this.audioBuffer =
+            this.recreateAudioBuffer(
+                    track.audioBufferChannel0Data,
+                    track.audioBufferChannel1Data,
+                    track.audioBufferLength
+                    );
+
+        // Reset the audio buffer source
+        this.resetAudioBufferSource();
+
+        // Check if initialised
+        if (this.isInitialised && true == this.playing) {
+            // Start the playback again
+            this.masterPlaybackControl.startPlayback();
+        }
+
+    }
 
     // Set the track json
     this.track = deepClone(track);

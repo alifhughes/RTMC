@@ -20954,7 +20954,99 @@ var windowUpdater = new WindowUpdater(masterControls);
 var sync = new Sync(windowUpdater, socket, arrangementId, userId);
 
 
-},{"./helpers/nxloader":55,"./helpers/sync":58,"./mastercontrols":60,"./model/arrangement":61,"./windowupdater":62}],47:[function(require,module,exports){
+},{"./helpers/nxloader":56,"./helpers/sync":59,"./mastercontrols":61,"./model/arrangement":62,"./windowupdater":63}],47:[function(require,module,exports){
+var $ = require('jquery');
+
+/**
+ * Master playback control is a module usable by individual
+ * instruments so that they can stop the playback of the whole
+ * arrangement if needed.
+ * - Mainly used for synth when the recording has stopped or 
+ *   a recording has been sent
+ *
+ * @return {MasterPlaybackControl}
+ */
+var MasterPlaybackControl = function () {
+
+    // Get the play back button
+    this.playbackButton = $('#start-stop');
+
+    // implement fluent interface
+    return this;
+};
+
+/**
+ * Triggers the master playback to start and removes
+ * loading screen.
+ *
+ * @return {MasterPlaybackControl}
+ */
+MasterPlaybackControl.prototype.startPlayback = function () {
+
+    // Check if it is playing
+    if (this.playbackButton.hasClass('fa-stop-circle')) {
+        // Track is already playing
+        // Dont proceed
+        return this;
+    }
+
+    // Start the play back
+    this.playbackButton.click();
+
+    // Hide the loading overlay
+    $('#loadOverlay').hide();
+
+    // Implement fluent interface
+    return this;
+};
+
+/**
+ * Triggers the master playback to stop and add the
+ * loading screen.
+ *
+ * @return {MasterPlaybackControl}
+ */
+MasterPlaybackControl.prototype.stopPlayback = function () {
+
+    // Check if it is not playing
+    if (this.playbackButton.hasClass('fa-play-circle')) {
+        // Track is already not playing, Don't proceed
+        return this;
+    }
+
+    // Stop the play back
+    this.playbackButton.click();
+
+    // Show the loading overlay
+    $('#loadOverlay').show();
+
+    // Implement fluent interface
+    return this;
+};
+
+/**
+ * Show the loading overlay
+ *
+ * @return {MasterPlaybackControl}
+ */
+MasterPlaybackControl.prototype.showLoadingOverlay = function () {
+    // Show the loading overlay
+    $('#loadOverlay').show();
+};
+
+/**
+ * Hide the loading overlay
+ *
+ * @return {MasterPlaybackControl}
+ */
+MasterPlaybackControl.prototype.hideLoadingOverlay = function () {
+    // Show the loading overlay
+    $('#loadOverlay').hide();
+};
+
+module.exports = MasterPlaybackControl;
+
+},{"jquery":8}],48:[function(require,module,exports){
 /**
  * Utility function for deep object cloning
  *
@@ -20967,7 +21059,7 @@ function deepClone (obj) {
 
 module.exports = deepClone;
 
-},{}],48:[function(require,module,exports){
+},{}],49:[function(require,module,exports){
 var toWav = require('audiobuffer-to-wav')
 var mergeBuffers = require('merge-audio-buffers');
 
@@ -21016,7 +21108,7 @@ var exportToWav = function (allAudioBuffers, audioContext) {
 
 module.exports = exportToWav;
 
-},{"audiobuffer-to-wav":1,"merge-audio-buffers":26}],49:[function(require,module,exports){
+},{"audiobuffer-to-wav":1,"merge-audio-buffers":26}],50:[function(require,module,exports){
 function guid() {
   return s4() + s4() + '-' + s4() + '-' + s4() + '-' +
     s4() + '-' + s4() + s4() + s4();
@@ -21030,7 +21122,7 @@ function s4() {
 
 module.exports = guid;
 
-},{}],50:[function(require,module,exports){
+},{}],51:[function(require,module,exports){
 var generateSequencerElement = require('./sequencer/GenerateSequencerElement');
 var generateSynthElement = require('./synth/GenerateSynthElement');
 var Sequencer = require('./sequencer/sequencer');
@@ -21142,7 +21234,7 @@ instrumentFactory.prototype.createInstrument = function (instrument, id) {
 
 module.exports = instrumentFactory;
 
-},{"./sequencer/GenerateSequencerElement":51,"./sequencer/sequencer":52,"./synth/GenerateSynthElement":53,"./synth/synth":54}],51:[function(require,module,exports){
+},{"./sequencer/GenerateSequencerElement":52,"./sequencer/sequencer":53,"./synth/GenerateSynthElement":54,"./synth/synth":55}],52:[function(require,module,exports){
 var $ = require('jquery');
 var guid = require('../../../helpers/idgenerator');
 var samplesObject = require('../../../helpers/samplelist');
@@ -21349,7 +21441,7 @@ generateSequencerElement.generate = function (id, callback) {
 
 module.exports = generateSequencerElement;
 
-},{"../../../helpers/idgenerator":49,"../../../helpers/samplelist":57,"jquery":8}],52:[function(require,module,exports){
+},{"../../../helpers/idgenerator":50,"../../../helpers/samplelist":58,"jquery":8}],53:[function(require,module,exports){
 var Tone = require('tone');
 var proxify = require('../../../helpers/proxify');
 var deepClone = require('../../../helpers/deepclone');
@@ -22317,7 +22409,7 @@ Sequencer.prototype.shortenTrack = function (sync) {
 
 module.exports = Sequencer;
 
-},{"../../../helpers/deepclone":47,"../../../helpers/proxify":56,"../../../model/arrangement":61,"tone":63}],53:[function(require,module,exports){
+},{"../../../helpers/deepclone":48,"../../../helpers/proxify":57,"../../../model/arrangement":62,"tone":64}],54:[function(require,module,exports){
 var $ = require('jquery');
 var guid = require('../../../helpers/idgenerator');
 
@@ -22694,12 +22786,13 @@ generateSynthElement.generate = function (id, callback) {
 
 module.exports = generateSynthElement;
 
-},{"../../../helpers/idgenerator":49,"jquery":8}],54:[function(require,module,exports){
+},{"../../../helpers/idgenerator":50,"jquery":8}],55:[function(require,module,exports){
 var Tone = require('tone');
 var deepClone = require('../../../helpers/deepclone');
 var arrangement = require('../../../model/arrangement');
 var trigger = require('../../../helpers/trigger');
 var pako = require('pako');
+var MasterPlaybackControl = require('../../../helpers/MasterPlaybackControl');
 
 // Start the tone timer
 Tone.Transport.start();
@@ -22811,6 +22904,9 @@ function Synth (id) {
 
     // Init empty array buffer
     this.arrayBuffer = new ArrayBuffer(8);
+
+    // Init new instance of master control playback
+    this.masterPlaybackControl = new MasterPlaybackControl();
 
     /**
      * Encode the channel data to ogg and then compress it
@@ -22933,6 +23029,9 @@ function Synth (id) {
      */
     this.mediaRecorder.onstop = function(evt) {
 
+        // Show the loading screen
+        self.masterPlaybackControl.showLoadingOverlay();
+
         // Make blob out of our blobs, and open it
         var blob = new Blob(self.chunks, {'type' : 'audio/ogg; codecs=opus'});
 
@@ -22982,9 +23081,14 @@ function Synth (id) {
             // Check if playing
             if (self.playing) {
                 // Start the audio again
-                self.playing = false;
-                self.start();
+                //self.playing = false;
+                //self.start();
+                self.masterPlaybackControl.startPlayback();
+
             }
+
+            // Hide loading overlay
+            self.masterPlaybackControl.hideLoadingOverlay();
 
         });
 
@@ -23239,7 +23343,8 @@ function Synth (id) {
         // Check if playing
         if (this.playing) {
             // Playing but maintain state
-            this.stop();
+            //this.stop();
+            this.masterPlaybackControl.stopPlayback();
             this.playing = true;
         }
 
@@ -23255,8 +23360,9 @@ function Synth (id) {
         // Check if playing
         if (this.playing) {
             // Playing but maintain state
-            this.playing = false;
-            this.start();
+            //this.playing = false;
+            //this.start();
+            this.masterPlaybackControl.startPlayback();
         }
 
     };
@@ -23422,7 +23528,7 @@ Synth.prototype.start = function () {
 
     // Set playing to true
     this.playing = true;
-    // Start the drawing syncing on the keyboard
+
 };
 
 /**
@@ -23444,7 +23550,6 @@ Synth.prototype.stop = function () {
     // Recreate buffer source node
     this.resetAudioBufferSource();
 
-    // Stop the keyboard animation
 };
 
 /**
@@ -23576,6 +23681,12 @@ Synth.prototype.setSettingsClickHandler = function (settings) {
 
         // Check if clicked
         if (!clicked) {
+            // Check if this is playing
+            if (self.playing) {
+                // Is playing, stop before recording
+                self.stop();
+            }
+
             // Not clicked, record midi
             self.startRecordMidi();
             event.target.innerHTML = "Stop recording";
@@ -23777,16 +23888,43 @@ Synth.prototype.setTrackJSON = function (track) {
     this.osc1Detune = track.osc1Detune;
     this.osc2Detune = track.osc2Detune;
 
-    // Set the audio buffer
-    this.audioBuffer =
-        this.recreateAudioBuffer(
-                track.audioBufferChannel0Data,
-                track.audioBufferChannel1Data,
-                track.audioBufferLength
-                );
+    // Check if the audio buffer has been changed
+    if (this.track.audioBufferLength != track.audioBufferLength
+        || this.track.audioBufferChannel0Data != track.audioBufferChannel0Data
+        || this.track.audioBufferChannel1Data != track.audioBufferChannel1Data)
+    {
+        // New audio buffer is available
 
-    // Reset the audio buffer source
-    this.resetAudioBufferSource();
+        // Check if initialised
+        if (this.isInitialised && true == this.playing) {
+            // Is initialised, and playing
+
+            // Stop the playback
+            this.masterPlaybackControl.stopPlayback();
+
+            // Tell the user what is happening
+            alert('A new audio track is being synchronised, please wait!');
+
+        }
+
+        // Set the audio buffer
+        this.audioBuffer =
+            this.recreateAudioBuffer(
+                    track.audioBufferChannel0Data,
+                    track.audioBufferChannel1Data,
+                    track.audioBufferLength
+                    );
+
+        // Reset the audio buffer source
+        this.resetAudioBufferSource();
+
+        // Check if initialised
+        if (this.isInitialised && true == this.playing) {
+            // Start the playback again
+            this.masterPlaybackControl.startPlayback();
+        }
+
+    }
 
     // Set the track json
     this.track = deepClone(track);
@@ -23873,7 +24011,7 @@ Synth.prototype.getAudioBuffer = function () {
 
 module.exports = Synth;
 
-},{"../../../helpers/deepclone":47,"../../../helpers/trigger":59,"../../../model/arrangement":61,"pako":27,"tone":63}],55:[function(require,module,exports){
+},{"../../../helpers/MasterPlaybackControl":47,"../../../helpers/deepclone":48,"../../../helpers/trigger":60,"../../../model/arrangement":62,"pako":27,"tone":64}],56:[function(require,module,exports){
 var nxloader = function () {
 };
 
@@ -23890,7 +24028,7 @@ nxloader.prototype.load = function () {
 
 module.exports = nxloader;
 
-},{}],56:[function(require,module,exports){
+},{}],57:[function(require,module,exports){
 /**
  * Create proxy object for as an observer
  *
@@ -23923,7 +24061,7 @@ function proxify(object, change, deepProxy) {
 
 module.exports = proxify;
 
-},{}],57:[function(require,module,exports){
+},{}],58:[function(require,module,exports){
 module.exports = {
     "727-CABASA":"727-CABASA.mp3",
     "727-HI-BONGO":"727-HI-BONGO.mp3",
@@ -24321,7 +24459,7 @@ module.exports = {
     "YAHAMA-AN200-40":"YAHAMA-AN200-40.mp3"
 };
 
-},{}],58:[function(require,module,exports){
+},{}],59:[function(require,module,exports){
 var arrangement = require('../model/arrangement');
 var jsondiffpatch = require('jsondiffpatch');
 var WindowUpdater = require('../windowupdater');
@@ -24688,7 +24826,7 @@ sync.prototype.addChange = function (arrangement) {
 
 module.exports = sync;
 
-},{"../helpers/deepclone":47,"../model/arrangement":61,"../windowupdater":62,"jsondiffpatch":23,"underscore":45}],59:[function(require,module,exports){
+},{"../helpers/deepclone":48,"../model/arrangement":62,"../windowupdater":63,"jsondiffpatch":23,"underscore":45}],60:[function(require,module,exports){
 // Require tone
 var Tone = require('tone');
 
@@ -24706,7 +24844,7 @@ var trigger = function(instrument, note, duration) {
 
 module.exports = trigger;
 
-},{"tone":63}],60:[function(require,module,exports){
+},{"tone":64}],61:[function(require,module,exports){
 var Clipboard = require('clipboard');
 var $ = require('jquery');
 var Tone = require('tone');
@@ -25331,7 +25469,7 @@ MasterControls.prototype.setStepsLength = function (stepsLength) {
 
 module.exports = MasterControls;
 
-},{"./helpers/exportToWav.js":48,"./helpers/instruments/InstrumentFactory":50,"clipboard":3,"jquery":8,"tone":63}],61:[function(require,module,exports){
+},{"./helpers/exportToWav.js":49,"./helpers/instruments/InstrumentFactory":51,"clipboard":3,"jquery":8,"tone":64}],62:[function(require,module,exports){
 var deepClone = require('../helpers/deepclone');
 
 /**
@@ -25456,7 +25594,7 @@ module.exports = {
     }
 };
 
-},{"../helpers/deepclone":47}],62:[function(require,module,exports){
+},{"../helpers/deepclone":48}],63:[function(require,module,exports){
 var $ = require('jquery');
 var deepClone = require('./helpers/deepclone');
 var _ = require('underscore')._;
@@ -25815,7 +25953,7 @@ WindowUpdater.prototype.initialise = function (arrangement) {
 
 module.exports = WindowUpdater;
 
-},{"./helpers/deepclone":47,"./helpers/instruments/InstrumentFactory":50,"jquery":8,"jsondiffpatch":23,"underscore":45}],63:[function(require,module,exports){
+},{"./helpers/deepclone":48,"./helpers/instruments/InstrumentFactory":51,"jquery":8,"jsondiffpatch":23,"underscore":45}],64:[function(require,module,exports){
 (function(root, factory){
 
 	//UMD

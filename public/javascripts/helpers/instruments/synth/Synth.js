@@ -630,6 +630,7 @@ function Synth (id) {
         this.waveform.colors.fill = "#ffffff";
         this.waveform.definition = 1;
         this.waveform.select((this.track.bufferStarttime * 1000), (this.track.bufferStoptime * 1000));
+        this.waveform.mode = "edge";
         this.waveform.init();
 
         // implement fluent interface

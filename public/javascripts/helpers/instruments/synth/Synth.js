@@ -23,6 +23,9 @@ function Synth (id) {
     // Set initialised flag
     this.isInitialised = false;
 
+    // Init mute variable
+    this.mute = false;
+
     // Initialse volume DOM element as false
     this.volumeDOM = false;
 
@@ -1008,8 +1011,18 @@ Synth.prototype.setMuteClickHandler = function (muteDiv) {
     // Click handler
     muteDiv.on('click', function (event) {
 
+        // Mute keep track of the variable state
+        self.mute == true ? self.mute = false : self.mute = true;
+
         // Toggle the colour class to know its active
         muteDiv.toggleClass('secondary-colour');
+
+        // Mute the track
+        if (self.mute) {
+            self.stop();
+        } else {
+            self.start();
+        }
 
     });
 

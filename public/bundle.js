@@ -22604,8 +22604,8 @@ generateSynthElement.generate = function (id, callback) {
         attack.setAttribute('value', 0);
         attack.setAttribute('name', 'volume');
         attack.setAttribute('min', 0);
-        attack.setAttribute('max', 4);
-        attack.setAttribute('step', 0.2);
+        attack.setAttribute('max', 2.5);
+        attack.setAttribute('step', 0.1);
 
         // Create volume range for sequencer
         var release = document.createElement("input");
@@ -22614,8 +22614,8 @@ generateSynthElement.generate = function (id, callback) {
         release.setAttribute('value', 0);
         release.setAttribute('name', 'volume');
         release.setAttribute('min', 0);
-        release.setAttribute('max', 4);
-        release.setAttribute('step', 0.2);
+        release.setAttribute('max', 2.5);
+        release.setAttribute('step', 0.1);
 
         // Clone the nodes for each osc
         var osc1AttackLabel = oscAttackLabel.cloneNode(true);
@@ -22812,6 +22812,9 @@ function Synth (id) {
 
     // Set initialised flag
     this.isInitialised = false;
+
+    // Init mute variable
+    this.mute = false;
 
     // Initialse volume DOM element as false
     this.volumeDOM = false;
@@ -23798,8 +23801,18 @@ Synth.prototype.setMuteClickHandler = function (muteDiv) {
     // Click handler
     muteDiv.on('click', function (event) {
 
+        // Mute keep track of the variable state
+        self.mute == true ? self.mute = false : self.mute = true;
+
         // Toggle the colour class to know its active
         muteDiv.toggleClass('secondary-colour');
+
+        // Mute the track
+        if (self.mute) {
+            self.stop();
+        } else {
+            self.start();
+        }
 
     });
 

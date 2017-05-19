@@ -90,6 +90,12 @@ var MasterControls = function (arrangement) {
      */
     $('#exportToWav').on('click', function (event) {
 
+        // Check if any tracks
+        if (0 == self.tracks.length) {
+            alert('No tracks to export! Try adding a track first by using the drop down below.');
+            return;
+        }
+
         // Disable the button
         $(this).prop('disabled', true);
 

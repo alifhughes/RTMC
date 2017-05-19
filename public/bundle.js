@@ -24799,6 +24799,12 @@ var MasterControls = function (arrangement) {
      */
     $('#exportToWav').on('click', function (event) {
 
+        // Check if any tracks
+        if (0 == self.tracks.length) {
+            alert('No tracks to export! Try adding a track first by using the drop down below.');
+            return;
+        }
+
         // Disable the button
         $(this).prop('disabled', true);
 
@@ -25553,13 +25559,18 @@ var WindowUpdater = function (MasterControls) {
             // Push the sequence on to the sequences
             instrumentContainer.seq.setTrackJSON(track);
 
-            // Check the length of the arrangement and track
-            if (32 == self.arrangement.stepsLength && 0 == track.pattern.length) {
-                // Track length isn't set, set it
-                instrumentContainer.seq.lengthenTrack();
-            } else if (16 == self.arrangement.stepsLength && 0 == track.pattern.length) {
-                // Track length isn't set, set it
-                instrumentContainer.seq.shortenTrack();
+            // Check if the track is step sequencer
+            if ('step-sequencer' == type) {
+
+                // Check the length of the arrangement and track
+                if (32 == self.arrangement.stepsLength && 0 == track.pattern.length) {
+                    // Track length isn't set, set it
+                    instrumentContainer.seq.lengthenTrack();
+                } else if (16 == self.arrangement.stepsLength && 0 == track.pattern.length) {
+                    // Track length isn't set, set it
+                    instrumentContainer.seq.shortenTrack();
+                }
+
             }
 
             self.masterControls.addTrack(instrumentContainer.seq);

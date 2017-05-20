@@ -22609,8 +22609,8 @@ generateSynthElement.generate = function (id, callback) {
         attack.setAttribute('value', 0.1);
         attack.setAttribute('name', 'volume');
         attack.setAttribute('min', 0.1);
-        attack.setAttribute('max', 2.5);
-        attack.setAttribute('step', 0.1);
+        attack.setAttribute('max', 2);
+        attack.setAttribute('step', 0.05);
 
         // Create volume range for sequencer
         var release = document.createElement("input");
@@ -22619,8 +22619,8 @@ generateSynthElement.generate = function (id, callback) {
         release.setAttribute('value', 0.1);
         release.setAttribute('name', 'volume');
         release.setAttribute('min', 0.1);
-        release.setAttribute('max', 2.5);
-        release.setAttribute('step', 0.1);
+        release.setAttribute('max', 2);
+        release.setAttribute('step', 0.05);
 
         // Clone the nodes for each osc
         var osc1AttackLabel = oscAttackLabel.cloneNode(true);

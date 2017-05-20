@@ -24,3 +24,15 @@
 - Manage your created tracks in your user portal
 
 ![user-portal](public/img/user-portal.png)
+
+---
+
+### To Install:
+
+1. Install MongoDB locally
+2. Run `npm install`
+3. Open 2 tabs in command window
+4. On first tab run command `mongod`
+5. On second tab run `npm start`
+6. Open browser at `http://localhost:3000`
+7. ENJOY!

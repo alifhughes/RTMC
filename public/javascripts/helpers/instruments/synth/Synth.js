@@ -252,10 +252,6 @@ function Synth (id) {
         // Read the blob into array buffer
         self.fileReader.readAsArrayBuffer(blob);
 
-        // Create doc element
-        //self.ai = document.createElement("audio");
-        //self.ai.src = URL.createObjectURL(blob);
-        //document.getElementById(self.id).appendChild(self.ai);
     };
 
     /**
@@ -294,9 +290,6 @@ function Synth (id) {
 
             // Check if playing
             if (self.playing) {
-                // Start the audio again
-                //self.playing = false;
-                //self.start();
                 self.masterPlaybackControl.startPlayback();
 
             }
@@ -557,9 +550,7 @@ function Synth (id) {
         // Check if playing
         if (this.playing) {
             // Playing but maintain state
-            //this.stop();
             this.masterPlaybackControl.stopPlayback();
-            this.playing = true;
         }
 
         // Init empty audio buffer
@@ -574,8 +565,6 @@ function Synth (id) {
         // Check if playing
         if (this.playing) {
             // Playing but maintain state
-            //this.playing = false;
-            //this.start();
             this.masterPlaybackControl.startPlayback();
         }
 
@@ -651,17 +640,23 @@ function Synth (id) {
         // Add watcher
         WatchJS.watch(self.waveform, "val", function (prop, action, newvalue) {
 
-            // Check if the property val is set and only set if not playing
-            if (prop == "val" && action == "set") {
-
-                // Set the new start, stop times and duration
-                self.track.bufferStarttime = (newvalue.starttime / 1000);
-                self.track.bufferStoptime = (newvalue.stoptime / 1000);
-                self.track.bufferDuration = ((newvalue.stoptime - newvalue.starttime) / 1000);
-
-                // Edit the loop start n stop time
-                self.source.loopEnd = self.track.bufferStoptime;
-                self.source.loopStart = self.track.bufferStarttime;
+            // Switch on the property that is being set
+            switch (prop) {
+                case "starttime" :
+                    // Set the new start time
+                    self.track.bufferStarttime = (newvalue / 1000);
+                    self.source.loopStart = self.track.bufferStarttime;
+                    break;
+                case "stoptime" :
+                    // Set stop time
+                    self.track.bufferStoptime = (newvalue / 1000);
+                    self.source.loopEnd = self.track.bufferStoptime;
+                    break;
+                case "looptime" :
+                    self.track.bufferDuration = (newvalue / 1000);
+                    break;
+                default :
+                    break;
 
             }
 

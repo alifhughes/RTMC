@@ -23204,7 +23204,7 @@ function Synth (id) {
      * @param {velocity} velocity  The velocity of the MIDI note
      * @param {note}     note      The MIDI note
      */
-    this.noteOn = function (frequency, velocity, note){
+    this.noteOn = function (frequency, velocity, note) {
 
         // Get current time audio context time
         var now = this.context.currentTime;
@@ -23212,6 +23212,10 @@ function Synth (id) {
         // Get the attack values
         var osc1AttackVal = now + this.osc1Attack;
         var osc2AttackVal = now + this.osc2Attack;
+
+        // Get the release values
+        var osc1ReleaseVal = now + this.osc1Attack + this.osc1Release;
+        var osc2ReleaseVal = now + this.osc2Attack + this.osc2Release;
 
         // Create the oscilators
         var osc = this.context.createOscillator(),
@@ -23256,11 +23260,13 @@ function Synth (id) {
         this.oscGain.gain.cancelScheduledValues(now);
         this.oscGain.gain.setValueAtTime(this.oscGain.gain.value, now);
         this.oscGain.gain.linearRampToValueAtTime(1 , osc1AttackVal);
+        this.oscGain.gain.linearRampToValueAtTime(0.0, osc1ReleaseVal);
 
         // Set ramp up for attack
         this.osc2Gain.gain.cancelScheduledValues(now);
         this.osc2Gain.gain.setValueAtTime(this.osc2Gain.gain.value, now);
         this.osc2Gain.gain.linearRampToValueAtTime(1 , osc2AttackVal);
+        this.osc2Gain.gain.linearRampToValueAtTime(0.0, osc2ReleaseVal);
 
         // Start the context
         osc.start(this.context.currentTime);
@@ -23270,33 +23276,21 @@ function Synth (id) {
         var key = self.midiNoteToKeyboardIndex(note);
         self.keyboard.toggle(self.keyboard.keys[key]);
 
-    }
+    };
 
     /**
-     * Note is being released
+     * Note is being released turn off the oscillator and release the note
+     * Turn off the key on the keyboard
+     *
+     * @param {int}      frequency The frequency of the MIDI note
+     * @param {velocity} velocity  The velocity of the MIDI note
+     * @param {note}     note      The MIDI note
      */
     this.noteOff = function (frequency, velocity, note){
 
-        var now = this.context.currentTime;
-
-        // Get the release values
-        var osc1ReleaseVal = now + this.osc1Release;
-        var osc2ReleaseVal = now + this.osc2Release;
-
-        // Cancel scheduled values
-        this.oscGain.gain.cancelScheduledValues(now);
-        this.osc2Gain.gain.cancelScheduledValues(now);
-
-        // Set the value
-        this.oscGain.gain.setValueAtTime(this.oscGain.gain.value, now);
-        this.osc2Gain.gain.setValueAtTime(this.osc2Gain.gain.value, now);
-
-        // Release the note
-        this.oscGain.gain.linearRampToValueAtTime(0.0, osc1ReleaseVal);
-        this.osc2Gain.gain.linearRampToValueAtTime(0.0, osc2ReleaseVal);
-
-        this.oscillators[frequency][0].stop(osc1ReleaseVal);
-        this.oscillators[frequency][1].stop(osc2ReleaseVal);
+        this.oscillators[frequency][0].stop();
+        this.oscillators[frequency][1].stop();
+        delete this.oscillators[frequency];
 
         // Turn off display on keyboard
         var key = self.midiNoteToKeyboardIndex(note);
@@ -24619,7 +24613,6 @@ var sync = function (WindowUpdater, socket, arrangementId, userId) {
 
         // listen to errors and reload
         this.socket.on('no-client-doc', function(message){
-            alert('Error has occourred, window is going to refresh');
             window.location.reload();
         });
     };

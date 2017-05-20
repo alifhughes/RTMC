@@ -142,7 +142,6 @@ var sync = function (WindowUpdater, socket, arrangementId, userId) {
 
         // listen to errors and reload
         this.socket.on('no-client-doc', function(message){
-            alert('Error has occourred, window is going to refresh');
             window.location.reload();
         });
     };

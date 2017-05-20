@@ -71,8 +71,8 @@ function Synth (id) {
     // Create attack values and release
     this.osc1Attack = 0;
     this.osc2Attack = 0;
-    this.osc1Release = 0;
-    this.osc2Release = 0;
+    this.osc1Release = 0.1;
+    this.osc2Release = 0.1;
 
     // Init gain nodes for osc
     this.oscGain = null;
@@ -188,8 +188,8 @@ function Synth (id) {
             osc2Detune: 10,
             osc1Attack: 0,
             osc2Attack: 0,
-            osc1Release: 0,
-            osc2Release: 0
+            osc1Release: 0.1,
+            osc2Release: 0.1
         };
 
         return track;
@@ -314,6 +314,11 @@ function Synth (id) {
             return this;
         }
 
+        // Check if state is closed
+        if ("closed" == self.context.state) {
+            return this;
+        }
+
         // This gives us our [command/channel, note, velocity] data
         var data = message.data;
 
@@ -424,8 +429,8 @@ function Synth (id) {
         var osc2AttackVal = now + this.osc2Attack;
 
         // Get the release values
-        var osc1ReleaseVal = now + this.osc1Attack + this.osc1Release;
-        var osc2ReleaseVal = now + this.osc2Attack + this.osc2Release;
+        var osc1ReleaseVal = osc1AttackVal + this.osc1Release;
+        var osc2ReleaseVal = osc2AttackVal + this.osc2Release;
 
         // Create the oscilators
         var osc = this.context.createOscillator(),
@@ -469,18 +474,18 @@ function Synth (id) {
         // Set ramp up for attack
         this.oscGain.gain.cancelScheduledValues(now);
         this.oscGain.gain.setValueAtTime(this.oscGain.gain.value, now);
-        this.oscGain.gain.linearRampToValueAtTime(1 , osc1AttackVal);
+        this.oscGain.gain.linearRampToValueAtTime(1, osc1AttackVal);
         this.oscGain.gain.linearRampToValueAtTime(0.0, osc1ReleaseVal);
 
         // Set ramp up for attack
         this.osc2Gain.gain.cancelScheduledValues(now);
         this.osc2Gain.gain.setValueAtTime(this.osc2Gain.gain.value, now);
-        this.osc2Gain.gain.linearRampToValueAtTime(1 , osc2AttackVal);
+        this.osc2Gain.gain.linearRampToValueAtTime(1, osc2AttackVal);
         this.osc2Gain.gain.linearRampToValueAtTime(0.0, osc2ReleaseVal);
 
         // Start the context
-        osc.start(this.context.currentTime);
-        osc2.start(this.context.currentTime);
+        osc.start(now);
+        osc2.start(now);
 
         // Display the key on the keyboard canvas
         var key = self.midiNoteToKeyboardIndex(note);
@@ -497,10 +502,6 @@ function Synth (id) {
      * @param {note}     note      The MIDI note
      */
     this.noteOff = function (frequency, velocity, note){
-
-        this.oscillators[frequency][0].stop();
-        this.oscillators[frequency][1].stop();
-        delete this.oscillators[frequency];
 
         // Turn off display on keyboard
         var key = self.midiNoteToKeyboardIndex(note);

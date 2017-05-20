@@ -373,15 +373,20 @@ function Sequencer (id) {
         // Add watcher
         WatchJS.watch(self.waveform, "val", function (prop, action, newvalue) {
 
-            // Check if the property val is set and only set if not playing
-            if (prop == "val"
-                && action == "set"
-                && self.source.state != "started") {
+            // Check if playing
+            if (self.source.state != "started") {
+                // Not playing, can set the buffer
+                switch (prop) {
+                    case "starttime" :
+                        self.track.bufferStarttime = newvalue / 1000;
+                        break;
+                    case "stoptime" :
+                        self.track.bufferStoptime = newvalue / 1000;
+                        break;
+                    case "looptime" :
+                        self.track.bufferDuration = newvalue / 1000;
 
-                // Set the new start, stop times and duration
-                self.track.bufferStarttime = (newvalue.starttime / 1000);
-                self.track.bufferStoptime = (newvalue.stoptime / 1000);
-                self.track.bufferDuration = ((newvalue.stoptime - newvalue.starttime) / 1000);
+                }
             }
 
         });

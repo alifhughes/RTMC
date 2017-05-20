@@ -188,21 +188,21 @@ generateSynthElement.generate = function (id, callback) {
         var attack = document.createElement("input");
         attack.className = 'volume-slider';
         attack.setAttribute('type', 'range');
-        attack.setAttribute('value', 0);
+        attack.setAttribute('value', 0.1);
         attack.setAttribute('name', 'volume');
-        attack.setAttribute('min', 0);
-        attack.setAttribute('max', 2.5);
-        attack.setAttribute('step', 0.1);
+        attack.setAttribute('min', 0.1);
+        attack.setAttribute('max', 2);
+        attack.setAttribute('step', 0.05);
 
         // Create volume range for sequencer
         var release = document.createElement("input");
         release.className = 'volume-slider';
         release.setAttribute('type', 'range');
-        release.setAttribute('value', 0);
+        release.setAttribute('value', 0.1);
         release.setAttribute('name', 'volume');
-        release.setAttribute('min', 0);
-        release.setAttribute('max', 2.5);
-        release.setAttribute('step', 0.1);
+        release.setAttribute('min', 0.1);
+        release.setAttribute('max', 2);
+        release.setAttribute('step', 0.05);
 
         // Clone the nodes for each osc
         var osc1AttackLabel = oscAttackLabel.cloneNode(true);

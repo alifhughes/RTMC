@@ -23621,6 +23621,12 @@ Synth.prototype.setSettingsClickHandler = function (settings) {
             // Add the watcher
             self.addWaveformWatcher();
 
+            // Check if audio buffer isn't equal to default length
+            if (22050 != self.track.audioBufferLength) {
+                // Disable the recording button
+                settings.recordBtn.prop('disabled', true);
+            }
+
         });
 
     });

@@ -551,6 +551,7 @@ function Synth (id) {
         if (this.playing) {
             // Playing but maintain state
             this.masterPlaybackControl.stopPlayback();
+            this.playing = true;
         }
 
         // Init empty audio buffer
@@ -564,6 +565,8 @@ function Synth (id) {
 
         // Check if playing
         if (this.playing) {
+            // Set false so that it will pass the play check
+            this.playing = false;
             // Playing but maintain state
             this.masterPlaybackControl.startPlayback();
         }
@@ -851,10 +854,6 @@ Synth.prototype.setSettingsClickHandler = function (settings) {
 
         // Reset the track json
         self.track = deepClone(trackSnapshot);
-
-        // THIS DOESN'T WORK
-        // Reset buffer source
-        self.resetAudioBufferSource();
 
         // Toggle popup
         settings.popup.toggle(400);

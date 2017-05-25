@@ -908,6 +908,10 @@ Synth.prototype.setSettingsClickHandler = function (settings) {
             settings.confirmBtn.prop('disabled', true);
 
         } else {
+
+            // Is playing, stop all playback before decoding
+            self.masterPlaybackControl.stopPlayback();
+
             // Is clicked, stop recording
             self.stopRecordMidi();
             clicked = false;

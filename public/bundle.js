@@ -21912,7 +21912,7 @@ function Sequencer (id) {
  */
 Sequencer.prototype.start = function () {
     // Start the Transport timer
-    this.seq.start();
+    this.seq.start('+0.05');
 };
 
 /**
@@ -23703,6 +23703,10 @@ Synth.prototype.setSettingsClickHandler = function (settings) {
             settings.confirmBtn.prop('disabled', true);
 
         } else {
+
+            // Is playing, stop all playback before decoding
+            self.masterPlaybackControl.stopPlayback();
+
             // Is clicked, stop recording
             self.stopRecordMidi();
             clicked = false;
@@ -24864,6 +24868,8 @@ var $ = require('jquery');
 var Tone = require('tone');
 var InstrumentFactory = require('./helpers/instruments/InstrumentFactory');
 var exportToWav = require('./helpers/exportToWav.js');
+
+Tone.context.latencyHint = 'fastest';
 
 /**
  * Constructor, it controls:

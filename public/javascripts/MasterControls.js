@@ -18,9 +18,6 @@ var MasterControls = function (arrangement) {
     // Array to hold a the objects of the tracks
     this.tracks = [];
 
-    // Int to hold bpm
-    this.bpm = $('#bpm').attr("value");
-
     // Local instance of window updater
     this.windowUpdater = false;
 
@@ -221,6 +218,8 @@ var MasterControls = function (arrangement) {
 
             // Get the bpm value
             bpm = parseInt(event.target.value);
+
+            $(this).attr("value", bpm);
 
             // Set the BPM value
             Tone.Transport.bpm.value = bpm;

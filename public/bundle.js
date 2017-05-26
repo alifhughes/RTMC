@@ -24869,8 +24869,6 @@ var Tone = require('tone');
 var InstrumentFactory = require('./helpers/instruments/InstrumentFactory');
 var exportToWav = require('./helpers/exportToWav.js');
 
-Tone.context.latencyHint = 'fastest';
-
 /**
  * Constructor, it controls:
  * - Getting/Setting bpm
@@ -24884,9 +24882,6 @@ var MasterControls = function (arrangement) {
 
     // Array to hold a the objects of the tracks
     this.tracks = [];
-
-    // Int to hold bpm
-    this.bpm = $('#bpm').attr("value");
 
     // Local instance of window updater
     this.windowUpdater = false;
@@ -25088,6 +25083,8 @@ var MasterControls = function (arrangement) {
 
             // Get the bpm value
             bpm = parseInt(event.target.value);
+
+            $(this).attr("value", bpm);
 
             // Set the BPM value
             Tone.Transport.bpm.value = bpm;
@@ -25671,6 +25668,9 @@ var WindowUpdater = function (MasterControls) {
         }
     });
 
+    // Get the DOM element
+    this.bpmElement = document.getElementById('bpm');
+
     /**
      * Updates the bpm input field
      *
@@ -25678,16 +25678,13 @@ var WindowUpdater = function (MasterControls) {
      * @returns {WindowUpdater} this  Instance of self
      */
     this.updateBpm = function (bpm) {
-
-        // Get the DOM element
-        var bpmElement = $('#bpm');
+console.log('bpm', bpm);
+console.log('bpm.toString()', bpm.toString());
+console.log('bpmElement', this.bpmElement);
 
         // Reset the value of the bpm
-        bpmElement.attr("value", bpm);
-
-        // Set the text value of input field
-        bpmElement.text(bpm);
-
+        this.bpmElement.value = bpm;
+//document.getElementById('bpm').value = bpm;
         // Update the master controls
         this.masterControls.updateBpm(bpm);
 

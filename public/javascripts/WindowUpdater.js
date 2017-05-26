@@ -54,6 +54,9 @@ var WindowUpdater = function (MasterControls) {
         }
     });
 
+    // Get the DOM element
+    this.bpmElement = document.getElementById('bpm');
+
     /**
      * Updates the bpm input field
      *
@@ -62,14 +65,8 @@ var WindowUpdater = function (MasterControls) {
      */
     this.updateBpm = function (bpm) {
 
-        // Get the DOM element
-        var bpmElement = $('#bpm');
-
         // Reset the value of the bpm
-        bpmElement.attr("value", bpm);
-
-        // Set the text value of input field
-        bpmElement.text(bpm);
+        this.bpmElement.value = bpm;
 
         // Update the master controls
         this.masterControls.updateBpm(bpm);

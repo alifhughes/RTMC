@@ -309,7 +309,7 @@ function Synth (id) {
     this.onMIDIMessage = function (message) {
 
         // Check if track is selected to play
-        if (!self.trackSelected) {
+        if (!self.trackSelected || self.mute) {
             // Not selected, don't trigger notes
             return this;
         }
@@ -886,6 +886,12 @@ Synth.prototype.setSettingsClickHandler = function (settings) {
         // Check if track is selected
         if (!self.trackSelected) {
             alert('Please select the track before recording! The selector box is next to the trash can');
+            return;
+        }
+
+        // Check if track is muted
+        if (self.mute) {
+            alert('Please un-mute the track before recording');
             return;
         }
 

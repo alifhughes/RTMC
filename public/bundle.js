@@ -23104,7 +23104,7 @@ function Synth (id) {
     this.onMIDIMessage = function (message) {
 
         // Check if track is selected to play
-        if (!self.trackSelected) {
+        if (!self.trackSelected || self.mute) {
             // Not selected, don't trigger notes
             return this;
         }
@@ -23681,6 +23681,12 @@ Synth.prototype.setSettingsClickHandler = function (settings) {
         // Check if track is selected
         if (!self.trackSelected) {
             alert('Please select the track before recording! The selector box is next to the trash can');
+            return;
+        }
+
+        // Check if track is muted
+        if (self.mute) {
+            alert('Please un-mute the track before recording');
             return;
         }
 
@@ -25678,13 +25684,10 @@ var WindowUpdater = function (MasterControls) {
      * @returns {WindowUpdater} this  Instance of self
      */
     this.updateBpm = function (bpm) {
-console.log('bpm', bpm);
-console.log('bpm.toString()', bpm.toString());
-console.log('bpmElement', this.bpmElement);
 
         // Reset the value of the bpm
         this.bpmElement.value = bpm;
-//document.getElementById('bpm').value = bpm;
+
         // Update the master controls
         this.masterControls.updateBpm(bpm);
 

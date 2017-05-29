@@ -130,6 +130,7 @@ function Synth (id) {
      */
     this.encodeAndCompressChannelData = function(channelData) {
         return pako.deflate(JSON.stringify(Codec.encode(channelData)), { to: 'string'});
+        //return pako.deflate(JSON.stringify(channelData), { to: 'string'});
     };
 
     /**
@@ -736,7 +737,6 @@ Synth.prototype.start = function () {
 
     // Set playing to true
     this.playing = true;
-
 };
 
 /**

@@ -468,7 +468,7 @@ function Sequencer (id) {
  */
 Sequencer.prototype.start = function () {
     // Start the Transport timer
-    this.seq.start('+0.05');
+    this.seq.start();
 };
 
 /**
